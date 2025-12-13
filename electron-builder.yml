@@ -77,6 +77,8 @@ deb:
   artifactName: sosu-${version}.${ext}
 rpm:
   artifactName: sosu-${version}.${ext}
+extraMetadata:
+  main: electron/main.js
 npmRebuild: false
 publish:
   provider: github
