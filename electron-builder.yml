@@ -1,7 +1,7 @@
 appId: com.sosu.app
 productName: 'sosu'
 directories:
-  buildResources: build
+  buildResources: resources
   output: dist
 files:
   - build/**
@@ -44,22 +44,22 @@ nsis:
   perMachine: true
   allowToChangeInstallationDirectory: true
   differentialPackage: false
-  installerIcon: build/icon.ico
-  uninstallerIcon: build/icon.ico
-  installerHeaderIcon: build/icon.ico
-  license: build/license.txt
+  installerIcon: resources/icon.ico
+  uninstallerIcon: resources/icon.ico
+  installerHeaderIcon: resources/icon.ico
+  license: resources/license.txt
 portable:
   artifactName: sosu-${version}-portable.${ext}
 mac:
   target:
     - dmg
     - pkg
-  entitlementsInherit: build/entitlements.mac.plist
+  entitlementsInherit: resources/entitlements.mac.plist
   # No special permissions required for current features
   notarize: false
-  icon: build/icon.icns
+  icon: resources/icon.icns
 dmg:
-  icon: build/icon.icns
+  icon: resources/icon.icns
   artifactName: sosu-${version}.${ext}
 pkg:
   artifactName: sosu-${version}.${ext}
@@ -70,7 +70,7 @@ linux:
     - rpm
   maintainer: adivise
   category: Utility
-  icon: build/icon.png
+  icon: resources/icon.png
 appImage:
   artifactName: sosu-${version}.${ext}
 deb:
