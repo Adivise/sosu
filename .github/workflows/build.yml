@@ -12,127 +12,34 @@ on:
       - main
       - master
   workflow_dispatch:
-    inputs:
-      version:
-        description: 'Release version (git tag, starting with v)'
-        required: false
-        default: ''
-
-permissions:
-  contents: write
 
 jobs:
-  build_linux:
-    runs-on: ubuntu-latest
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [macos-latest, ubuntu-latest, windows-latest]
     steps:
       - name: Check out Git repository
         uses: actions/checkout@v4
+
       - name: Install Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: 'npm'
+
       - name: Install dependencies
         run: npm ci
+
       - name: Build projects
         run: npm run build
-      - name: Build Electron app (Linux)
+
+      - name: Build Electron app
         uses: samuelmeuli/action-electron-builder@v1
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          args: --linux
+          github_token: ${{ secrets.github_token }}
+          release: ${{ startsWith(github.ref, 'refs/tags/v') }} # Only publish GitHub Release for version tags
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.github_token }}
           ELECTRON_BUILDER_ALLOW_UNRESOLVED_DEPENDENCIES: true
-      - name: Upload Linux Artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: linux-artifacts
-          path: dist/*
-
-  build_windows:
-    runs-on: windows-latest
-    steps:
-      - name: Check out Git repository
-        uses: actions/checkout@v4
-      - name: Install Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: 'npm'
-      - name: Install dependencies
-        run: npm ci
-      - name: Build projects
-        run: npm run build
-      - name: Build Electron app (Windows)
-        uses: samuelmeuli/action-electron-builder@v1
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          args: --win
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          ELECTRON_BUILDER_ALLOW_UNRESOLVED_DEPENDENCIES: true
-      - name: Upload Windows Artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: windows-artifacts
-          path: dist/*
-
-  build_macos:
-    runs-on: macos-latest
-    steps:
-      - name: Check out Git repository
-        uses: actions/checkout@v4
-      - name: Install Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: 'npm'
-      - name: Install dependencies
-        run: npm ci
-      - name: Build projects
-        run: npm run build
-      - name: Build Electron app (MacOS)
-        uses: samuelmeuli/action-electron-builder@v1
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          args: --mac
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          ELECTRON_BUILDER_ALLOW_UNRESOLVED_DEPENDENCIES: true
-      - name: Upload MacOS Artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: macos-artifacts
-          path: dist/*
-
-  release:
-    name: Create GitHub Release
-    needs: [build_linux, build_windows, build_macos]
-    runs-on: ubuntu-latest
-    if: github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/v')
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-      - name: Download all artifacts
-        uses: actions/download-artifact@v4
-        with:
-          path: artifacts/
-      - name: Get release version
-        id: get_version
-        run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ -n "${{ github.event.inputs.version }}" ]; then
-            echo "::set-output name=rel_tag::${{ github.event.inputs.version }}"
-          else
-            echo "::set-output name=rel_tag::${{ github.ref_name }}"
-          fi
-      - name: Create the release
-        uses: softprops/action-gh-release@v2
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: ${{ steps.get_version.outputs.rel_tag }}
-          name: Release ${{ steps.get_version.outputs.rel_tag }}
-          body: |
-            Automated release for tag ${{ steps.get_version.outputs.rel_tag }}.
-          files: artifacts/**
