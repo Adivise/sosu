@@ -23,10 +23,8 @@ files:
 asarUnpack:
   - 'resources/**'
 asar: true
-main: electron/main.js
 win:
-  signtoolOptions:
-    publisherName: Adivise
+  publisherName: Adivise
   target:
     - nsis
     - portable
