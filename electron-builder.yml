@@ -74,6 +74,7 @@ linux:
     - AppImage
     - deb
     - rpm
+    - snap
   maintainer: adivise
   category: Utility
   icon: build/icon.png
@@ -86,6 +87,9 @@ deb:
 rpm:
   artifactName: sosu-${version}.${ext}
   differentialPackage: false
+snap:
+  artifactName: sosu-${version}.${ext}
+  publish: never
 npmRebuild: false
 publish:
   provider: github
