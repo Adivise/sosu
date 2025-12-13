@@ -41,8 +41,7 @@
     ],
     "win": {
       "target": "nsis"
-    },
-    "main": "electron/main.js"
+    }
   },
   "browserslist": {
     "production": [
