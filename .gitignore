@@ -3,11 +3,6 @@ node_modules/
 /.pnp
 .pnp.js
 
-# Testing
-/coverage
-
-# Production
-
 # Misc
 .DS_Store
 .env.local
@@ -22,4 +17,3 @@ yarn-error.log*
 # Electron
 /dist
 /out
-
