@@ -39,7 +39,6 @@
       "electron/**/*",
       "node_modules/**/*"
     ],
-    "main": "electron/main.js",
     "win": {
       "target": "nsis"
     }
