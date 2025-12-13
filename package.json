@@ -28,24 +28,6 @@
     "react-scripts": "5.0.1",
     "wait-on": "^7.2.0"
   },
-  "build": {
-    "appId": "com.sosu.app",
-    "productName": "sosu",
-    "directories": {
-      "buildResources": "build"
-    },
-    "files": [
-      "build/**/*",
-      "electron/**/*",
-      "node_modules/**/*"
-    ],
-    "win": {
-      "target": "nsis"
-    },
-    "extraMetadata": {
-      "main": "electron/main.js"
-    }
-  },
   "browserslist": {
     "production": [
       ">0.2%",
