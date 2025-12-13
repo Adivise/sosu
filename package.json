@@ -44,9 +44,6 @@
     },
     "extraMetadata": {
       "main": "electron/main.js"
-    },
-    "linux": {
-      "target": ["AppImage", "snap"]
     }
   },
   "browserslist": {
