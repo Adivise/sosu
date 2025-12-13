@@ -44,14 +44,7 @@
     },
     "extraMetadata": {
       "main": "electron/main.js"
-    },
-    "publish": [
-      {
-        "provider": "github",
-        "owner": "Adivise",
-        "repo": "sosu"
-      }
-    ]
+    }
   },
   "browserslist": {
     "production": [
