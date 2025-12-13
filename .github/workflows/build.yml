@@ -28,7 +28,19 @@ jobs:
       - name: Build projects
         run: npm run build
 
-      - name: Build/Release Electron app
+      - name: Build/Release Electron app (Linux - no snap)
+        if: matrix.os == 'ubuntu-latest'
+        uses: samuelmeuli/action-electron-builder@v1
+        with:
+          github_token: ${{ secrets.github_token }}
+          release: true
+          args: --linux --x64 --target AppImage --target deb --target rpm
+        env:
+          GH_TOKEN: ${{ secrets.github_token }}
+          ELECTRON_BUILDER_ALLOW_UNRESOLVED_DEPENDENCIES: true
+
+      - name: Build/Release Electron app (Windows/macOS)
+        if: matrix.os != 'ubuntu-latest'
         uses: samuelmeuli/action-electron-builder@v1
         with:
           github_token: ${{ secrets.github_token }}
