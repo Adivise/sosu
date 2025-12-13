@@ -41,6 +41,9 @@
     ],
     "win": {
       "target": "nsis"
+    },
+    "extraMetadata": {
+      "main": "electron/main.js"
     }
   },
   "browserslist": {
