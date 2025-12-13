@@ -90,6 +90,7 @@ rpm:
 snap:
   artifactName: sosu-${version}.${ext}
   publish: never
+  differentialPackage: false
 npmRebuild: false
 publish:
   provider: github
