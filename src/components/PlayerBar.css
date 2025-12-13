@@ -1,0 +1,255 @@
+.player-bar {
+  height: 90px;
+  background-color: #181818;
+  border-top: 1px solid #282828;
+  padding: 0 16px;
+  display: flex;
+  align-items: center;
+  z-index: 100;
+}
+
+.player-bar.empty {
+  justify-content: center;
+}
+
+.player-bar-content {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.player-bar-left {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex: 1;
+  min-width: 180px;
+}
+
+.player-bar-image {
+  width: 56px;
+  height: 56px;
+  object-fit: cover;
+  border-radius: 4px;
+  background-color: #282828;
+}
+
+.player-bar-song-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.player-bar-song-title {
+  font-size: 14px;
+  font-weight: 400;
+  color: #ffffff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+}
+
+.player-bar-song-title:hover {
+  text-decoration: underline;
+}
+
+.player-bar-song-artist {
+  font-size: 11px;
+  color: #b3b3b3;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+}
+
+.player-bar-song-artist:hover {
+  color: #ffffff;
+  text-decoration: underline;
+}
+
+.player-bar-add-to-playlist {
+  background: none;
+  border: none;
+  color: #b3b3b3;
+  cursor: pointer;
+  padding: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: all 0.2s;
+  margin-left: 12px;
+}
+
+.player-bar-add-to-playlist:hover {
+  background-color: #1a1a1a;
+  color: #1db954;
+}
+
+.player-bar-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  max-width: 722px;
+}
+
+.player-controls {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.control-button {
+  background: none;
+  border: none;
+  color: #b3b3b3;
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s;
+}
+
+.control-button:hover {
+  color: #ffffff;
+}
+
+.control-button.play-pause {
+  width: 32px;
+  height: 32px;
+  background-color: #ffffff;
+  color: #000000;
+  border-radius: 50%;
+}
+
+.control-button.play-pause:hover {
+  transform: scale(1.06);
+  background-color: #ffffff;
+}
+
+.control-button .active {
+  color: #1db954;
+}
+
+.player-progress {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+}
+
+.player-time {
+  font-size: 11px;
+  color: #b3b3b3;
+  min-width: 40px;
+  text-align: center;
+}
+
+.progress-bar {
+  flex: 1;
+  height: 4px;
+  background-color: #535353;
+  border-radius: 2px;
+  cursor: pointer;
+  position: relative;
+}
+
+.progress-bar:hover {
+  background-color: #6b6b6b;
+}
+
+.progress-bar:hover .progress-bar-handle {
+  opacity: 1;
+}
+
+.progress-bar-fill {
+  height: 100%;
+  background-color: #b3b3b3;
+  border-radius: 2px;
+  position: relative;
+  transition: background-color 0.2s;
+}
+
+.progress-bar:hover .progress-bar-fill {
+  background-color: #1db954;
+}
+
+.progress-bar-handle {
+  position: absolute;
+  right: -6px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 12px;
+  height: 12px;
+  background-color: #ffffff;
+  border-radius: 50%;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.player-bar-right {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex: 1;
+  min-width: 180px;
+}
+
+.volume-control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  max-width: 180px;
+  justify-content: flex-end;
+}
+
+.volume-bar {
+  width: 93px;
+  height: 4px;
+  background-color: #535353;
+  border-radius: 2px;
+  cursor: pointer;
+  position: relative;
+}
+
+.volume-bar:hover {
+  background-color: #6b6b6b;
+}
+
+.volume-bar:hover .volume-bar-handle {
+  opacity: 1;
+}
+
+.volume-bar-fill {
+  height: 100%;
+  background-color: #b3b3b3;
+  border-radius: 2px;
+  position: relative;
+  transition: background-color 0.2s;
+}
+
+.volume-bar:hover .volume-bar-fill {
+  background-color: #1db954;
+}
+
+.volume-bar-handle {
+  position: absolute;
+  right: -6px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 12px;
+  height: 12px;
+  background-color: #ffffff;
+  border-radius: 50%;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+

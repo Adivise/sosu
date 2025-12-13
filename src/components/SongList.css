@@ -1,0 +1,86 @@
+.song-list {
+  width: 100%;
+}
+
+.song-list-header {
+  display: grid;
+  grid-template-columns: 40px 2fr 1.5fr 80px;
+  gap: 16px;
+  padding: 8px 16px;
+  border-bottom: 1px solid #282828;
+  color: #b3b3b3;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  position: sticky;
+  top: 0;
+  background-color: #121212;
+  z-index: 10;
+}
+
+.song-list-header-item {
+  display: flex;
+  align-items: center;
+}
+
+.song-list-items {
+  display: flex;
+  flex-direction: column;
+}
+
+.song-item {
+  transition: background-color 0.22s cubic-bezier(.68,-0.55,.27,1.55), color 0.25s;
+}
+
+.song-item:hover, .song-item.selected, .song-item.playing {
+  transition: background-color 0.22s cubic-bezier(.68,-0.55,.27,1.55), color 0.25s !important;
+  box-shadow: 0 2px 16px 0 rgba(0,0,0,0.08);
+}
+
+.song-list-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 48px;
+  color: #b3b3b3;
+  font-size: 16px;
+}
+
+.song-list-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 16px;
+  border-top: 1px solid #282828;
+  margin-top: 8px;
+}
+
+.pagination-button {
+  padding: 8px 16px;
+  background-color: #1a1a1a;
+  border: 1px solid #3e3e3e;
+  border-radius: 4px;
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.pagination-button:hover:not(:disabled) {
+  background-color: #282828;
+  border-color: #1db954;
+}
+
+.pagination-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.pagination-info {
+  color: #b3b3b3;
+  font-size: 14px;
+}
+

@@ -1,0 +1,133 @@
+.settings-modal {
+  max-width: 500px;
+}
+
+.settings-content {
+  padding: 24px;
+}
+
+.settings-section {
+  margin-bottom: 24px;
+}
+
+.settings-section:last-child {
+  margin-bottom: 0;
+}
+
+.settings-section-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #ffffff;
+  margin: 0 0 16px 0;
+}
+
+.settings-item {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.settings-label {
+  font-size: 14px;
+  color: #b3b3b3;
+  font-weight: 500;
+}
+
+.settings-folder-controls {
+  display: flex;
+  gap: 8px;
+}
+
+.settings-button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border: none;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.settings-button.primary {
+  background-color: #1db954;
+  color: #ffffff;
+}
+
+.settings-button.primary:hover {
+  background-color: #1ed760;
+}
+
+.settings-button.danger {
+  background-color: #e81123;
+  color: #ffffff;
+}
+
+.settings-button.danger:hover {
+  background-color: #c50e1f;
+}
+
+.settings-folder-path {
+  padding: 12px;
+  background-color: #1a1a1a;
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+.settings-folder-path-label {
+  color: #b3b3b3;
+  display: block;
+  margin-bottom: 4px;
+}
+
+.settings-folder-path-value {
+  color: #ffffff;
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.toggle-switch {
+  display: inline-block;
+  position: relative;
+  width: 44px;
+  height: 24px;
+  margin-left: 12px;
+}
+.toggle-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+.switch-slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: #323232;
+  transition: .2s;
+  border-radius: 24px;
+}
+.toggle-switch input:checked + .switch-slider {
+  background: #1db954;
+}
+.switch-slider:before {
+  position: absolute;
+  content: "";
+  height: 18px;
+  width: 18px;
+  left: 3px;
+  top: 3px;
+  background: #fff;
+  border-radius: 50%;
+  transition: .2s;
+}
+.toggle-switch input:checked + .switch-slider:before {
+  transform: translateX(20px);
+}
+

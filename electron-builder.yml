@@ -1,0 +1,86 @@
+appId: com.sosu.app
+productName: 'sosu'
+directories:
+  buildResources: build
+  output: dist
+files:
+  - "**/*"
+  - "!src/**"
+  - "!.env"
+  - "!credentials.json"
+  - "!config.json"
+  - "!README.md"
+  - "!ffmpeg.exe"
+  - "!*.log"
+  - "!session-data.json"
+  - "!encryption.key"
+  - "!website/**"
+  - "!backend.vite.config.mjs"
+  - "!electron.vite.config.mjs"
+  - "!eslint.config.mjs"
+  - "!LICENSE"
+asarUnpack:
+  - "resources/**"
+asar: true
+win:
+  signtoolOptions:
+    publisherName: Adivise
+  target:
+    - nsis
+    - portable
+    - msi
+msi:
+  artifactName: sosu-${version}.${ext}
+  createDesktopShortcut: always
+  shortcutName: ${productName}
+  oneClick: false
+  perMachine: true
+nsis:
+  artifactName: sosu-${version}.${ext}
+  shortcutName: ${productName}
+  uninstallDisplayName: uninstall
+  createDesktopShortcut: always
+  oneClick: false
+  perMachine: true
+  allowToChangeInstallationDirectory: true
+  differentialPackage: false
+  installerIcon: build/icon.ico
+  uninstallerIcon: build/icon.ico
+  installerHeaderIcon: build/icon.ico
+  license: build/license.txt
+portable:
+  artifactName: sosu-${version}-portable.${ext}
+mac:
+  target:
+    - dmg
+    - pkg
+  entitlementsInherit: build/entitlements.mac.plist
+  # No special permissions required for current features
+  notarize: false
+  icon: build/icon.icns
+dmg:
+  icon: build/icon.icns
+  artifactName: sosu-${version}.${ext}
+pkg:
+  artifactName: sosu-${version}.${ext}
+linux:
+  target:
+    - AppImage
+    - deb
+    - rpm
+  maintainer: adivise
+  category: Utility
+  icon: build/icon.png
+appImage:
+  artifactName: sosu-${version}.${ext}
+deb:
+  artifactName: sosu-${version}.${ext}
+rpm:
+  artifactName: sosu-${version}.${ext}
+npmRebuild: false
+publish:
+  provider: github
+  owner: Adivise
+  repo: sosu
+  private: false
+  releaseType: release

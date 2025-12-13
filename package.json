@@ -1,0 +1,58 @@
+{
+  "name": "sosu",
+  "version": "1.0.0",
+  "description": "A music player for osu! songs built with Electron and React",
+  "main": "electron/main.js",
+  "scripts": {
+    "dev": "concurrently \"npm run dev:react\" \"wait-on http://localhost:3000 && electron .\"",
+    "dev:react": "cross-env BROWSER=none react-scripts start",
+    "build": "react-scripts build",
+    "build:electron": "electron-builder",
+    "start": "electron .",
+    "start:dev": "npm run dev",
+    "build:run": "npm run build && electron ."
+  },
+  "dependencies": {
+    "discord-rpc": "^4.0.1",
+    "lucide-react": "^0.294.0",
+    "music-metadata": "^7.14.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-router-dom": "^6.20.0"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2",
+    "cross-env": "^7.0.3",
+    "electron": "^28.0.0",
+    "electron-builder": "^24.9.1",
+    "react-scripts": "5.0.1",
+    "wait-on": "^7.2.0"
+  },
+  "build": {
+    "appId": "com.sosu.app",
+    "productName": "sosu",
+    "directories": {
+      "buildResources": "build"
+    },
+    "files": [
+      "build/**/*",
+      "electron/**/*",
+      "node_modules/**/*"
+    ],
+    "win": {
+      "target": "nsis"
+    }
+  },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  }
+}
