@@ -34,7 +34,7 @@ jobs:
         with:
           github_token: ${{ secrets.github_token }}
           release: true
-          args: --linux --x64 --target AppImage --target deb --target rpm
+          args: --linux AppImage deb rpm
         env:
           GH_TOKEN: ${{ secrets.github_token }}
           ELECTRON_BUILDER_ALLOW_UNRESOLVED_DEPENDENCIES: true
