@@ -2,8 +2,16 @@ name: Build/Release
 
 on:
   push:
+    branches:
+      - main
+      - master
     tags:
       - 'v*'
+  pull_request:
+    branches:
+      - main
+      - master
+  workflow_dispatch: # Allows manual triggering from GitHub UI
 
 jobs:
   release:
@@ -32,7 +40,7 @@ jobs:
         uses: samuelmeuli/action-electron-builder@v1
         with:
           github_token: ${{ secrets.github_token }}
-          release: true
+          release: ${{ startsWith(github.ref, 'refs/tags/v') }} # Only release on version tags
         env:
           GH_TOKEN: ${{ secrets.github_token }}
           ELECTRON_BUILDER_ALLOW_UNRESOLVED_DEPENDENCIES: true
