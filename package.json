@@ -2,6 +2,7 @@
   "name": "sosu",
   "version": "1.0.0",
   "description": "A music player for osu! songs built with Electron and React",
+  "author": "Adivise",
   "main": "electron/main.js",
   "scripts": {
     "dev": "concurrently \"npm run dev:react\" \"wait-on http://localhost:3000 && electron .\"",

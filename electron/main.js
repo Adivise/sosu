@@ -10,6 +10,19 @@ try {
   RPC = undefined;
 }
 
+// Register app:// as privileged scheme so localStorage etc. works
+protocol.registerSchemesAsPrivileged([
+  {
+    scheme: 'app',
+    privileges: {
+      standard: true,
+      secure: true,
+      supportFetchAPI: true,
+      corsEnabled: true,
+    }
+  }
+]);
+
 const userDataPath = app.getPath('userData');
 const userDataFile = path.join(userDataPath, 'osu-playlist-userdata.json');
 const songsCacheFile = path.join(userDataPath, 'osu-playlist-songs-cache.json');
@@ -35,7 +48,10 @@ function createWindow() {
   });
 
   const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
-  const buildPath = path.join(__dirname, '../build/index.html');
+  
+  // Get the correct path to build files - works in both dev and production
+  const appPath = app.getAppPath();
+  const buildPath = path.join(appPath, 'build', 'index.html');
   const buildExists = require('fs').existsSync(buildPath);
   
   if (isDev) {
@@ -43,7 +59,8 @@ function createWindow() {
     mainWindow.loadURL('http://localhost:3000').catch(() => {
       if (buildExists) {
         console.log('Dev server not available, loading from build...');
-        mainWindow.loadFile(buildPath);
+        // Use app:// protocol for proper asset loading
+        mainWindow.loadURL(`app://build/index.html`);
       } else {
         console.error('Dev server not available and no build found. Please run "npm run dev" or "npm run build" first.');
         mainWindow.loadURL('data:text/html,<html><body style="background:#121212;color:#fff;font-family:sans-serif;padding:40px;text-align:center;"><h1>Development Server Not Running</h1><p>Please run <code>npm run dev</code> to start the development server.</p><p>Or run <code>npm run build</code> first, then <code>npm start</code>.</p></body></html>');
@@ -52,16 +69,55 @@ function createWindow() {
     // mainWindow.webContents.openDevTools();
   } else {
     if (buildExists) {
-      mainWindow.loadFile(buildPath);
+      // Use app:// protocol for proper asset loading in production
+      mainWindow.loadURL(`app://build/index.html`);
     } else {
-      console.error('Build not found. Please run "npm run build" first.');
-      mainWindow.loadURL('data:text/html,<html><body style="background:#121212;color:#fff;font-family:sans-serif;padding:40px;text-align:center;"><h1>Build Not Found</h1><p>Please run <code>npm run build</code> first.</p></body></html>');
+      console.error('Build not found at:', buildPath);
+      mainWindow.loadURL('data:text/html,<html><body style="background:#121212;color:#fff;font-family:sans-serif;padding:40px;text-align:center;"><h1>Build Not Found</h1><p>Build files not found in packaged app.</p></body></html>');
     }
   }
 }
 
-// Register custom protocol for serving local files
+// Register custom protocol for serving app files
+function registerAppProtocol() {
+  protocol.registerFileProtocol('app', (request, callback) => {
+    try {
+      let url = request.url.substr(6); // Remove 'app://' prefix
+      const appPath = app.getAppPath();
+      const buildPath = path.join(appPath, 'build');
+      
+      // Handle root path or index.html
+      if (url === '/' || url === '' || url === 'index.html') {
+        url = 'index.html';
+      }
+      
+      // Remove 'build/' prefix if present
+      if (url.startsWith('build/')) {
+        url = url.substr(6);
+      }
+      
+      // Handle absolute paths from React build (e.g., /static/css/main.xxx.css)
+      // These come as app://static/css/main.xxx.css, we need build/static/css/main.xxx.css
+      if (url.startsWith('/')) {
+        url = url.substr(1); // Remove leading slash
+      }
+      
+      // All files are in the build directory
+      const filePath = path.join(buildPath, url);
+      
+      callback({ path: filePath });
+    } catch (error) {
+      console.error('Error serving app file:', error, request.url);
+      callback({ error: -6 });
+    }
+  });
+}
+
+// Register protocols before app is ready  
 app.whenReady().then(() => {
+  // Register app protocol for serving build files
+  registerAppProtocol();
+  
   protocol.registerFileProtocol('osu', (request, callback) => {
     try {
       // Extract path from osu:// URL
