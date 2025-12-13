@@ -37,6 +37,7 @@ msi:
   shortcutName: ${productName}
   oneClick: false
   perMachine: true
+  differentialPackage: false
 nsis:
   artifactName: sosu-${version}.${ext}
   shortcutName: ${productName}
@@ -52,6 +53,7 @@ nsis:
   license: build/license.txt
 portable:
   artifactName: sosu-${version}-portable.${ext}
+  differentialPackage: false
 mac:
   target:
     - dmg
@@ -63,8 +65,10 @@ mac:
 dmg:
   icon: build/icon.icns
   artifactName: sosu-${version}.${ext}
+  differentialPackage: false
 pkg:
   artifactName: sosu-${version}.${ext}
+  differentialPackage: false
 linux:
   target:
     - AppImage
@@ -75,10 +79,13 @@ linux:
   icon: build/icon.png
 appImage:
   artifactName: sosu-${version}.${ext}
+  differentialPackage: false
 deb:
   artifactName: sosu-${version}.${ext}
+  differentialPackage: false
 rpm:
   artifactName: sosu-${version}.${ext}
+  differentialPackage: false
 npmRebuild: false
 publish:
   provider: github
