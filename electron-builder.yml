@@ -4,24 +4,26 @@ directories:
   buildResources: build
   output: dist
 files:
-  - "**/*"
-  - "!src/**"
-  - "!.env"
-  - "!credentials.json"
-  - "!config.json"
-  - "!README.md"
-  - "!ffmpeg.exe"
-  - "!*.log"
-  - "!session-data.json"
-  - "!encryption.key"
-  - "!website/**"
-  - "!backend.vite.config.mjs"
-  - "!electron.vite.config.mjs"
-  - "!eslint.config.mjs"
-  - "!LICENSE"
+  - build/**
+  - electron/**
+  - '!src/**'
+  - '!.env'
+  - '!credentials.json'
+  - '!config.json'
+  - '!README.md'
+  - '!ffmpeg.exe'
+  - '!*.log'
+  - '!session-data.json'
+  - '!encryption.key'
+  - '!website/**'
+  - '!backend.vite.config.mjs'
+  - '!electron.vite.config.mjs'
+  - '!eslint.config.mjs'
+  - '!LICENSE'
 asarUnpack:
-  - "resources/**"
+  - 'resources/**'
 asar: true
+main: electron/main.js
 win:
   signtoolOptions:
     publisherName: Adivise

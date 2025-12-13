@@ -11,15 +11,14 @@ on:
     branches:
       - main
       - master
-  workflow_dispatch: # Allows manual triggering from GitHub UI
+  workflow_dispatch:
 
 jobs:
-  release:
+  build:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
         os: [macos-latest, ubuntu-latest, windows-latest]
-
     steps:
       - name: Check out Git repository
         uses: actions/checkout@v4
@@ -36,11 +35,11 @@ jobs:
       - name: Build projects
         run: npm run build
 
-      - name: Build/Release Electron app
+      - name: Build Electron app
         uses: samuelmeuli/action-electron-builder@v1
         with:
           github_token: ${{ secrets.github_token }}
-          release: ${{ startsWith(github.ref, 'refs/tags/v') }} # Only release on version tags
+          release: ${{ startsWith(github.ref, 'refs/tags/v') }} # Only publish GitHub Release for version tags
         env:
           GH_TOKEN: ${{ secrets.github_token }}
           ELECTRON_BUILDER_ALLOW_UNRESOLVED_DEPENDENCIES: true
