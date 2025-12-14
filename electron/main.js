@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, dialog, protocol } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, protocol, shell } = require('electron');
 const path = require('path');
 const fs = require('fs').promises;
 const fsSync = require('fs');
@@ -463,6 +463,17 @@ ipcMain.handle('save-songs-cache', async (e, cache) => {
     return { success: false, error: err.message };
   }
 });
+
+ipcMain.handle('open-external', async (e, url) => {
+  try {
+    await shell.openExternal(url);
+    return { success: true };
+  } catch (error) {
+    console.error('Error opening external URL:', error);
+    return { success: false, error: error.message };
+  }
+});
+
 ipcMain.handle('set-rich-presence', async (e, enabled, presenceData) => {
   discordEnabled = enabled;
   if (!RPC) return { success: false };

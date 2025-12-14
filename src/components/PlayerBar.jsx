@@ -219,8 +219,44 @@ const PlayerBar = ({
             />
           ) : null}
           <div className="player-bar-song-info">
-            <div className="player-bar-song-title">{currentSong.title}</div>
-            <div className="player-bar-song-artist">{currentSong.artist}</div>
+            <div 
+              className="player-bar-song-title"
+              onClick={(e) => {
+                e.stopPropagation();
+                if (currentSong.beatmapSetId) {
+                  const beatmapUrl = currentSong.beatmapId 
+                    ? `https://osu.ppy.sh/beatmapsets/${currentSong.beatmapSetId}#osu/${currentSong.beatmapId}`
+                    : `https://osu.ppy.sh/beatmapsets/${currentSong.beatmapSetId}`;
+                  if (window.electronAPI?.openExternal) {
+                    window.electronAPI.openExternal(beatmapUrl);
+                  } else {
+                    window.open(beatmapUrl, '_blank');
+                  }
+                }
+              }}
+              title={currentSong.beatmapSetId ? 'Click to open beatmap on osu.ppy.sh' : ''}
+            >
+              {currentSong.title}
+            </div>
+            <div 
+              className="player-bar-song-artist"
+              onClick={(e) => {
+                e.stopPropagation();
+                if (currentSong.beatmapSetId) {
+                  const beatmapUrl = currentSong.beatmapId 
+                    ? `https://osu.ppy.sh/beatmapsets/${currentSong.beatmapSetId}#osu/${currentSong.beatmapId}`
+                    : `https://osu.ppy.sh/beatmapsets/${currentSong.beatmapSetId}`;
+                  if (window.electronAPI?.openExternal) {
+                    window.electronAPI.openExternal(beatmapUrl);
+                  } else {
+                    window.open(beatmapUrl, '_blank');
+                  }
+                }
+              }}
+              title={currentSong.beatmapSetId ? 'Click to open beatmap on osu.ppy.sh' : ''}
+            >
+              {currentSong.artist}
+            </div>
           </div>
           {onAddToPlaylist && playlists && playlists.length > 0 && (
             <div style={{ position: 'relative' }}>

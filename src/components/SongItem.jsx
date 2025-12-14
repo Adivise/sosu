@@ -63,6 +63,20 @@ const SongItem = ({ song, index, isPlaying, isSelected, onSelect, duration, isPl
     onAddToPlaylist(playlistId, song);
   };
 
+  const handleOpenBeatmap = (e) => {
+    e.stopPropagation();
+    if (song.beatmapSetId) {
+      const beatmapUrl = song.beatmapId 
+        ? `https://osu.ppy.sh/beatmapsets/${song.beatmapSetId}#osu/${song.beatmapId}`
+        : `https://osu.ppy.sh/beatmapsets/${song.beatmapSetId}`;
+      if (window.electronAPI?.openExternal) {
+        window.electronAPI.openExternal(beatmapUrl);
+      } else {
+        window.open(beatmapUrl, '_blank');
+      }
+    }
+  };
+
   return (
     <div
       className={`song-item ${isPlaying ? 'playing' : ''} ${isSelected ? 'selected' : ''}`}
@@ -102,10 +116,24 @@ const SongItem = ({ song, index, isPlaying, isSelected, onSelect, duration, isPl
           )}
         </div>
         <div className="song-item-info">
-          <div className="song-item-name" title={song.title}>{song.title}</div>
+          <div 
+            className="song-item-name" 
+            title={song.title}
+            onClick={handleOpenBeatmap}
+            style={{ cursor: song.beatmapSetId ? 'pointer' : 'default' }}
+          >
+            {song.title}
+          </div>
         </div>
       </div>
-      <div className="song-item-artist">{song.artist}</div>
+      <div 
+        className="song-item-artist"
+        onClick={handleOpenBeatmap}
+        style={{ cursor: song.beatmapSetId ? 'pointer' : 'default' }}
+        title={song.beatmapSetId ? 'Click to open beatmap on osu.ppy.sh' : ''}
+      >
+        {song.artist}
+      </div>
       <div className="song-item-duration" style={{ position: 'relative' }}>
         {isPlaylist && onRemoveFromPlaylist ? (
           <>

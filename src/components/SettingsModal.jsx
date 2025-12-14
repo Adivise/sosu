@@ -39,7 +39,7 @@ const SettingsModal = ({ isOpen, onClose, osuFolderPath, onSelectFolder, onRemov
                 <div className="settings-folder-path">
                   <span className="settings-folder-path-label">Current folder:</span>
                   <span className="settings-folder-path-value" title={osuFolderPath}>
-                    {osuFolderPath.split('\\').pop() || osuFolderPath.split('/').pop()}
+                    {osuFolderPath}
                   </span>
                 </div>
               )}

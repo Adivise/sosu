@@ -1,5 +1,6 @@
 import React from 'react';
-import { Music, FolderOpen, ListMusic, Plus, Settings2Icon } from 'lucide-react';
+import { Music, ListMusic, Plus, Settings2Icon, FileMusicIcon } from 'lucide-react';
+import { VERSION } from '../version';
 import './Sidebar.css';
 
 const Sidebar = ({ onSelectFolder, osuFolderPath, currentView, onViewChange, playlists, onCreatePlaylist, onSelectPlaylist, selectedPlaylistId }) => {
@@ -7,7 +8,10 @@ const Sidebar = ({ onSelectFolder, osuFolderPath, currentView, onViewChange, pla
     <div className="sidebar">
       <div className="sidebar-header">
         <Music className="sidebar-logo" size={32} />
-        <h1 className="sidebar-title">sosu</h1>
+        <div className="sidebar-title-container">
+          <h1 className="sidebar-title">SOSU</h1>
+          <span className="version-badge">v{VERSION}</span>
+        </div>
       </div>
       
       <nav className="sidebar-nav">
@@ -15,7 +19,7 @@ const Sidebar = ({ onSelectFolder, osuFolderPath, currentView, onViewChange, pla
           className={`nav-item ${currentView === 'songs' ? 'active' : ''}`}
           onClick={() => onViewChange('songs')}
         >
-          <Music size={20} />
+          <FileMusicIcon size={20} />
           <span>Songs</span>
         </button>
       </nav>

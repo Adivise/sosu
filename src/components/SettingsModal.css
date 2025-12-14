@@ -85,9 +85,10 @@
 .settings-folder-path-value {
   color: #ffffff;
   display: block;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  word-break: break-all;
+  white-space: normal;
+  line-height: 1.5;
+  font-family: 'Courier New', monospace;
 }
 
 .toggle-switch {

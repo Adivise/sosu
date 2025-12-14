@@ -18,5 +18,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
   setDiscordRichPresence: (enabled, presenceData) => ipcRenderer.invoke('set-rich-presence', enabled, presenceData),
   getSongsCache: () => ipcRenderer.invoke('get-songs-cache'),
   saveSongsCache: (cache) => ipcRenderer.invoke('save-songs-cache', cache),
+  openExternal: (url) => ipcRenderer.invoke('open-external', url),
 });
 

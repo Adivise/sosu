@@ -5,9 +5,10 @@
   "author": "Adivise",
   "main": "electron/main.js",
   "scripts": {
-    "dev": "concurrently \"npm run dev:react\" \"wait-on http://localhost:3000 && electron .\"",
+    "sync-version": "node scripts/sync-version.js",
+    "dev": "npm run sync-version && concurrently \"npm run dev:react\" \"wait-on http://localhost:3000 && electron .\"",
     "dev:react": "cross-env BROWSER=none react-scripts start",
-    "build": "react-scripts build",
+    "build": "npm run sync-version && react-scripts build",
     "build:electron": "electron-builder",
     "start": "electron .",
     "start:dev": "npm run dev",
