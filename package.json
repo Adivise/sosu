@@ -1,6 +1,6 @@
 {
   "name": "sosu",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "A music player for osu! songs built with Electron and React",
   "author": "Adivise",
   "main": "electron/main.js",
