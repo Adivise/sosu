@@ -82,7 +82,7 @@ Take your osu! music experience to the next level with SOSU.
 ## For Regular Users
 
 ### Windows Users
-- Click [here](https://github.com/Adivise/sosu/releases/latest/download/sosu-1.0.3-setup.exe) to download the recommended Windows installer
+- Click [here](https://github.com/Adivise/sosu/releases/latest/download/sosu-1.0.3.exe) to download the recommended Windows installer
 - Alternative downloads from the [latest release](https://github.com/Adivise/sosu/releases/latest):
   - **Portable (.exe)**
     - `sosu-1.0.3-portable.exe` (no installation required)
