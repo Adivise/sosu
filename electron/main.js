@@ -24,8 +24,8 @@ protocol.registerSchemesAsPrivileged([
 ]);
 
 const userDataPath = app.getPath('userData');
-const userDataFile = path.join(userDataPath, 'osu-playlist-userdata.json');
-const songsCacheFile = path.join(userDataPath, 'osu-playlist-songs-cache.json');
+const userDataFile = path.join(userDataPath, 'sosu-userdata.json');
+const songsCacheFile = path.join(userDataPath, 'sosu-songs-cache.json');
 let discordClient = null;
 let lastRichPresence = null;
 
@@ -165,7 +165,7 @@ ipcMain.handle('select-osu-folder', async () => {
 ipcMain.handle('scan-osu-folder', async (event, folderPath) => {
   try {
     // Check if we have cached metadata for this folder
-    const cacheFile = path.join(userDataPath, 'osu-playlist-songs-cache.json');
+    const cacheFile = path.join(userDataPath, 'sosu-songs-cache.json');
     if (fsSync.existsSync(cacheFile)) {
       try {
         const cacheData = await fs.readFile(cacheFile, 'utf-8');
