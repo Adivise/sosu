@@ -10,6 +10,10 @@ Whether you're practicing, listening to your favorite beatmaps, or organizing yo
 
 Take your osu! music experience to the next level with SOSU.
 
+<p align="center">
+  <img src="https://media.discordapp.net/attachments/1371261802067001415/1449637584438296658/image.png?ex=693f9fb5&is=693e4e35&hm=2c3b87c822d64639ef92e1dd4d67a62518dd030e2f76ba35f10c4f465f3128ae&=&format=webp&quality=lossless&width=1158&height=775" alt="SOSU Screenshot"/>
+</p>
+
 # 🌟 Features
 
 - 🎵 **Music Player** - Play songs from your osu! Songs folder
