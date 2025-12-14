@@ -25,6 +25,7 @@ asarUnpack:
 asar: true
 win:
   publisherName: Adivise
+  icon: resources/icon.png
   target:
     - nsis
     - portable
