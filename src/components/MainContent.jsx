@@ -115,7 +115,7 @@ const MainContent = ({
           </div>
         ) : currentView === 'songs' ? (
           <div className="view-header">
-            <h2 className="view-title">Songs</h2>
+            <h2 className="view-title">Library</h2>
             <span className="view-subtitle">{songs.length} songs</span>
           </div>
         ) : null}
