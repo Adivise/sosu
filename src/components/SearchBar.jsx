@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Search, X } from 'lucide-react';
 import './SearchBar.css';
 
-const SearchBar = ({ searchQuery, onSearchChange, songs, showFilters = false }) => {
+const SearchBar = ({ searchQuery, onSearchChange, songs, showFilters = false, sortBy, onSortChange }) => {
   const [isFocused, setIsFocused] = useState(false);
   const [suggestions, setSuggestions] = useState([]);
   const [selectedIndex, setSelectedIndex] = useState(-1);
@@ -115,9 +115,38 @@ const SearchBar = ({ searchQuery, onSearchChange, songs, showFilters = false }) 
           ))}
         </div>
       )}
+
+      {showFilters && (
+        <div className="search-filters">
+          <span className="filter-label">Sort:</span>
+          <button
+            className={`filter-chip ${sortBy === 'none' ? 'active' : ''}`}
+            onClick={() => onSortChange && onSortChange('none')}
+          >
+            None
+          </button>
+          <button
+            className={`filter-chip ${sortBy === 'az' ? 'active' : ''}`}
+            onClick={() => onSortChange && onSortChange('az')}
+          >
+            A-Z
+          </button>
+          <button
+            className={`filter-chip ${sortBy === 'za' ? 'active' : ''}`}
+            onClick={() => onSortChange && onSortChange('za')}
+          >
+            Z-A
+          </button>
+          <button
+            className={`filter-chip ${sortBy === 'duration' ? 'active' : ''}`}
+            onClick={() => onSortChange && onSortChange('duration')}
+          >
+            Duration ↑
+          </button>
+        </div>
+      )}
     </div>
   );
 };
 
 export default SearchBar;
-

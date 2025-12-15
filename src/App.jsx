@@ -10,6 +10,7 @@ import './App.css';
 
 function App() {
   const [songs, setSongs] = useState([]);
+  const [minDurationValue, setMinDurationValue] = useState(60); // Minimum duration in seconds
   const [currentSong, setCurrentSong] = useState(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
@@ -177,6 +178,21 @@ function App() {
   useEffect(() => {
     localStorage.setItem('playlists', JSON.stringify(playlists));
   }, [playlists]);
+
+  // Handler to clear songs cache
+  const clearSongsCache = async () => {
+    setSongsCache({});
+    setSongs([]);
+    setSongDurations({});
+    if (window.electronAPI?.saveSongsCache) {
+      await window.electronAPI.saveSongsCache({});
+    }
+    // If a folder is selected, trigger re-scanning (re-caching)
+    if (osuFolderPath) {
+      await loadSongs(osuFolderPath);
+    }
+  };
+
 
   const loadSongs = async (folderPath) => {
     if (!window.electronAPI) return;
@@ -502,13 +518,37 @@ function App() {
 
   // Get current songs to display
   const getCurrentSongs = () => {
+    let songsToReturn = [];
     if (currentView === 'songs') {
-      return songs;
+      songsToReturn = songs;
     } else if (selectedPlaylistId) {
       const playlist = playlists.find(p => p.id === selectedPlaylistId);
-      return playlist ? playlist.songs : [];
+      songsToReturn = playlist ? playlist.songs : [];
     }
-    return [];
+    
+    // Filter out songs with duration <= 10 seconds and remove duplicates by title
+    const seenTitles = new Set();
+    
+    return songsToReturn.filter(song => {
+      // Get duration from songDurations state or song.duration
+      const duration = songDurations[song.id] || song.duration;
+      
+      // Filter out songs with duration <= 10 seconds
+      if (duration && duration <= 10) {
+        return false;
+      }
+      
+      // Remove duplicates based on title (case-insensitive)
+      const normalizedTitle = (song.title || '').toLowerCase().trim();
+      if (normalizedTitle && seenTitles.has(normalizedTitle)) {
+        return false;
+      }
+      if (normalizedTitle) {
+        seenTitles.add(normalizedTitle);
+      }
+      
+      return true;
+    });
   };
 
   return (
@@ -534,6 +574,9 @@ function App() {
             onRemoveFolder={removeFolder}
             discordRpcEnabled={discordRpcEnabled}
             onSetDiscordRpcEnabled={setDiscordRpcEnabled}
+            onClearCache={clearSongsCache}
+            minDurationValue={minDurationValue}
+            setMinDurationValue={setMinDurationValue}
           />
           <CreatePlaylistModal
             isOpen={showCreatePlaylistModal}
@@ -554,6 +597,7 @@ function App() {
             onAddToPlaylist={addSongToPlaylist}
             onRemoveFromPlaylist={removeSongFromPlaylist}
             onDeletePlaylist={deletePlaylist}
+            minDurationValue={minDurationValue}
           />
         </div>
         <PlayerBar

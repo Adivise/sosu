@@ -103,12 +103,13 @@
   font-size: 28px;
   font-weight: 700;
   color: #ffffff;
-  margin: 0;
+  margin-left: 20px;
 }
 
 .playlist-subtitle {
   font-size: 14px;
   color: #b3b3b3;
+  margin-left: 20px;
 }
 
 .view-header {
@@ -143,6 +144,7 @@
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s;
+  margin-right: 20px;
 }
 
 .delete-playlist-button:hover {

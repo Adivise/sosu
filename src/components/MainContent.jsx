@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo } from 'react';
 import SearchBar from './SearchBar';
 import SongList from './SongList';
 import './MainContent.css';
@@ -15,10 +15,12 @@ const MainContent = ({
   playlists,
   allSongs,
   onRemoveFromPlaylist,
-  onDeletePlaylist
+  onDeletePlaylist,
+  minDurationValue = 0
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
+  const [sortBy, setSortBy] = useState('none'); // default is no sorting, other values: 'az', 'za', 'duration'
 
   // Debounce search query to prevent lag
   React.useEffect(() => {
@@ -30,18 +32,52 @@ const MainContent = ({
   }, [searchQuery]);
 
   const filteredSongs = useMemo(() => {
-    if (!debouncedQuery.trim()) {
-      return songs;
+    // Songs are already filtered by duration and duplicates in getCurrentSongs()
+    // Here we apply search filter and sorting
+    let result = songs;
+
+    // Duration display filter (custom user value)
+    if (minDurationValue > 0) {
+      result = result.filter(song => {
+        const duration = songDurations[song.id] || song.duration || 0;
+        return duration > minDurationValue;
+      });
     }
 
-    const query = debouncedQuery.toLowerCase();
-    return songs.filter(song => 
-      song.title.toLowerCase().includes(query) ||
-      song.artist.toLowerCase().includes(query) ||
-      song.folderName.toLowerCase().includes(query) ||
-      (song.album && song.album.toLowerCase().includes(query))
-    );
-  }, [songs, debouncedQuery]);
+    // Apply search filter
+    if (debouncedQuery.trim()) {
+      const query = debouncedQuery.toLowerCase();
+      result = result.filter(song => 
+        song.title.toLowerCase().includes(query) ||
+        song.artist.toLowerCase().includes(query) ||
+        song.folderName.toLowerCase().includes(query) ||
+        (song.album && song.album.toLowerCase().includes(query))
+      );
+    }
+
+    // Apply sorting
+    if (sortBy === 'az') {
+      result = [...result].sort((a, b) => {
+        const titleA = (a.title || '').toLowerCase();
+        const titleB = (b.title || '').toLowerCase();
+        return titleA.localeCompare(titleB);
+      });
+    } else if (sortBy === 'za') {
+      result = [...result].sort((a, b) => {
+        const titleA = (a.title || '').toLowerCase();
+        const titleB = (b.title || '').toLowerCase();
+        return titleB.localeCompare(titleA);
+      });
+    } else if (sortBy === 'duration') {
+      result = [...result].sort((a, b) => {
+        const durationA = songDurations[a.id] || a.duration || 0;
+        const durationB = songDurations[b.id] || b.duration || 0;
+        return durationA - durationB; // Sort by duration ascending (shortest first)
+      });
+    }
+
+    return result;
+  }, [songs, debouncedQuery, sortBy, songDurations, minDurationValue]);
 
   if (loading) {
     const progressText = loadingProgress.total > 0 
@@ -88,6 +124,8 @@ const MainContent = ({
           onSearchChange={setSearchQuery}
           songs={songs}
           showFilters={true}
+          sortBy={sortBy}
+          onSortChange={setSortBy}
         />
       </div>
       
@@ -120,4 +158,3 @@ const MainContent = ({
 };
 
 export default MainContent;
-

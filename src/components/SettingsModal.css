@@ -1,94 +1,127 @@
 .settings-modal {
   max-width: 500px;
+  background: #232323;
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.33);
 }
 
 .settings-content {
-  padding: 24px;
+  padding: 26px 20px 22px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
 }
 
 .settings-section {
-  margin-bottom: 24px;
-}
-
-.settings-section:last-child {
   margin-bottom: 0;
 }
 
+.settings-card {
+  background: #181818;
+  border-radius: 10px;
+  padding: 18px 20px 18px 20px;
+  margin-bottom: 0;
+  box-shadow: 0 3px 16px rgba(0,0,0,0.08);
+  border: 1.5px solid transparent;
+}
+
 .settings-section-title {
-  font-size: 16px;
-  font-weight: 600;
-  color: #ffffff;
-  margin: 0 0 16px 0;
-}
-
-.settings-item {
+  font-size: 17px;
+  font-weight: 700;
+  margin-bottom: 6px;
+  letter-spacing: 0.03em;
+  color: #fff;
   display: flex;
-  flex-direction: column;
-  gap: 12px;
+  align-items: center;
+  gap: 8px;
 }
 
-.settings-label {
-  font-size: 14px;
+.settings-section-title.danger {
+  color: #e81123;
+}
+
+.settings-section-sub {
+  font-size: 13px;
   color: #b3b3b3;
+  margin-bottom: 15px;
+}
+
+.settings-section-sub.danger {
+  color: #e81123;
   font-weight: 500;
 }
 
-.settings-folder-controls {
+.settings-folder-controls-row {
   display: flex;
   gap: 8px;
+  margin-bottom: 14px;
 }
 
 .settings-button {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 10px 16px;
+  padding: 9px 15px;
   border: none;
-  border-radius: 4px;
+  border-radius: 5px;
   font-size: 14px;
-  font-weight: 600;
+  font-weight: 700;
   cursor: pointer;
-  transition: all 0.2s;
+  background: #2b2b2b;
+  color: #fff;
+  transition: all 0.17s;
+  border: 1.5px solid transparent;
 }
 
 .settings-button.primary {
-  background-color: #1db954;
-  color: #ffffff;
+  background: #1db954;
+  color: #fff;
 }
-
 .settings-button.primary:hover {
-  background-color: #1ed760;
+  background: #1ed760;
 }
 
 .settings-button.danger {
-  background-color: #e81123;
-  color: #ffffff;
+  background: #e81123;
+  color: #fff;
 }
-
 .settings-button.danger:hover {
-  background-color: #c50e1f;
+  background: #c72626;
+}
+.settings-button.danger.outline {
+  border: 1.5px solid #e81123;
+  background: #181818;
+  color: #e81123;
+}
+.settings-button.danger.outline:hover {
+  background: #281818;
+  color: #fff;
 }
 
 .settings-folder-path {
-  padding: 12px;
-  background-color: #1a1a1a;
-  border-radius: 4px;
+  background: #101010;
+  border-radius: 5px;
+  padding: 9px 13px 9px 13px;
   font-size: 12px;
+  margin-top: 0;
+  margin-bottom: 0;
 }
-
 .settings-folder-path-label {
   color: #b3b3b3;
+  font-weight: 400;
+  margin-bottom: 2px;
   display: block;
-  margin-bottom: 4px;
+}
+.settings-folder-path-value {
+  color: #fff;
+  word-break: break-all;
+  font-family: 'Fira Mono', 'Consolas', 'monospace';
 }
 
-.settings-folder-path-value {
-  color: #ffffff;
-  display: block;
-  word-break: break-all;
-  white-space: normal;
-  line-height: 1.5;
-  font-family: 'Courier New', monospace;
+.danger-zone {
+  border: 1.5px solid #e81123 !important;
+  background: #211616 !important;
+  margin-top: 8px !important;
 }
 
 .toggle-switch {
@@ -96,7 +129,7 @@
   position: relative;
   width: 44px;
   height: 24px;
-  margin-left: 12px;
+  margin-left: 10px;
 }
 .toggle-switch input {
   opacity: 0;
@@ -106,10 +139,7 @@
 .switch-slider {
   position: absolute;
   cursor: pointer;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  top: 0; left: 0; right: 0; bottom: 0;
   background: #323232;
   transition: .2s;
   border-radius: 24px;
@@ -132,3 +162,40 @@
   transform: translateX(20px);
 }
 
+.settings-discord-desc {
+  font-size: 12px;
+  color: #b3b3b3;
+  margin-left: 0;
+  display: inline-block;
+  margin-left: 10px;
+}
+
+/* Duration Display Styles */
+.duration-control {
+  margin-bottom: 10px;
+  margin-top: 6px;
+  display: flex;
+  align-items: center;
+}
+
+.duration-label {
+  font-size: 13px;
+  color: #b3b3b3;
+  margin-right: 12px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+}
+
+.duration-input {
+  margin-left: 6px;
+  margin-right: 6px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  border: 1.2px solid #444;
+  background: #222;
+  color: #fff;
+  font-weight: 700;
+  font-size: 13px;
+  width: 60px;
+}

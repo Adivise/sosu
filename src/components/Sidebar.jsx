@@ -20,7 +20,7 @@ const Sidebar = ({ onSelectFolder, osuFolderPath, currentView, onViewChange, pla
           onClick={() => onViewChange('songs')}
         >
           <FileMusicIcon size={20} />
-          <span>Songs</span>
+          <span>Library</span>
         </button>
       </nav>
 

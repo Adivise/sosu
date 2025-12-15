@@ -220,7 +220,7 @@ ipcMain.handle('scan-osu-folder', async (event, folderPath) => {
         // Look for .osu files and audio files
         const osuFiles = songFiles.filter(f => f.endsWith('.osu'));
         const audioFiles = songFiles.filter(f => 
-          /\.(mp3|ogg|wav|flac)$/i.test(f)
+          /\.mp3$/i.test(f)
         );
         const imageFiles = songFiles.filter(f => 
           /\.(jpg|jpeg|png|gif|bmp)$/i.test(f)
@@ -292,14 +292,13 @@ ipcMain.handle('scan-osu-folder', async (event, folderPath) => {
             }
           }
           
+          // Only use first .mp3 found, ignore AudioFilename from .osu entirely
           songs.push({
             id: entry.name,
             folderName: entry.name,
             folderPath: songPath,
-            title: audioMetadata?.common?.title || osuMetadata.title || entry.name,
-            artist: audioMetadata?.common?.artist || 
-                   (audioMetadata?.common?.artists && audioMetadata.common.artists.join(', ')) ||
-                   osuMetadata.artist || 'Unknown Artist',
+            title: osuMetadata.title || audioMetadata?.common?.title || entry.name,
+            artist: osuMetadata.artist || audioMetadata?.common?.artist || (audioMetadata?.common?.artists && audioMetadata.common.artists.join(', ')) || 'Unknown Artist',
             album: audioMetadata?.common?.album || null,
             audioFile: audioFilePath,
             audioFileName: audioFiles[0],
@@ -337,6 +336,7 @@ function parseOsuFile(content) {
   const metadata = {
     title: null,
     artist: null,
+    audioFilename: null,
     bpm: null,
     difficulty: null,
     beatmapSetId: null,
@@ -360,10 +360,12 @@ function parseOsuFile(content) {
     }
 
     if (inMetadata) {
-      if (trimmed.startsWith('Title:')) {
+      if (trimmed.startsWith('AudioFilename:')) {
+        metadata.audioFilename = trimmed.substring(14).trim();
+      } else if (trimmed.startsWith('Title:')) {
         metadata.title = trimmed.substring(6).trim();
       } else if (trimmed.startsWith('TitleUnicode:')) {
-        metadata.title = metadata.title || trimmed.substring(13).trim();
+        // Ignore TitleUnicode (always use Title)
       } else if (trimmed.startsWith('Artist:')) {
         metadata.artist = trimmed.substring(7).trim();
       } else if (trimmed.startsWith('ArtistUnicode:')) {
