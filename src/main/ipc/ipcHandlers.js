@@ -45,6 +45,21 @@ export async function init({ mainWindow, userDataPath }) {
         }
     });
 
+    ipcMain.handle('select-osu-folder', async () => {
+        const result = await dialog.showOpenDialog(mainWindow, {
+            properties: ['openDirectory'],
+            title: 'Select osu! Songs Folder'
+        });
+    
+        if (!result.canceled && result.filePaths.length > 0) {
+            console.log('[IPC] Selected osu! folder:', result.filePaths[0]);
+            return result.filePaths[0];
+        }
+    
+        return null;
+    });
+      
+
     ipcMain.handle('read-file', async (event, filePath) => {
         try {
             const data = await fs.readFile(filePath);
