@@ -1,0 +1,43 @@
+name: Update README with Latest Version
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+jobs:
+  update-readme:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Get latest version
+        id: get_version
+        run: |
+          if [ "${{ github.event_name }}" = "release" ]; then
+            echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+          else
+            VERSION=$(curl -s https://api.github.com/repos/${{ github.repository }}/releases/latest | jq -r '.tag_name' | sed 's/v//')
+            echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Get current version from README
+        id: current_version
+        run: |
+          CURRENT_VERSION=$(grep -o 'sosu-[0-9]\+\.[0-9]\+\.[0-9]\+' README.md | head -n 1 | cut -d'-' -f2)
+          echo "CURRENT_VERSION=$CURRENT_VERSION" >> $GITHUB_OUTPUT
+
+      - name: Replace version in README
+        run: |
+          OLD_VERSION="${{ steps.current_version.outputs.CURRENT_VERSION }}"
+          NEW_VERSION="${{ steps.get_version.outputs.VERSION }}"
+          sed -i "s/$OLD_VERSION/$NEW_VERSION/g" README.md
+
+      - name: Update README
+        uses: stefanzweifel/git-auto-commit-action@v4
+        with:
+          commit_message: "docs: update README with latest version ${{ steps.get_version.outputs.VERSION }}"
+          file_pattern: README.md
+          branch: main
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

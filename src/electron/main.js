@@ -3,14 +3,10 @@ const path = require('path');
 const fs = require('fs').promises;
 const fsSync = require('fs');
 const { parseFile } = require('music-metadata');
-let RPC;
-try {
-  RPC = require('discord-rpc');
-} catch (e) {
-  RPC = undefined;
-}
+const RPC = require("discord-rpc");
+const { autoUpdater } = require("electron-updater");
+const { is } = require('@electron-toolkit/utils')
 
-// Register app:// as privileged scheme so localStorage etc. works
 protocol.registerSchemesAsPrivileged([
   {
     scheme: 'app',
@@ -24,12 +20,12 @@ protocol.registerSchemesAsPrivileged([
 ]);
 
 const userDataPath = app.getPath('userData');
-const userDataFile = path.join(userDataPath, 'sosu-userdata.json');
-const songsCacheFile = path.join(userDataPath, 'sosu-songs-cache.json');
+const userDataFile = path.join(userDataPath, 'userdata.json');
+const songsCacheFile = path.join(userDataPath, 'songs-cache.json');
+
 let discordClient = null;
 let lastRichPresence = null;
-
-let mainWindow;
+let mainWindow = null;
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -39,43 +35,30 @@ function createWindow() {
     minHeight: 600,
     backgroundColor: '#121212',
     webPreferences: {
-      nodeIntegration: false,
+      sandbox: false,
+      nodeIntegration: true,
       contextIsolation: true,
-      preload: path.join(__dirname, 'preload.js')
+      preload: path.join(__dirname, '../preload/preload.js')
     },
     frame: false,
-    titleBarStyle: 'hidden'
+    titleBarStyle: 'hidden',
+    autoHideMenuBar: true,
+    show: true
   });
+  
+  mainWindow.setMenu(null);
 
-  const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
-  
-  // Get the correct path to build files - works in both dev and production
-  const appPath = app.getAppPath();
-  const buildPath = path.join(appPath, 'build', 'index.html');
-  const buildExists = require('fs').existsSync(buildPath);
-  
-  if (isDev) {
-    // Try to load from dev server, fallback to build if available
-    mainWindow.loadURL('http://localhost:3000').catch(() => {
-      if (buildExists) {
-        console.log('Dev server not available, loading from build...');
-        // Use app:// protocol for proper asset loading
-        mainWindow.loadURL(`app://build/index.html`);
-      } else {
-        console.error('Dev server not available and no build found. Please run "npm run dev" or "npm run build" first.');
-        mainWindow.loadURL('data:text/html,<html><body style="background:#121212;color:#fff;font-family:sans-serif;padding:40px;text-align:center;"><h1>Development Server Not Running</h1><p>Please run <code>npm run dev</code> to start the development server.</p><p>Or run <code>npm run build</code> first, then <code>npm start</code>.</p></body></html>');
-      }
-    });
-    // mainWindow.webContents.openDevTools();
-  } else {
-    if (buildExists) {
-      // Use app:// protocol for proper asset loading in production
-      mainWindow.loadURL(`app://build/index.html`);
+  if (is.dev) { 
+    if (!process.env['ELECTRON_RENDERER_URL']) {
+      mainWindow.loadURL('http://localhost:5173/');
     } else {
-      console.error('Build not found at:', buildPath);
-      mainWindow.loadURL('data:text/html,<html><body style="background:#121212;color:#fff;font-family:sans-serif;padding:40px;text-align:center;"><h1>Build Not Found</h1><p>Build files not found in packaged app.</p></body></html>');
+      mainWindow.loadURL(process.env['ELECTRON_RENDERER_URL']);
     }
+    //mainWindow.webContents.openDevTools();
+  } else { 
+    mainWindow.loadFile(path.join(__dirname, '../../out/renderer/index.html'))
   }
+
 }
 
 // Register custom protocol for serving app files
@@ -84,7 +67,7 @@ function registerAppProtocol() {
     try {
       let url = request.url.substr(6); // Remove 'app://' prefix
       const appPath = app.getAppPath();
-      const buildPath = path.join(appPath, 'build');
+      const buildPath = path.join(appPath, 'out', 'renderer');
       
       // Handle root path or index.html
       if (url === '/' || url === '' || url === 'index.html') {
@@ -92,7 +75,7 @@ function registerAppProtocol() {
       }
       
       // Remove 'build/' prefix if present
-      if (url.startsWith('build/')) {
+      if (url.startsWith('out/')) {
         url = url.substr(6);
       }
       
@@ -117,6 +100,8 @@ function registerAppProtocol() {
 app.whenReady().then(() => {
   // Register app protocol for serving build files
   registerAppProtocol();
+  
+  setTimeout(checkForUpdates, 3000);
   
   protocol.registerFileProtocol('osu', (request, callback) => {
     try {
@@ -165,7 +150,7 @@ ipcMain.handle('select-osu-folder', async () => {
 ipcMain.handle('scan-osu-folder', async (event, folderPath) => {
   try {
     // Check if we have cached metadata for this folder
-    const cacheFile = path.join(userDataPath, 'sosu-songs-cache.json');
+    const cacheFile = path.join(userDataPath, 'songs-cache.json');
     if (fsSync.existsSync(cacheFile)) {
       try {
         const cacheData = await fs.readFile(cacheFile, 'utf-8');
@@ -477,7 +462,8 @@ ipcMain.handle('open-external', async (e, url) => {
 });
 
 ipcMain.handle('set-rich-presence', async (e, enabled, presenceData) => {
-  discordEnabled = enabled;
+  //discordEnabled = enabled;
+
   if (!RPC) return { success: false };
   if (enabled) {
     if (!discordClient) {
@@ -590,3 +576,26 @@ app.on('window-all-closed', () => {
   }
 });
 
+autoUpdater.setFeedURL({
+  provider: 'github',
+  owner: 'Adivise',
+  repo: 'sosu'
+});
+
+function checkForUpdates() {
+  autoUpdater.checkForUpdates();
+}
+
+autoUpdater.on('update-available', (info) => {
+  dialog.showMessageBox({
+    type: 'info',
+    title: 'Update Available',
+    message: `Version ${info.version} is available for download.`,
+    buttons: ['Download', 'Later'],
+    defaultId: 0
+  }).then(({ response }) => {
+    if (response === 0) {
+      shell.openExternal('https://github.com/Adivise/sosu/releases/latest');
+    }
+  });
+});

@@ -4,22 +4,12 @@ directories:
   buildResources: resources
   output: dist
 files:
-  - build/**
-  - electron/**
-  - '!src/**'
-  - '!.env'
-  - '!credentials.json'
-  - '!config.json'
-  - '!README.md'
-  - '!ffmpeg.exe'
-  - '!*.log'
-  - '!session-data.json'
-  - '!encryption.key'
-  - '!website/**'
-  - '!backend.vite.config.mjs'
-  - '!electron.vite.config.mjs'
-  - '!eslint.config.mjs'
-  - '!LICENSE'
+  - "**/*"
+  - "!src/**"
+  - "!.env"
+  - "!README.md"
+  - "!electron.vite.config.mjs"
+  - "!LICENSE"
 asarUnpack:
   - 'resources/**'
 asar: true
@@ -56,7 +46,6 @@ mac:
     - dmg
     - pkg
   entitlementsInherit: resources/entitlements.mac.plist
-  # No special permissions required for current features
   notarize: false
   icon: resources/icon.icns
 dmg:
@@ -78,8 +67,6 @@ deb:
   artifactName: sosu-${version}.${ext}
 rpm:
   artifactName: sosu-${version}.${ext}
-extraMetadata:
-  main: electron/main.js
 npmRebuild: false
 publish:
   provider: github
