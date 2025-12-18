@@ -12,8 +12,11 @@ Take your osu! music experience to the next level with SOSU.
 
 <p align="center">
   <img src="https://media.discordapp.net/attachments/1310606318977028139/1451114020701732935/main.png?ex=6944febe&is=6943ad3e&hm=73be380220cad4f90e154e6d46e1f6c31385bc0d34ebc4ebd22baacec1289e92&=&format=webp&quality=lossless&width=1113&height=770" alt="SOSU Screenshot"/>
-  <img src="https://media.discordapp.net/attachments/1310606318977028139/1451114020194091120/setting.png?ex=6944febe&is=6943ad3e&hm=ef94188bb0ac1fb524817ce3926bde3a444828b891282d5ccaf83e2472fc4392&=&format=webp&quality=lossless&width=1111&height=770" alt="SOSU Screenshot"/>
+  <img src="https://media.discordapp.net/attachments/1310606318977028139/1451114020194091120/setting.png?ex=6944febe&is=6943ad3e&hm=ef94188bb0ac1fb524817ce3926bde3a444828b891282d5ccaf83e2472fc4392&=&format=webp&quality=lossless&width=1111&height=770" alt="SOSU Screenshot"/[! 
 </p>
+
+### 🎬 Watch demo on youtbue
+[![Watch the video](https://img.youtube.com/vi/d_4Dcfb4kIA/0.jpg)](https://www.youtube.com/watch?v=d_4Dcfb4kIA)
 
 # 🌟 Features
 
