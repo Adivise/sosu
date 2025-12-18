@@ -11,8 +11,8 @@ Whether you're practicing, listening to your favorite beatmaps, or organizing yo
 Take your osu! music experience to the next level with SOSU.
 
 <p align="center">
-  <img src="https://media.discordapp.net/attachments/1371261802067001415/1449984528918777926/Screenshot_2025-12-15_113943.png?ex=6940e2d3&is=693f9153&hm=f918db97ce0febc6f6742d2db1fa84ffa4ffda11c2efbb012ed89ecac37cf4da&=&format=webp&quality=lossless&width=1113&height=770" alt="SOSU Screenshot"/>
-  <img src="https://media.discordapp.net/attachments/1371261802067001415/1449984529455644763/Screenshot_2025-12-15_114023.png?ex=6940e2d3&is=693f9153&hm=3bb33bfab6da9971d1d96cfe54a1c5e07dfa89cf73d23e3d3449e96c117b54e4&=&format=webp&quality=lossless&width=1111&height=770" alt="SOSU Screenshot"/>
+  <img src="https://media.discordapp.net/attachments/1310606318977028139/1451114020701732935/main.png?ex=6944febe&is=6943ad3e&hm=73be380220cad4f90e154e6d46e1f6c31385bc0d34ebc4ebd22baacec1289e92&=&format=webp&quality=lossless&width=1113&height=770" alt="SOSU Screenshot"/>
+  <img src="https://media.discordapp.net/attachments/1310606318977028139/1451114020194091120/setting.png?ex=6944febe&is=6943ad3e&hm=ef94188bb0ac1fb524817ce3926bde3a444828b891282d5ccaf83e2472fc4392&=&format=webp&quality=lossless&width=1111&height=770" alt="SOSU Screenshot"/>
 </p>
 
 # 🌟 Features
