@@ -12,7 +12,7 @@ Take your osu! music experience to the next level with SOSU.
 
 <p align="center">
   <img src="https://media.discordapp.net/attachments/1371261802067001415/1449984528918777926/Screenshot_2025-12-15_113943.png?ex=6940e2d3&is=693f9153&hm=f918db97ce0febc6f6742d2db1fa84ffa4ffda11c2efbb012ed89ecac37cf4da&=&format=webp&quality=lossless&width=1113&height=770" alt="SOSU Screenshot"/>
-  <img src="https://media.discordapp.net/attachments/1371261802067001415/1449984529455644763/Screenshot_2025-12-15_114023.png?ex=6940e2d3&is=693f9153&hm=3bb33bfab6da9971d1d96cfe54a1c5e07dfa89cf73d23e3d3449e96c117b54e4&=&format=webp&quality=lossless&width=1111&height=770" alt="SOSU Screenshot"/>
+  <img src="https://media.discordapp.net/attachments/1371261802067001415/1449984529455644763/Screenshot_2025-12-15_11.0.5.png?ex=6940e2d3&is=693f9153&hm=3bb33bfab6da9971d1d96cfe54a1c5e07dfa89cf73d23e3d3449e96c117b54e4&=&format=webp&quality=lossless&width=1111&height=770" alt="SOSU Screenshot"/>
 </p>
 
 # 🌟 Features
@@ -83,31 +83,31 @@ Take your osu! music experience to the next level with SOSU.
 ## For Regular Users
 
 ### Windows Users
-- Click [here](https://github.com/Adivise/sosu/releases/latest/download/sosu-1.0.3.exe) to download the recommended Windows installer
+- Click [here](https://github.com/Adivise/sosu/releases/latest/download/sosu-1.0.5.exe) to download the recommended Windows installer
 - Alternative downloads from the [latest release](https://github.com/Adivise/sosu/releases/latest):
   - **Portable (.exe)**
-    - `sosu-1.0.3-portable.exe` (no installation required)
+    - `sosu-1.0.5-portable.exe` (no installation required)
   - **MSI Installer (.msi)**
-    - `sosu-1.0.3.msi` (alternative for enterprise environments)
+    - `sosu-1.0.5.msi` (alternative for enterprise environments)
   > *Note: The portable version doesn't save settings between sessions. The installer saves all configuration. Choose the format that best fits your needs.*
 
 ### macOS Users
 > **Note:** The macOS build is currently in **beta test**. There may be bugs or missing features. Please report any issues you encounter.
-- Click [here](https://github.com/Adivise/sosu/releases/latest/download/sosu-1.0.3.dmg) to download the recommended macOS installer
+- Click [here](https://github.com/Adivise/sosu/releases/latest/download/sosu-1.0.5.dmg) to download the recommended macOS installer
 - Alternative downloads from the [latest release](https://github.com/Adivise/sosu/releases/latest):
   - **PKG Installer (.pkg)**
-    - `sosu-1.0.3.pkg` (for Apple Silicon Macs)
+    - `sosu-1.0.5.pkg` (for Apple Silicon Macs)
   > *On first launch, you may need to right-click and choose "Open" to bypass security warnings if the app is not notarized.*
 
 ### Linux Users
 > **Note:** The Linux build is currently in **beta test**. There may be bugs or missing features. Please report any issues you encounter.
-- Click [here](https://github.com/Adivise/sosu/releases/latest/download/sosu-1.0.3.AppImage) to download the recommended Linux AppImage
+- Click [here](https://github.com/Adivise/sosu/releases/latest/download/sosu-1.0.5.AppImage) to download the recommended Linux AppImage
 - Alternative downloads from the [latest release](https://github.com/Adivise/sosu/releases/latest):
   - **Debian Package (.deb)**
-    - `sosu_1.0.3.deb`
+    - `sosu_1.0.5.deb`
   - **RPM Package (.rpm)**
-    - `sosu-1.0.3.rpm`
-  > *You may need to make the AppImage executable: `chmod +x ./sosu-1.0.3.AppImage` and then run it.*
+    - `sosu-1.0.5.rpm`
+  > *You may need to make the AppImage executable: `chmod +x ./sosu-1.0.5.AppImage` and then run it.*
 
 > **Note:** `.yml` and `.blockmap` files are for auto-update and can be ignored by most users. Download the installer or portable/archive for your platform.
 
