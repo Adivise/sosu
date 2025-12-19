@@ -8,30 +8,28 @@ export async function scanOsuFolder(folderPath, eventSender) {
         const songs = [];
         const entries = await fs.readdir(folderPath, { withFileTypes: true });
 
-        // Count valid subfolders (those containing .osu + audio)
+        // Count valid folders
         let totalSongs = 0;
         for (const entry of entries) {
             if (entry.isDirectory()) {
                 try {
                     const songPath = path.join(folderPath, entry.name);
-                    const songFiles = await fs.readdir(songPath);
-                    const osuFiles = songFiles.filter(f => f.endsWith('.osu'));
-                    const audioFiles = songFiles.filter(f => /\.(mp3|ogg|wav|flac)$/i.test(f));
+                    const files = await fs.readdir(songPath);
+                    const osuFiles = files.filter(f => f.endsWith('.osu'));
+                    const audioFiles = files.filter(f => /\.(mp3|ogg|wav|flac)$/i.test(f));
                     if (osuFiles.length > 0 && audioFiles.length > 0) totalSongs++;
-                } catch {
-                    /* ignore */
-                }
+                } catch { /* ignore */ }
             }
         }
 
         let processedCount = 0;
         for (const entry of entries) {
             if (!entry.isDirectory()) continue;
-
             const songPath = path.join(folderPath, entry.name);
-            let songFiles;
+            let files;
+
             try {
-                songFiles = await fs.readdir(songPath);
+                files = await fs.readdir(songPath);
             } catch {
                 processedCount++;
                 if (eventSender && eventSender.send && !eventSender.isDestroyed())
@@ -39,83 +37,101 @@ export async function scanOsuFolder(folderPath, eventSender) {
                 continue;
             }
 
-            const osuFiles = songFiles.filter(f => f.endsWith('.osu'));
-            const audioFiles = songFiles.filter(f => /\.mp3$/i.test(f));
-            const imageFiles = songFiles.filter(f => /\.(jpg|jpeg|png|gif|bmp)$/i.test(f));
+            const osuFiles = files.filter(f => f.endsWith('.osu'));
+            const imageFiles = files.filter(f => /\.(jpg|jpeg|png|gif|bmp)$/i.test(f));
 
-            if (osuFiles.length > 0 && audioFiles.length > 0) {
-                const audioFilePath = path.join(songPath, audioFiles[0]);
+            if (osuFiles.length > 0) {
                 const osuFilePath = path.join(songPath, osuFiles[0]);
                 const osuContent = await fs.readFile(osuFilePath, 'utf-8');
                 const osuMetadata = parseOsuFile(osuContent);
 
-                let audioMetadata = null;
-                let embeddedImage = null;
-                let duration = null;
+                // 🔍 Try to find correct audio filename
+                let audioFileName = osuMetadata.audioFilename;
+                let audioFilePath = null;
+                const supportedExts = ['.mp3', '.ogg', '.wav', '.flac'];
 
-                try {
-                    audioMetadata = await parseFile(audioFilePath);
-                    if (audioMetadata.format.duration)
-                        duration = audioMetadata.format.duration;
-                    if (audioMetadata.common.picture && audioMetadata.common.picture.length > 0) {
-                        const picture = audioMetadata.common.picture[0];
-                        embeddedImage = { data: picture.data, format: picture.format, description: picture.description };
-                    }
-                } catch (err) {
-                    console.error('Audio metadata error for', audioFilePath, err.message || err);
+                if (audioFileName) {
+                    // Try to find file case-insensitively
+                    const found = files.find(f => f.toLowerCase() === audioFileName.toLowerCase());
+                    if (found) audioFilePath = path.join(songPath, found);
                 }
 
-                let imageFile = null;
-                let imageFileName = null;
-                if (imageFiles.length > 0) {
-                    imageFile = path.join(songPath, imageFiles[0]);
-                    imageFileName = imageFiles[0];
-                } else if (embeddedImage) {
-                    const imageExt =
-                        embeddedImage.format === 'image/jpeg'
-                            ? 'jpg'
-                            : embeddedImage.format === 'image/png'
-                                ? 'png'
-                                : 'jpg';
-                    const embeddedImagePath = path.join(songPath, `embedded_cover.${imageExt}`);
+                // Fallback: find first valid audio file
+                if (!audioFilePath) {
+                    const audioFiles = files.filter(f => supportedExts.some(ext => f.toLowerCase().endsWith(ext)));
+                    if (audioFiles.length > 0) audioFilePath = path.join(songPath, audioFiles[0]);
+                    audioFileName = audioFiles[0] || null;
+                }
+
+                if (audioFilePath) {
+                    let audioMetadata = null;
+                    let embeddedImage = null;
+                    let duration = null;
+
                     try {
-                        await fs.writeFile(embeddedImagePath, embeddedImage.data);
-                        imageFile = embeddedImagePath;
-                        imageFileName = `embedded_cover.${imageExt}`;
+                        audioMetadata = await parseFile(audioFilePath);
+                        duration = audioMetadata.format.duration || null;
+
+                        if (audioMetadata.common.picture?.length > 0) {
+                            const picture = audioMetadata.common.picture[0];
+                            embeddedImage = {
+                                data: picture.data,
+                                format: picture.format,
+                                description: picture.description
+                            };
+                        }
                     } catch (err) {
-                        console.error('Error saving embedded image:', err);
+                        console.error('Audio metadata error for', audioFilePath, err.message || err);
                     }
-                }
 
-                let beatmapSetId = osuMetadata.beatmapSetId;
-                if (!beatmapSetId && entry.name) {
-                    const folderMatch = entry.name.match(/^(\d+)\s/);
-                    if (folderMatch) beatmapSetId = parseInt(folderMatch[1]);
-                }
+                    let imageFile = null;
+                    let imageFileName = null;
+                    if (imageFiles.length > 0) {
+                        imageFile = path.join(songPath, imageFiles[0]);
+                        imageFileName = imageFiles[0];
+                    } else if (embeddedImage) {
+                        const ext = embeddedImage.format === 'image/png' ? 'png' : 'jpg';
+                        const embeddedImagePath = path.join(songPath, `embedded_cover.${ext}`);
+                        try {
+                            await fs.writeFile(embeddedImagePath, embeddedImage.data);
+                            imageFile = embeddedImagePath;
+                            imageFileName = `embedded_cover.${ext}`;
+                        } catch (err) {
+                            console.error('Error saving embedded image:', err);
+                        }
+                    }
 
-                songs.push({
-                    id: entry.name,
-                    folderName: entry.name,
-                    folderPath: songPath,
-                    title: osuMetadata.title || audioMetadata?.common?.title || entry.name,
-                    artist:
-                        osuMetadata.artist ||
-                        audioMetadata?.common?.artist ||
-                        (audioMetadata?.common?.artists && audioMetadata.common.artists.join(', ')) ||
-                        'Unknown Artist',
-                    album: audioMetadata?.common?.album || null,
-                    audioFile: audioFilePath,
-                    audioFileName: audioFiles[0],
-                    imageFile,
-                    imageFileName,
-                    duration,
-                    bpm: osuMetadata.bpm || null,
-                    difficulty: osuMetadata.difficulty || null,
-                    year: audioMetadata?.common?.year || null,
-                    genre: audioMetadata?.common?.genre?.join(', ') || null,
-                    beatmapSetId,
-                    beatmapId: osuMetadata.beatmapId,
-                });
+                    // Try to infer beatmapSetId if missing
+                    let beatmapSetId = osuMetadata.beatmapSetId;
+                    if (!beatmapSetId && entry.name) {
+                        const folderMatch = entry.name.match(/^(\d+)\s/);
+                        if (folderMatch) beatmapSetId = parseInt(folderMatch[1]);
+                    }
+
+                    songs.push({
+                        id: entry.name,
+                        folderName: entry.name,
+                        folderPath: songPath,
+                        title: osuMetadata.title || audioMetadata?.common?.title || entry.name,
+                        artist:
+                            osuMetadata.artist ||
+                            audioMetadata?.common?.artist ||
+                            audioMetadata?.common?.artists?.join(', ') ||
+                            'Unknown Artist',
+                        album: audioMetadata?.common?.album || null,
+                        audioFile: audioFilePath,
+                        audioFileName,
+                        imageFile,
+                        imageFileName,
+                        duration,
+                        bpm: osuMetadata.bpm || null,
+                        difficulty: osuMetadata.difficulty || null,
+                        year: audioMetadata?.common?.year || null,
+                        genre: audioMetadata?.common?.genre?.join(', ') || null,
+                        beatmapSetId,
+                        beatmapId: osuMetadata.beatmapId,
+                    });
+                }
             }
 
             processedCount++;

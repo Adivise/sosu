@@ -181,18 +181,43 @@ function App() {
 
   // Handler to clear songs cache
   const clearSongsCache = async () => {
-    setSongsCache({});
+    if (!osuFolderPath) return;
+  
+    console.log('[Cache] Clearing songs cache...');
+    setLoading(true);
     setSongs([]);
+    setSongsCache({});
     setSongDurations({});
-    if (window.electronAPI?.saveSongsCache) {
-      await window.electronAPI.saveSongsCache({});
-    }
-    // If a folder is selected, trigger re-scanning (re-caching)
-    if (osuFolderPath) {
-      await loadSongs(osuFolderPath);
-    }
-  };
+    setLoadingProgress({ current: 0, total: 0 });
 
+    // ✅ Reattach listener
+    if (window.electronAPI.onScanProgress) {
+      window.electronAPI.onScanProgress((progress) => {
+        setLoadingProgress(progress);
+      });
+    }
+  
+    try {
+      // ✅ clear cache file
+      if (window.electronAPI?.saveSongsCache) {
+        await window.electronAPI.saveSongsCache({});
+      }
+  
+      // small delay so UI updates before rescanning
+      await new Promise(res => setTimeout(res, 200));
+      const result = await window.electronAPI.scanOsuFolder(osuFolderPath, true);
+  
+      if (result?.success) {
+        setSongs(result.songs);
+      } else {
+        console.error('[Cache] Rescan failed:', result?.error);
+      }
+    } catch (err) {
+      console.error('[Cache] Error while clearing/rescanning:', err);
+    } finally {
+      setLoading(false);
+    }
+  };   
 
   const loadSongs = async (folderPath) => {
     if (!window.electronAPI) return;
@@ -297,15 +322,26 @@ function App() {
       alert('Electron API not available. Please run this app in Electron.');
       return;
     }
-
+  
     setLoading(true);
     const folderPath = await window.electronAPI.selectOsuFolder();
-    if (folderPath) {
-      await loadSongs(folderPath);
-    } else {
+  
+    // ✅ If user canceled folder dialog, stop
+    if (!folderPath) {
       setLoading(false);
+      return;
     }
-  };
+  
+    // ✅ If folder is same as previous, don't rescan
+    if (folderPath === osuFolderPath) {
+      console.log(`[Songs] Skipping rescan — same folder selected: ${folderPath}`);
+      setLoading(false);
+      return;
+    }
+  
+    // ✅ Only rescan if it's a different path
+    await loadSongs(folderPath);
+  };  
 
   const removeFolder = () => {
     setOsuFolderPath(null);
@@ -398,70 +434,55 @@ function App() {
   }, [currentSong, songs.length]);
 
   const handleNext = () => {
-    if (currentSong && songs.length > 0) {
-      // Shuffle works independently (can be used with or without autoplay, but NOT with repeat)
+    const currentList = getCurrentSongs(); // ✅ use filtered list
+    if (currentSong && currentList.length > 0) {
       if (shuffle && !repeat && shuffleOrder.length > 0) {
-        // Use shuffle order
         const currentIndex = shuffleOrder.indexOf(currentSong.id);
         if (currentIndex !== -1 && currentIndex < shuffleOrder.length - 1) {
-          // Next song in shuffle order
           const nextId = shuffleOrder[currentIndex + 1];
-          const nextSong = songs.find(s => s.id === nextId);
+          const nextSong = currentList.find(s => s.id === nextId);
           if (nextSong) {
             handleSongSelect(nextSong);
             return;
           }
         }
-        // If we've reached the end of shuffle order, regenerate with remaining songs
-        const availableSongs = songs.filter(s => !shuffleHistoryRef.current.includes(s.id));
+        const availableSongs = currentList.filter(s => !shuffleHistoryRef.current.includes(s.id));
         if (availableSongs.length > 0) {
           const nextSong = availableSongs[Math.floor(Math.random() * availableSongs.length)];
           handleSongSelect(nextSong);
           return;
         }
-        // If all songs played, reset history and pick random
         shuffleHistoryRef.current = [];
-        const randomSong = songs[Math.floor(Math.random() * songs.length)];
+        const randomSong = currentList[Math.floor(Math.random() * currentList.length)];
         handleSongSelect(randomSong);
         return;
       } else if (!repeat) {
-        // Normal sequential order (only if repeat is not on)
-        const currentIndex = songs.findIndex(s => s.id === currentSong.id);
-        const nextIndex = (currentIndex + 1) % songs.length;
-        handleSongSelect(songs[nextIndex]);
+        const currentIndex = currentList.findIndex(s => s.id === currentSong.id);
+        const nextIndex = (currentIndex + 1) % currentList.length;
+        handleSongSelect(currentList[nextIndex]);
       }
-      // If repeat is on, next/previous buttons don't work (user must manually select songs)
     }
-  };
+  };  
 
   const handlePrevious = () => {
-    if (currentSong && songs.length > 0) {
-      // Previous always uses playback history, not shuffle order (shuffle only affects next)
-      if (repeat) {
-        // If repeat is on, previous button doesn't work
-        return;
-      }
-      
-      // Use playback history to go back (works regardless of shuffle setting)
+    const currentList = getCurrentSongs(); // ✅ use filtered list
+    if (currentSong && currentList.length > 0) {
+      if (repeat) return;
       const history = playbackHistoryRef.current;
       if (history.length > 1) {
-        // Remove current song from history (it will be added back when we go forward)
         history.pop();
-        // Get the previous song from history
         const prevId = history[history.length - 1];
-        const prevSong = songs.find(s => s.id === prevId);
+        const prevSong = currentList.find(s => s.id === prevId);
         if (prevSong) {
           handleSongSelect(prevSong);
           return;
         }
       }
-      
-      // If no history, use sequential order
-      const currentIndex = songs.findIndex(s => s.id === currentSong.id);
-      const prevIndex = currentIndex === 0 ? songs.length - 1 : currentIndex - 1;
-      handleSongSelect(songs[prevIndex]);
+      const currentIndex = currentList.findIndex(s => s.id === currentSong.id);
+      const prevIndex = currentIndex === 0 ? currentList.length - 1 : currentIndex - 1;
+      handleSongSelect(currentList[prevIndex]);
     }
-  };
+  };  
 
   // Playlist management
   const createPlaylist = (name) => {
@@ -518,38 +539,23 @@ function App() {
 
   // Get current songs to display
   const getCurrentSongs = () => {
-    let songsToReturn = [];
-    if (currentView === 'songs') {
-      songsToReturn = songs;
-    } else if (selectedPlaylistId) {
-      const playlist = playlists.find(p => p.id === selectedPlaylistId);
-      songsToReturn = playlist ? playlist.songs : [];
-    }
-    
-    // Filter out songs with duration <= 10 seconds and remove duplicates by title
+    let songsToReturn = currentView === 'songs' ? songs : playlists.find(p => p.id === selectedPlaylistId)?.songs ?? [];
     const seenTitles = new Set();
-    
+  
     return songsToReturn.filter(song => {
-      // Get duration from songDurations state or song.duration
-      const duration = songDurations[song.id] || song.duration;
-      
-      // Filter out songs with duration <= 10 seconds
-      if (duration && duration <= 10) {
-        return false;
-      }
-      
-      // Remove duplicates based on title (case-insensitive)
+      const duration = songDurations?.[song.id] ?? song.duration;
+  
+      // ✅ Use user-defined minDurationValue instead of hardcoded 10
+      if (duration && duration < minDurationValue) return false;
+  
       const normalizedTitle = (song.title || '').toLowerCase().trim();
-      if (normalizedTitle && seenTitles.has(normalizedTitle)) {
-        return false;
-      }
-      if (normalizedTitle) {
-        seenTitles.add(normalizedTitle);
-      }
-      
+      if (normalizedTitle && seenTitles.has(normalizedTitle)) return false;
+      if (normalizedTitle) seenTitles.add(normalizedTitle);
+  
       return true;
     });
-  };
+  };  
+  
 
   return (
     <Router>

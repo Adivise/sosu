@@ -7,7 +7,7 @@ const MainContent = ({
   songs, 
   onSongSelect, 
   currentSong, 
-  songDurations, 
+  songDurations = {},   // ✅ default to empty object
   loading, 
   loadingProgress,
   currentView,
@@ -20,70 +20,62 @@ const MainContent = ({
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
-  const [sortBy, setSortBy] = useState('none'); // default is no sorting, other values: 'az', 'za', 'duration'
+  const [sortBy, setSortBy] = useState('none');
 
-  // Debounce search query to prevent lag
+  // Debounce search query
   React.useEffect(() => {
-    const timer = setTimeout(() => {
-      setDebouncedQuery(searchQuery);
-    }, 150);
-
+    const timer = setTimeout(() => setDebouncedQuery(searchQuery), 150);
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
   const filteredSongs = useMemo(() => {
-    // Songs are already filtered by duration and duplicates in getCurrentSongs()
-    // Here we apply search filter and sorting
-    let result = songs;
+    let result = songs || [];
 
-    // Duration display filter (custom user value)
+    // ✅ Filter by user-set minimum duration
     if (minDurationValue > 0) {
       result = result.filter(song => {
-        const duration = songDurations[song.id] || song.duration || 0;
+        const duration = songDurations?.[song.id] ?? song.duration ?? 0;
         return duration > minDurationValue;
       });
     }
 
-    // Apply search filter
+    // ✅ Apply search filter
     if (debouncedQuery.trim()) {
       const query = debouncedQuery.toLowerCase();
       result = result.filter(song => 
-        song.title.toLowerCase().includes(query) ||
-        song.artist.toLowerCase().includes(query) ||
-        song.folderName.toLowerCase().includes(query) ||
+        (song.title || '').toLowerCase().includes(query) ||
+        (song.artist || '').toLowerCase().includes(query) ||
+        (song.folderName || '').toLowerCase().includes(query) ||
         (song.album && song.album.toLowerCase().includes(query))
       );
     }
 
-    // Apply sorting
+    // ✅ Sorting
     if (sortBy === 'az') {
-      result = [...result].sort((a, b) => {
-        const titleA = (a.title || '').toLowerCase();
-        const titleB = (b.title || '').toLowerCase();
-        return titleA.localeCompare(titleB);
-      });
+      result = [...result].sort((a, b) =>
+        (a.title || '').toLowerCase().localeCompare((b.title || '').toLowerCase())
+      );
     } else if (sortBy === 'za') {
-      result = [...result].sort((a, b) => {
-        const titleA = (a.title || '').toLowerCase();
-        const titleB = (b.title || '').toLowerCase();
-        return titleB.localeCompare(titleA);
-      });
+      result = [...result].sort((a, b) =>
+        (b.title || '').toLowerCase().localeCompare((a.title || '').toLowerCase())
+      );
     } else if (sortBy === 'duration') {
       result = [...result].sort((a, b) => {
-        const durationA = songDurations[a.id] || a.duration || 0;
-        const durationB = songDurations[b.id] || b.duration || 0;
-        return durationA - durationB; // Sort by duration ascending (shortest first)
+        const durationA = songDurations?.[a.id] ?? a.duration ?? 0;
+        const durationB = songDurations?.[b.id] ?? b.duration ?? 0;
+        return durationA - durationB;
       });
     }
 
     return result;
   }, [songs, debouncedQuery, sortBy, songDurations, minDurationValue]);
 
+  // ✅ Loading state
   if (loading) {
-    const progressText = loadingProgress.total > 0 
-      ? `Loading metadata... ${loadingProgress.current} / ${loadingProgress.total} songs`
-      : 'Loading songs and metadata...';
-    
+    const progressText =
+      loadingProgress.total > 0
+        ? `Loading metadata... ${loadingProgress.current} / ${loadingProgress.total} songs`
+        : 'Loading songs and metadata...';
     return (
       <div className="main-content">
         <div className="loading-state">
@@ -93,8 +85,11 @@ const MainContent = ({
     );
   }
 
-  const selectedPlaylist = selectedPlaylistId ? playlists.find(p => p.id === selectedPlaylistId) : null;
-  const isPlaylistView = currentView.startsWith('playlist-') || selectedPlaylistId !== null;
+  const selectedPlaylist = selectedPlaylistId
+    ? playlists.find(p => p.id === selectedPlaylistId)
+    : null;
+  const isPlaylistView =
+    currentView.startsWith('playlist-') || selectedPlaylistId !== null;
 
   return (
     <div className="main-content">
@@ -103,9 +98,11 @@ const MainContent = ({
           <div className="playlist-header">
             <div className="playlist-header-info">
               <h2 className="playlist-title">{selectedPlaylist.name}</h2>
-              <span className="playlist-subtitle">{selectedPlaylist.songs.length} songs</span>
+              <span className="playlist-subtitle">
+                {selectedPlaylist.songs.length} songs
+              </span>
             </div>
-            <button 
+            <button
               className="delete-playlist-button"
               onClick={() => onDeletePlaylist(selectedPlaylistId)}
               title="Delete Playlist"
@@ -119,7 +116,7 @@ const MainContent = ({
             <span className="view-subtitle">{songs.length} songs</span>
           </div>
         ) : null}
-        <SearchBar 
+        <SearchBar
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
           songs={songs}
@@ -128,7 +125,7 @@ const MainContent = ({
           onSortChange={setSortBy}
         />
       </div>
-      
+
       <div className="main-content-body">
         {currentView === 'songs' && songs.length === 0 ? (
           <div className="empty-state">
@@ -141,13 +138,17 @@ const MainContent = ({
             <p>Add songs to this playlist from the Songs view</p>
           </div>
         ) : songs.length > 0 ? (
-          <SongList 
+          <SongList
             songs={filteredSongs}
             onSongSelect={onSongSelect}
             currentSong={currentSong}
             songDurations={songDurations}
             isPlaylist={isPlaylistView}
-            onRemoveFromPlaylist={selectedPlaylistId ? (songId) => onRemoveFromPlaylist(selectedPlaylistId, songId) : null}
+            onRemoveFromPlaylist={
+              selectedPlaylistId
+                ? songId => onRemoveFromPlaylist(selectedPlaylistId, songId)
+                : null
+            }
             allSongs={allSongs}
             playlists={playlists}
           />

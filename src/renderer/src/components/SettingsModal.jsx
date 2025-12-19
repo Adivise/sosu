@@ -1,15 +1,22 @@
 import React from 'react';
-import { X, FolderOpen, Trash2 } from 'lucide-react';
+import { X, FolderOpen, Trash2, Check } from 'lucide-react';
 import './SettingsModal.css';
 
 const SettingsModal = ({ isOpen, onClose, osuFolderPath, onSelectFolder, onRemoveFolder, discordRpcEnabled, onSetDiscordRpcEnabled, onClearCache, minDurationValue, setMinDurationValue }) => {
+
   if (!isOpen) return null;
 
   const handleClearCache = () => {
-    if (window.confirm('Are you sure you want to clear the songs cache? This will rescan your osu! Songs folder and reset all cached metadata.')) {
+    if (window.confirm('Are you sure you want to rescan the songs cache? This will rescan your osu! Songs folder and reset all cached metadata.')) {
       onClearCache();
+      onClose();
     }
   };
+
+  const handleChangePath = () => {
+    onSelectFolder();
+    onClose();
+  }
 
   return (
     <div className="modal-overlay" onClick={onClose}>
@@ -29,13 +36,13 @@ const SettingsModal = ({ isOpen, onClose, osuFolderPath, onSelectFolder, onRemov
             {/* DURATION FILTER */}
             <p className="settings-section-sub">Set or change the path to your osu! Songs folder.</p>
             <div className="settings-folder-controls-row">
-              <button className="settings-button primary" onClick={onSelectFolder}>
+              <button className="settings-button primary" onClick={handleChangePath}>
                 <FolderOpen size={16} /> {osuFolderPath ? 'Change Folder' : 'Select Folder'}
               </button>
               {osuFolderPath && (
-                <button className="settings-button danger outline" onClick={onRemoveFolder}>
-                  <Trash2 size={15} /> Remove
-                </button>
+              <button className="settings-button danger" onClick={handleClearCache}>
+                  <Trash2 size={16} /> Re-scan
+              </button>
               )}
             </div>
             {osuFolderPath && (
@@ -47,35 +54,31 @@ const SettingsModal = ({ isOpen, onClose, osuFolderPath, onSelectFolder, onRemov
               </div>
             )}
           </div>
-          <div className="settings-section settings-card">
-            <h3 className="settings-section-title">Duration Display</h3>
-            <div className="duration-control">
-              <label className="duration-label">
-                Min:
-                <input 
-                  type="number" 
-                  min="0" 
-                  max="10000" 
-                  step="1" 
-                  value={minDurationValue} 
-                  onChange={e => setMinDurationValue(Math.max(0, Number(e.target.value) || 0))}
-                  className="duration-input"
-                /> 
-                seconds
-              </label>
+          
+          {/* DURATION DISPLAY SECTION */}
+          <div className="settings-section settings-card duration-display-section">
+            <h3 className="duration-display-title">Duration Filter</h3>
+            <p className="duration-display-description">Set the minimum duration for songs to appear in your library. Songs shorter than this value will be hidden.</p>
+            
+            <div className="duration-control-container">
+              <div className="duration-control">
+                <label className="duration-label">
+                  Minimum Duration:
+                </label>
+                <div style={{ display: 'flex', alignItems: 'center' }}>
+                  <input 
+                    type="number" 
+                    min="0" 
+                    max="10000" 
+                    step="1" 
+                    value={minDurationValue} 
+                    onChange={e => setMinDurationValue(Math.max(0, Number(e.target.value) || 0))}
+                    className="duration-input"
+                  /> 
+                  <span className="duration-unit">seconds</span>
+                </div>
+              </div>
             </div>
-            <span className="settings-discord-desc">
-              Only songs longer than this duration will be displayed in your library
-            </span>
-          </div>
-
-          {/* CLEAR CACHE SECTION */}
-          <div className="settings-section settings-card danger-zone">
-            <h3 className="settings-section-title danger">Danger Zone</h3>
-            <p className="settings-section-sub danger">Clearing the songs cache will delete ALL scanned metadata and instantly re-scan your osu! Songs folder. Use this if you moved, added, or deleted beatmaps and want a fresh rescan.</p>
-            <button className="settings-button danger" onClick={handleClearCache}>
-              <Trash2 size={16} /> Clear Songs Cache
-            </button>
           </div>
 
           {/* DISCORD RPC SECTION */}

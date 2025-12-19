@@ -6,10 +6,9 @@ import * as discord from '../services/discord.js';
 import { userDataFile, songsCacheFile } from '../config/paths.js';
 
 export async function init({ mainWindow, userDataPath }) {
-    ipcMain.handle('scan-osu-folder', async (event, folderPath) => {
+    ipcMain.handle('scan-osu-folder', async (event, folderPath, forceRescan = false) => {
         try {
-            // Check cache first
-            if (fsSync.existsSync(songsCacheFile)) {
+            if (!forceRescan && fsSync.existsSync(songsCacheFile)) {
                 const cacheData = JSON.parse(await fs.readFile(songsCacheFile, 'utf-8'));
 
                 // If cache exists for this folder
@@ -22,11 +21,9 @@ export async function init({ mainWindow, userDataPath }) {
                 }
             }
 
-            // No valid cache → scan again
-            console.log('[Scan] No valid cache, rescanning', folderPath);
+            console.log('[Scan] Performing full scan (forceRescan:', forceRescan, ')');
             const result = await scanOsuFolder(folderPath, event.sender);
 
-            // Save to cache
             if (result.success && result.songs.length > 0) {
                 let cache = {};
                 if (fsSync.existsSync(songsCacheFile)) {
@@ -44,7 +41,7 @@ export async function init({ mainWindow, userDataPath }) {
             return { success: false, error: err.message };
         }
     });
-
+      
     ipcMain.handle('select-osu-folder', async () => {
         const result = await dialog.showOpenDialog(mainWindow, {
             properties: ['openDirectory'],
@@ -81,10 +78,16 @@ export async function init({ mainWindow, userDataPath }) {
         try {
             if (fsSync.existsSync(userDataFile)) {
                 const str = await fs.readFile(userDataFile, 'utf-8');
+                // Handle empty files
+                if (!str || str.trim() === '') {
+                    console.log('User data file is empty, returning null');
+                    return null;
+                }
                 return JSON.parse(str);
             }
         } catch (e) {
             console.error('Error reading userdata:', e);
+            // Return null for malformed JSON or other errors
         }
         return null;
     });
@@ -102,6 +105,11 @@ export async function init({ mainWindow, userDataPath }) {
         try {
             if (fsSync.existsSync(songsCacheFile)) {
                 const str = await fs.readFile(songsCacheFile, 'utf-8');
+                // Handle empty files
+                if (!str || str.trim() === '') {
+                    console.log('Songs cache file is empty, returning null');
+                    return null;
+                }
                 return JSON.parse(str);
             }
         } catch (err) {
