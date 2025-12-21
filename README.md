@@ -13,7 +13,7 @@ Take your osu! music experience to the next level with SOSU.
 <p align="center">
   <img src="https://media.discordapp.net/attachments/1371261802067001415/1452169367599976560/main.png?ex=6948d59d&is=6947841d&hm=05ac77f7b814a36f770ae3cd7fc02165f9c5ac39b27aded3ec107665085c3054&=&format=webp&quality=lossless&width=1155&height=770" alt="Main Screenshot"/>
   <img src="https://media.discordapp.net/attachments/1371261802067001415/1452169368002760875/setting.png?ex=6948d59d&is=6947841d&hm=e4c7e2cbb9c72062bf9dc5f8d9aa33839eb418100718dedc4490906c9431be8c&=&format=webp&quality=lossless&width=1155&height=770" alt="Setting Screenshot"/>
-  <img src="https://media.discordapp.net/attachments/1371261802067001415/1452169367247650887/equalizer.png?ex=6948d59d&is=6947841d&hm=39b8daddc47338530c1a21bb2640bcb27b1f078491d68678b8ef56fb3f91993e&=&format=webp&quality=lossless&width=1157&height=770" alt="Equalizer Screenshot"/>
+  <img src="https://media.discordapp.net/attachments/1371261802067001415/1452169367247650887/equalizer.png?ex=6948d59d&is=6947841d&hm=39b8daddc47338530c1a21bb2640bcb27b1.0.9491d68678b8ef56fb3f91993e&=&format=webp&quality=lossless&width=1157&height=770" alt="Equalizer Screenshot"/>
 </p>
 
 ### 🎬 Watch demo on youtbue
@@ -87,31 +87,31 @@ Take your osu! music experience to the next level with SOSU.
 ## For Regular Users
 
 ### Windows Users
-- Click [here](https://github.com/Adivise/sosu/releases/latest/download/sosu-1.0.8.exe) to download the recommended Windows installer
+- Click [here](https://github.com/Adivise/sosu/releases/latest/download/sosu-1.0.9.exe) to download the recommended Windows installer
 - Alternative downloads from the [latest release](https://github.com/Adivise/sosu/releases/latest):
   - **Portable (.exe)**
-    - `sosu-1.0.8-portable.exe` (no installation required)
+    - `sosu-1.0.9-portable.exe` (no installation required)
   - **MSI Installer (.msi)**
-    - `sosu-1.0.8.msi` (alternative for enterprise environments)
+    - `sosu-1.0.9.msi` (alternative for enterprise environments)
   > *Note: The portable version doesn't save settings between sessions. The installer saves all configuration. Choose the format that best fits your needs.*
 
 ### macOS Users
 > **Note:** The macOS build is currently in **beta test**. There may be bugs or missing features. Please report any issues you encounter.
-- Click [here](https://github.com/Adivise/sosu/releases/latest/download/sosu-1.0.8.dmg) to download the recommended macOS installer
+- Click [here](https://github.com/Adivise/sosu/releases/latest/download/sosu-1.0.9.dmg) to download the recommended macOS installer
 - Alternative downloads from the [latest release](https://github.com/Adivise/sosu/releases/latest):
   - **PKG Installer (.pkg)**
-    - `sosu-1.0.8.pkg` (for Apple Silicon Macs)
+    - `sosu-1.0.9.pkg` (for Apple Silicon Macs)
   > *On first launch, you may need to right-click and choose "Open" to bypass security warnings if the app is not notarized.*
 
 ### Linux Users
 > **Note:** The Linux build is currently in **beta test**. There may be bugs or missing features. Please report any issues you encounter.
-- Click [here](https://github.com/Adivise/sosu/releases/latest/download/sosu-1.0.8.AppImage) to download the recommended Linux AppImage
+- Click [here](https://github.com/Adivise/sosu/releases/latest/download/sosu-1.0.9.AppImage) to download the recommended Linux AppImage
 - Alternative downloads from the [latest release](https://github.com/Adivise/sosu/releases/latest):
   - **Debian Package (.deb)**
-    - `sosu_1.0.8.deb`
+    - `sosu_1.0.9.deb`
   - **RPM Package (.rpm)**
-    - `sosu-1.0.8.rpm`
-  > *You may need to make the AppImage executable: `chmod +x ./sosu-1.0.8.AppImage` and then run it.*
+    - `sosu-1.0.9.rpm`
+  > *You may need to make the AppImage executable: `chmod +x ./sosu-1.0.9.AppImage` and then run it.*
 
 > **Note:** `.yml` and `.blockmap` files are for auto-update and can be ignored by most users. Download the installer or portable/archive for your platform.
 
