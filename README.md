@@ -11,8 +11,9 @@ Whether you're practicing, listening to your favorite beatmaps, or organizing yo
 Take your osu! music experience to the next level with SOSU.
 
 <p align="center">
-  <img src="https://media.discordapp.net/attachments/1310606318977028139/1451114020701732935/main.png?ex=6944febe&is=6943ad3e&hm=73be380220cad4f90e154e6d46e1f6c31385bc0d34ebc4ebd22baacec1289e92&=&format=webp&quality=lossless&width=1113&height=770" alt="SOSU Screenshot"/>
-  <img src="https://media.discordapp.net/attachments/1310606318977028139/1451114020194091120/setting.png?ex=6944febe&is=6943ad3e&hm=ef94188bb0ac1fb524817ce3926bde3a444828b891282d5ccaf83e2472fc4392&=&format=webp&quality=lossless&width=1111&height=770" alt="SOSU Screenshot"/[! 
+  <img src="https://media.discordapp.net/attachments/1371261802067001415/1452169367599976560/main.png?ex=6948d59d&is=6947841d&hm=05ac77f7b814a36f770ae3cd7fc02165f9c5ac39b27aded3ec107665085c3054&=&format=webp&quality=lossless&width=1155&height=770" alt="Main Screenshot"/>
+  <img src="https://media.discordapp.net/attachments/1371261802067001415/1452169368002760875/setting.png?ex=6948d59d&is=6947841d&hm=e4c7e2cbb9c72062bf9dc5f8d9aa33839eb418100718dedc4490906c9431be8c&=&format=webp&quality=lossless&width=1155&height=770" alt="Setting Screenshot"/>
+  <img src="https://media.discordapp.net/attachments/1371261802067001415/1452169367247650887/equalizer.png?ex=6948d59d&is=6947841d&hm=39b8daddc47338530c1a21bb2640bcb27b1f078491d68678b8ef56fb3f91993e&=&format=webp&quality=lossless&width=1157&height=770" alt="Equalizer Screenshot"/>
 </p>
 
 ### 🎬 Watch demo on youtbue
