@@ -9,10 +9,13 @@ import {
   Shuffle,
   Repeat,
   RotateCw,
-  Plus
+  Plus,
+  LucideFileVolume2
 } from 'lucide-react';
 import PlaylistMenu from './PlaylistMenu';
+import EQModal from './EQModal';
 import './PlayerBar.css';
+import useAudioEqualizer from './useAudioEqualizer';
 
 const PlayerBar = ({
   currentSong,
@@ -40,6 +43,34 @@ const PlayerBar = ({
   const [showPlaylistMenu, setShowPlaylistMenu] = useState(false);
   const playlistButtonRef = useRef(null);
   const playerMenuContainerRef = useRef(null);
+
+  // Many-band EQ with more presets
+  const DEFAULT_BANDS = [
+    { freq: 32, gain: 0, label: 'Sub' },
+    { freq: 64, gain: 0, label: 'Bass' },
+    { freq: 125, gain: 0, label: 'Low' },
+    { freq: 250, gain: 0, label: 'Low-Mid' },
+    { freq: 500, gain: 0, label: 'Mid' },
+    { freq: 1000, gain: 0, label: 'High-Mid' },
+    { freq: 2000, gain: 0, label: 'Presence' },
+    { freq: 4000, gain: 0, label: 'Brilliance' },
+    { freq: 8000, gain: 0, label: 'Air' },
+    { freq: 16000, gain: 0, label: 'Sparkle' },
+  ];
+  const [eqBands, setEqBands] = useState(DEFAULT_BANDS);
+  const [showEQ, setShowEQ] = useState(false);
+
+  // EQ Presets
+  const EQ_PRESETS = [
+    // { name: 'Flat', bands: DEFAULT_BANDS.map(b => ({ ...b, gain: 0 })) },
+    // { name: 'Bass Boost', bands: DEFAULT_BANDS.map((b, i) => ({ ...b, gain: i < 2 ? 8 : 0 })) },
+    // { name: 'Treble Boost', bands: DEFAULT_BANDS.map((b, i) => ({ ...b, gain: i >= 7 ? 8 : 0 })) },
+    // { name: 'V Shape', bands: DEFAULT_BANDS.map((b, i) => ({ ...b, gain: [0,1,8,2,0,0,-2,-2,4,6][i] })) },
+    // { name: 'Vocal', bands: DEFAULT_BANDS.map((b, i) => ({ ...b, gain: i === 5 ? 6 : 0 })) },
+  ];
+
+  // Hookup WebAudio EQ
+  useAudioEqualizer({ audioRef, eqBands });
 
   useEffect(() => {
     const audio = audioRef.current;
@@ -205,7 +236,21 @@ const PlayerBar = ({
   return (
     <div className="player-bar">
       <audio ref={audioRef} volume={volume} />
-      
+
+      {/* EQ Modal */}
+      <EQModal
+        isOpen={showEQ}
+        onClose={() => setShowEQ(false)}
+        bands={eqBands}
+        onBandChange={(idx, gain) => {
+          const next = eqBands.slice();
+          next[idx] = { ...next[idx], gain };
+          setEqBands(next);
+        }}
+        presets={EQ_PRESETS}
+        onSetPreset={(preset) => setEqBands(preset.bands)}
+      />
+
       <div className="player-bar-content">
         <div className="player-bar-left">
           {currentSong.imageFile ? (
@@ -394,7 +439,7 @@ const PlayerBar = ({
         </div>
 
         <div className="player-bar-right">
-          <div className="volume-control">
+          <div className="volume-control" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <button 
               className="control-button"
               onClick={toggleMute}
@@ -410,6 +455,14 @@ const PlayerBar = ({
                 <div className="volume-bar-handle" />
               </div>
             </div>
+            <button
+              className="control-button"
+              style={{ padding: '2px 6px', fontSize: 12, height: 28 }}
+              onClick={() => setShowEQ(true)}
+              title="Equalizer Settings"
+            >
+              <LucideFileVolume2 size={20} fill="EQ" />
+            </button>
           </div>
         </div>
       </div>
