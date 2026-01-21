@@ -36,7 +36,9 @@ const PlayerBar = ({
   repeat,
   onRepeatChange,
   playlists,
-  onAddToPlaylist
+  onAddToPlaylist,
+  eqBands: eqBandsProp,
+  onEqBandsChange
 }) => {
   const audioRef = useRef(null);
   const [isMuted, setIsMuted] = useState(false);
@@ -57,8 +59,16 @@ const PlayerBar = ({
     { freq: 8000, gain: 0, label: 'Air' },
     { freq: 16000, gain: 0, label: 'Sparkle' },
   ];
-  const [eqBands, setEqBands] = useState(DEFAULT_BANDS);
+  // Use eqBands from props, or initialize with default
+  const eqBands = eqBandsProp || DEFAULT_BANDS;
   const [showEQ, setShowEQ] = useState(false);
+  
+  // Update parent when EQ bands change
+  const handleEqBandsChange = (newBands) => {
+    if (onEqBandsChange) {
+      onEqBandsChange(newBands);
+    }
+  };
 
   // EQ Presets
   const EQ_PRESETS = [
@@ -118,13 +128,17 @@ const PlayerBar = ({
       if (isNewSong) {
         // New song - reset audio
         audio.pause();
-        audio.currentTime = 0;
         
         audio.src = `osu://${encodeURIComponent(currentSong.audioFile)}`;
         audio.load();
         
         // Wait for audio to be ready before playing (fixes double-click bug)
         const handleCanPlay = () => {
+          // Set the currentTime if it was restored from saved state
+          if (currentTime > 0) {
+            audio.currentTime = currentTime;
+          }
+          
           // If isPlaying is true (user wants to play), start playing
           // This fixes the double-click bug by waiting for audio to be ready
           if (isPlaying) {
@@ -140,7 +154,7 @@ const PlayerBar = ({
         };
       }
     }
-  }, [currentSong]);
+  }, [currentSong, currentTime, isPlaying]);
 
   useEffect(() => {
     const audio = audioRef.current;
@@ -245,10 +259,10 @@ const PlayerBar = ({
         onBandChange={(idx, gain) => {
           const next = eqBands.slice();
           next[idx] = { ...next[idx], gain };
-          setEqBands(next);
+          handleEqBandsChange(next);
         }}
         presets={EQ_PRESETS}
-        onSetPreset={(preset) => setEqBands(preset.bands)}
+        onSetPreset={(preset) => handleEqBandsChange(preset.bands)}
       />
 
       <div className="player-bar-content">

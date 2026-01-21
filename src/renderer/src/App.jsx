@@ -6,6 +6,7 @@ import PlayerBar from './components/PlayerBar';
 import TitleBar from './components/TitleBar';
 import CreatePlaylistModal from './components/CreatePlaylistModal';
 import SettingsModal from './components/SettingsModal';
+import { VERSION } from './version';
 import './App.css';
 
 function App() {
@@ -30,12 +31,24 @@ function App() {
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [songsCache, setSongsCache] = useState({});
   const [discordRpcEnabled, setDiscordRpcEnabled] = useState(false);
+  const [widgetServerEnabled, setWidgetServerEnabled] = useState(false);
   const [userDataLoaded, setUserDataLoaded] = useState(false);
+  const [eqBands, setEqBands] = useState(null);
+
+  // Use ref to prevent duplicate initialization
+  const initRef = useRef(false);
 
   // Load settings and playlists on mount using Electron cache if available
   useEffect(() => {
+    // Prevent duplicate initialization (React Strict Mode runs effects twice in dev)
+    if (initRef.current) return;
+    initRef.current = true;
+
     (async () => {
       if (window.electronAPI) {
+        // Send version to backend
+        await window.electronAPI.widgetSetVersion(VERSION);
+        
         // Load user data (settings)
         const data = await window.electronAPI.getUserData();
         if (data) {
@@ -46,16 +59,78 @@ function App() {
           setPlaylists(data.playlists ?? []);
           setOsuFolderPath(data.osuFolderPath ?? null);
           setDiscordRpcEnabled(data.discordRpcEnabled ?? false);
+          setWidgetServerEnabled(data.widgetServerEnabled ?? false);
+          
+          // Auto-start widget server if it was enabled
+          if (data.widgetServerEnabled) {
+            setTimeout(async () => {
+              // Check if server is already running first
+              const isRunning = await window.electronAPI.widgetIsRunning();
+              const baseUrl = await window.electronAPI.widgetGetUrl();
+              if (isRunning) {
+                // If already running, open the Themes page automatically
+                await window.electronAPI.openExternal(baseUrl + '/themes');
+              } else {
+                const result = await window.electronAPI.widgetStartServer(3737);
+                if (result.success) {
+                  console.log('[Widget] Auto-started server');
+                  // startServer in main already opens /themes; no need to duplicate here
+                }
+              }
+            }, 500);
+          }
+          
+          // Load EQ bands
+          if (data.eqBands) {
+            setEqBands(data.eqBands);
+          }
         }
         
         // Load songs cache
         const cached = await window.electronAPI.getSongsCache();
         if (cached) {
           setSongsCache(cached);
-          // If we have cached songs for the current folder path, load them
+          // If we have cached songs for the current folder path, load them temporarily
           if (data?.osuFolderPath && cached[data.osuFolderPath]) {
             setSongs(cached[data.osuFolderPath].songs);
             setSongDurations(cached[data.osuFolderPath].durations);
+            
+            // Auto-rescan to sync with actual folder (incremental scan)
+            // This will add new songs and remove deleted ones
+            setTimeout(async () => {
+              console.log('[App] Auto-syncing songs with folder...');
+              const result = await window.electronAPI.scanOsuFolder(data.osuFolderPath, false);
+              if (result.success && result.songs) {
+                setSongs(result.songs);
+                
+                // Update durations
+                const durations = {};
+                result.songs.forEach(song => {
+                  if (song.duration) {
+                    durations[song.id] = song.duration;
+                  }
+                });
+                setSongDurations(durations);
+                
+                // Update cache
+                const newCache = {
+                  ...cached,
+                  [data.osuFolderPath]: {
+                    songs: result.songs,
+                    durations: durations
+                  }
+                };
+                setSongsCache(newCache);
+                if (window.electronAPI?.saveSongsCache) {
+                  window.electronAPI.saveSongsCache(newCache);
+                }
+                
+                // Log stats if available
+                if (result.stats) {
+                  console.log(`[App] Sync complete - ${result.stats.new} new, ${result.stats.deleted} deleted, ${result.stats.reused} unchanged`);
+                }
+              }
+            }, 500);
             
             // Restore last played song if available (when loading from cache)
             if (data.lastPlayedSong) {
@@ -83,7 +158,7 @@ function App() {
     if (!userDataLoaded) return;
     if (window.electronAPI) {
       const userData = {
-        volume, autoplay, shuffle, repeat, playlists, osuFolderPath, discordRpcEnabled,
+        volume, autoplay, shuffle, repeat, playlists, osuFolderPath, discordRpcEnabled, widgetServerEnabled,
         lastPlayedSong: currentSong ? {
           id: currentSong.id,
           title: currentSong.title,
@@ -95,11 +170,12 @@ function App() {
           isPlaying: isPlaying,
           currentTime: currentTime,
           duration: duration
-        }
+        },
+        eqBands: eqBands
       };
       window.electronAPI.saveUserData(userData);
     }
-  }, [userDataLoaded, volume, autoplay, shuffle, repeat, playlists, osuFolderPath, discordRpcEnabled, currentSong, isPlaying, currentTime, duration]);
+  }, [userDataLoaded, volume, autoplay, shuffle, repeat, playlists, osuFolderPath, discordRpcEnabled, widgetServerEnabled, currentSong, isPlaying, currentTime, duration, eqBands]);
 
   // When song/state changes: update Discord Rich Presence if enabled
   useEffect(() => {
@@ -122,6 +198,36 @@ function App() {
       window.electronAPI.setDiscordRichPresence(false);
     }
   }, [discordRpcEnabled, currentSong, isPlaying, currentTime, duration]);
+
+  // Update widget with now playing info
+  useEffect(() => {
+    if (!window.electronAPI || !window.electronAPI.widgetUpdateNowPlaying) return;
+    
+    if (currentSong && isPlaying) {
+      window.electronAPI.widgetUpdateNowPlaying({
+        title: currentSong.title || 'Unknown Song',
+        artist: currentSong.artist || 'Unknown Artist',
+        album: currentSong.album || '',
+        currentTime: currentTime,
+        duration: duration,
+        imageFile: currentSong.imageFile || null
+      });
+    } else if (currentSong && !isPlaying) {
+      // Send paused state with current time
+      window.electronAPI.widgetUpdateNowPlaying({
+        title: currentSong.title || 'Unknown Song',
+        artist: currentSong.artist || 'Unknown Artist',
+        album: currentSong.album || '',
+        currentTime: currentTime,
+        duration: duration,
+        paused: true,
+        imageFile: currentSong.imageFile || null
+      });
+    } else {
+      // No song playing
+      window.electronAPI.widgetUpdateNowPlaying(null);
+    }
+  }, [currentSong, isPlaying, currentTime, duration]);
 
   // Load settings and playlists on mount (fallback to localStorage if Electron data not loaded)
   useEffect(() => {
@@ -580,6 +686,8 @@ function App() {
             onRemoveFolder={removeFolder}
             discordRpcEnabled={discordRpcEnabled}
             onSetDiscordRpcEnabled={setDiscordRpcEnabled}
+            widgetServerEnabled={widgetServerEnabled}
+            onSetWidgetServerEnabled={setWidgetServerEnabled}
             onClearCache={clearSongsCache}
             minDurationValue={minDurationValue}
             setMinDurationValue={setMinDurationValue}
@@ -634,6 +742,8 @@ function App() {
           onRepeatChange={setRepeat}
           playlists={playlists}
           onAddToPlaylist={addSongToPlaylist}
+          eqBands={eqBands}
+          onEqBandsChange={setEqBands}
         />
       </div>
     </Router>

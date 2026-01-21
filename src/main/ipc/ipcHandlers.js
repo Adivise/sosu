@@ -3,36 +3,78 @@ import fs from 'fs/promises';
 import fsSync from 'fs';
 import { scanOsuFolder } from '../services/osuScanner.js';
 import * as discord from '../services/discord.js';
+import * as widgetServer from '../services/widgetServer.js';
 import { userDataFile, songsCacheFile } from '../config/paths.js';
 
 export async function init({ mainWindow, userDataPath }) {
     ipcMain.handle('scan-osu-folder', async (event, folderPath, forceRescan = false) => {
         try {
+            // Try to load cache with error handling for corrupted cache
+            let cacheData = null;
             if (!forceRescan && fsSync.existsSync(songsCacheFile)) {
-                const cacheData = JSON.parse(await fs.readFile(songsCacheFile, 'utf-8'));
-
-                // If cache exists for this folder
-                if (cacheData[folderPath]?.songs?.length > 0) {
-                    const firstSong = cacheData[folderPath].songs[0];
-                    if (firstSong.folderPath && fsSync.existsSync(firstSong.folderPath)) {
-                        console.log('[Cache] Using cached songs for', folderPath);
-                        return { success: true, songs: cacheData[folderPath].songs, fromCache: true };
+                try {
+                    const cacheContent = await fs.readFile(songsCacheFile, 'utf-8');
+                    cacheData = JSON.parse(cacheContent);
+                } catch (err) {
+                    console.error('[Cache] Corrupted cache file detected:', err.message);
+                    console.log('[Cache] Deleting corrupted cache and will rescan...');
+                    try {
+                        await fs.unlink(songsCacheFile);
+                    } catch (unlinkErr) {
+                        console.error('[Cache] Could not delete corrupted cache:', unlinkErr.message);
                     }
+                    cacheData = null;
                 }
             }
 
-            console.log('[Scan] Performing full scan (forceRescan:', forceRescan, ')');
-            const result = await scanOsuFolder(folderPath, event.sender);
+            // If cache is valid and exists for this folder, check if we should use it
+            if (cacheData && cacheData[folderPath]?.songs?.length > 0) {
+                const firstSong = cacheData[folderPath].songs[0];
+                if (firstSong.folderPath && fsSync.existsSync(firstSong.folderPath)) {
+                    console.log('[Cache] Using cached songs for', folderPath);
+                    // Still load cache for incremental scan
+                    const existingCache = cacheData[folderPath];
+                    const scanType = 'incremental';
+                    console.log(`[Scan] Performing ${scanType} scan to sync changes`);
+                    const result = await scanOsuFolder(folderPath, event.sender, existingCache);
+                    
+                    // Save updated cache
+                    if (result.success && result.songs.length > 0) {
+                        cacheData[folderPath] = { songs: result.songs, date: new Date().toISOString() };
+                        await fs.writeFile(songsCacheFile, JSON.stringify(cacheData, null, 2), 'utf-8');
+                    }
+                    
+                    return result;
+                }
+            }
+
+            // Load existing cache for incremental scanning
+            let existingCache = null;
+            if (!forceRescan && cacheData && cacheData[folderPath]) {
+                existingCache = cacheData[folderPath];
+            }
+            
+            const scanType = (existingCache && !forceRescan) ? 'incremental' : 'full';
+            console.log(`[Scan] Performing ${scanType} scan (forceRescan: ${forceRescan})`);
+            const result = await scanOsuFolder(folderPath, event.sender, existingCache);
 
             if (result.success && result.songs.length > 0) {
-                let cache = {};
-                if (fsSync.existsSync(songsCacheFile)) {
+                let cache = cacheData || {};
+                if (!cacheData && fsSync.existsSync(songsCacheFile)) {
                     try {
-                        cache = JSON.parse(await fs.readFile(songsCacheFile, 'utf-8'));
-                    } catch { }
+                        const content = await fs.readFile(songsCacheFile, 'utf-8');
+                        cache = JSON.parse(content);
+                    } catch (err) {
+                        console.log('[Cache] Could not load existing cache for update, creating new:', err.message);
+                        cache = {};
+                    }
                 }
                 cache[folderPath] = { songs: result.songs, date: new Date().toISOString() };
-                await fs.writeFile(songsCacheFile, JSON.stringify(cache, null, 2), 'utf-8');
+                try {
+                    await fs.writeFile(songsCacheFile, JSON.stringify(cache, null, 2), 'utf-8');
+                } catch (err) {
+                    console.error('[Cache] Failed to save cache:', err.message);
+                }
             }
 
             return result;
@@ -110,7 +152,17 @@ export async function init({ mainWindow, userDataPath }) {
                     console.log('Songs cache file is empty, returning null');
                     return null;
                 }
-                return JSON.parse(str);
+                try {
+                    return JSON.parse(str);
+                } catch (parseErr) {
+                    console.error('Songs cache is corrupted, deleting:', parseErr.message);
+                    try {
+                        await fs.unlink(songsCacheFile);
+                    } catch (unlinkErr) {
+                        console.error('Could not delete corrupted cache:', unlinkErr.message);
+                    }
+                    return null;
+                }
             }
         } catch (err) {
             console.error('Error loading songs cache:', err);
@@ -143,5 +195,43 @@ export async function init({ mainWindow, userDataPath }) {
 
     ipcMain.on('update-rich-presence', async (e, presenceData) => {
         await discord.setRichPresence(true, presenceData);
+    });
+
+    // Widget Server handlers
+    ipcMain.handle('widget-start-server', async (e, port = 3737) => {
+        try {
+            const result = await widgetServer.startServer(port);
+            return { success: true, ...result };
+        } catch (error) {
+            console.error('Error starting widget server:', error);
+            return { success: false, error: error.message };
+        }
+    });
+
+    ipcMain.handle('widget-stop-server', async () => {
+        try {
+            await widgetServer.stopServer();
+            return { success: true };
+        } catch (error) {
+            console.error('Error stopping widget server:', error);
+            return { success: false, error: error.message };
+        }
+    });
+
+    ipcMain.handle('widget-is-running', () => {
+        return widgetServer.isServerRunning();
+    });
+
+    ipcMain.handle('widget-get-url', () => {
+        return widgetServer.getServerUrl();
+    });
+
+    ipcMain.on('widget-update-now-playing', (e, data) => {
+        widgetServer.updateNowPlaying(data);
+    });
+
+    ipcMain.handle('widget-set-version', (e, version) => {
+        widgetServer.setAppVersion(version);
+        return { success: true };
     });
 }

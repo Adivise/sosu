@@ -3,15 +3,29 @@ import path from 'path';
 import { parseFile } from 'music-metadata';
 import parseOsuFile from '../core/parseOsu.js';
 
-export async function scanOsuFolder(folderPath, eventSender) {
+export async function scanOsuFolder(folderPath, eventSender, existingCache = null) {
     try {
         const songs = [];
         const entries = await fs.readdir(folderPath, { withFileTypes: true });
+        
+        // Create a map of existing songs by folder name for quick lookup
+        const cacheMap = new Map();
+        if (existingCache && existingCache.songs) {
+            existingCache.songs.forEach(song => {
+                if (song.folderName) {
+                    cacheMap.set(song.folderName, song);
+                }
+            });
+        }
 
+        // Create a set of current folder names to detect deleted songs
+        const currentFolderNames = new Set();
+        
         // Count valid folders
         let totalSongs = 0;
         for (const entry of entries) {
             if (entry.isDirectory()) {
+                currentFolderNames.add(entry.name);
                 try {
                     const songPath = path.join(folderPath, entry.name);
                     const files = await fs.readdir(songPath);
@@ -21,11 +35,47 @@ export async function scanOsuFolder(folderPath, eventSender) {
                 } catch { /* ignore */ }
             }
         }
+        
+        // Stats for logging
+        let reusedCount = 0;
+        let newCount = 0;
+        let deletedCount = 0;
+        
+        // Check for deleted songs in cache
+        if (cacheMap.size > 0) {
+            cacheMap.forEach((song, folderName) => {
+                if (!currentFolderNames.has(folderName)) {
+                    deletedCount++;
+                }
+            });
+        }
 
         let processedCount = 0;
         for (const entry of entries) {
             if (!entry.isDirectory()) continue;
             const songPath = path.join(folderPath, entry.name);
+            
+            // Check if this song exists in cache
+            const cachedSong = cacheMap.get(entry.name);
+            if (cachedSong) {
+                // Verify the folder still exists and audio file is accessible
+                try {
+                    await fs.access(cachedSong.audioFile);
+                    // Reuse cached song data
+                    songs.push(cachedSong);
+                    reusedCount++;
+                    processedCount++;
+                    if (eventSender && eventSender.send && !eventSender.isDestroyed())
+                        eventSender.send('scan-progress', { current: processedCount, total: totalSongs });
+                    continue;
+                } catch {
+                    // File doesn't exist anymore, rescan this song
+                    console.log('[Scan] Cache miss for', entry.name, '- rescanning');
+                }
+            }
+            
+            // This is a new song to scan
+            newCount++;
             let files;
 
             try {
@@ -139,7 +189,19 @@ export async function scanOsuFolder(folderPath, eventSender) {
                 eventSender.send('scan-progress', { current: processedCount, total: totalSongs });
         }
 
-        return { success: true, songs };
+        // Log scan statistics
+        console.log(`[Scan] Complete - Total: ${songs.length}, Reused: ${reusedCount}, New: ${newCount}, Deleted: ${deletedCount}`);
+
+        return { 
+            success: true, 
+            songs,
+            stats: {
+                total: songs.length,
+                reused: reusedCount,
+                new: newCount,
+                deleted: deletedCount
+            }
+        };
     } catch (error) {
         console.error('Error scanning folder:', error);
         return { success: false, error: error.message || String(error) };

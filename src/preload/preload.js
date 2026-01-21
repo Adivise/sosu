@@ -19,5 +19,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getSongsCache: () => ipcRenderer.invoke('get-songs-cache'),
   saveSongsCache: (cache) => ipcRenderer.invoke('save-songs-cache', cache),
   openExternal: (url) => ipcRenderer.invoke('open-external', url),
+  
+  // Widget Server APIs
+  widgetStartServer: (port) => ipcRenderer.invoke('widget-start-server', port),
+  widgetStopServer: () => ipcRenderer.invoke('widget-stop-server'),
+  widgetIsRunning: () => ipcRenderer.invoke('widget-is-running'),
+  widgetGetUrl: () => ipcRenderer.invoke('widget-get-url'),
+  widgetUpdateNowPlaying: (data) => ipcRenderer.send('widget-update-now-playing', data),
+  widgetSetVersion: (version) => ipcRenderer.invoke('widget-set-version', version),
 });
 
