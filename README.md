@@ -198,38 +198,6 @@ sosu/
 
 </details>
 
-# 📖 Usage
-
-## First Launch
-
-1. Launch the application
-2. Click on "Select Folder" in the sidebar or go to Settings
-3. Navigate to your osu! Songs folder (typically located at `C:\Users\YourName\AppData\Local\osu!\Songs` on Windows)
-4. The app will scan and load all your songs
-
-## Basic Controls
-
-- **Play/Pause**: Click the play button in the player bar or click on a song
-- **Next/Previous**: Use the skip buttons in the player bar
-- **Volume**: Adjust using the volume slider in the player bar
-- **Search**: Use the search bar to filter songs
-- **Playlists**: Create playlists from "Your Playlists" in the sidebar
-
-## Advanced Features
-
-- **Shuffle**: Enable shuffle mode to play songs randomly
-- **Repeat**: Enable repeat mode to loop the current song
-- **Autoplay**: Enable autoplay to automatically play the next song
-- **Views**: Switch between Library, Favorites, Recently Played, and Most Played from the sidebar
-- **Filters Tab (Settings)**:
-  - Set a minimum song duration (hide songs shorter than X seconds)
-  - Hide specific artists from your library
-  - Hide songs by title terms (contains / starts with / ends with)
-  - Enable/disable duplicate title filtering (only one song per title)
-  - See filter statistics (total / visible / hidden / duplicates)
-- **Discord Rich Presence**: Enable in Settings to show your current song on Discord
-- **Beatmap Links**: Click on any song title or artist name to open the beatmap on osu.ppy.sh
-
 # ⚙️ Configuration
 
 ## Electron Builder
@@ -252,6 +220,7 @@ This includes:
 - User preferences
 - Playlists
 - Songs metadata cache
+- Widget Themes
 
 # 🔧 Troubleshooting
 
