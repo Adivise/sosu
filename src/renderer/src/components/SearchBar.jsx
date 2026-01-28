@@ -1,11 +1,16 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Search, X } from 'lucide-react';
+import SearchSuggestions from './SearchSuggestions';
 import './SearchBar.css';
 
-const SearchBar = ({ searchQuery, onSearchChange, songs, showFilters = false, sortBy, onSortChange }) => {
+const SearchBar = ({ searchQuery, onSearchChange, songs, showFilters = false, sortBy, onSortChange, sortDuration, onSortDurationChange }) => {
   const [isFocused, setIsFocused] = useState(false);
   const [suggestions, setSuggestions] = useState([]);
   const [selectedIndex, setSelectedIndex] = useState(-1);
+  const [searchHistory, setSearchHistory] = useState(() => {
+    const saved = localStorage.getItem('searchHistory');
+    return saved ? JSON.parse(saved) : [];
+  });
   const searchRef = useRef(null);
   const suggestionsRef = useRef(null);
 
@@ -57,7 +62,13 @@ const SearchBar = ({ searchQuery, onSearchChange, songs, showFilters = false, so
       setSelectedIndex(prev => prev > 0 ? prev - 1 : -1);
     } else if (e.key === 'Enter' && selectedIndex >= 0) {
       e.preventDefault();
-      onSearchChange(suggestions[selectedIndex].title);
+      const query = suggestions[selectedIndex].title;
+      onSearchChange(query);
+      addToHistory(query);
+      setIsFocused(false);
+    } else if (e.key === 'Enter' && searchQuery.trim()) {
+      e.preventDefault();
+      addToHistory(searchQuery);
       setIsFocused(false);
     } else if (e.key === 'Escape') {
       setIsFocused(false);
@@ -65,7 +76,26 @@ const SearchBar = ({ searchQuery, onSearchChange, songs, showFilters = false, so
   };
 
   const handleSuggestionClick = (song) => {
-    onSearchChange(song.title);
+    const newQuery = song.title;
+    onSearchChange(newQuery);
+    addToHistory(newQuery);
+    setIsFocused(false);
+  };
+
+  const addToHistory = (query) => {
+    if (!query.trim()) return;
+    const newHistory = [query, ...searchHistory.filter(h => h !== query)].slice(0, 10);
+    setSearchHistory(newHistory);
+    localStorage.setItem('searchHistory', JSON.stringify(newHistory));
+  };
+
+  const clearHistory = () => {
+    setSearchHistory([]);
+    localStorage.removeItem('searchHistory');
+  };
+
+  const handleHistoryClick = (query) => {
+    onSearchChange(query);
     setIsFocused(false);
   };
 
@@ -74,78 +104,100 @@ const SearchBar = ({ searchQuery, onSearchChange, songs, showFilters = false, so
     searchRef.current?.focus();
   };
 
+  // Cycle through sort options: none -> az -> za -> none
+  const handleSortCycle = () => {
+    if (sortBy === 'none') {
+      onSortChange('az');
+      onSortDurationChange('none'); // Reset duration sort when Name is selected
+    } else if (sortBy === 'az') {
+      onSortChange('za');
+    } else {
+      onSortChange('none');
+    }
+  };
+
+  // Cycle through duration sort: none -> asc -> desc -> none
+  const handleDurationSortCycle = () => {
+    if (sortDuration === 'none') {
+      onSortDurationChange('asc');
+      onSortChange('none'); // Reset name sort when Duration is selected
+    } else if (sortDuration === 'asc') {
+      onSortDurationChange('desc');
+    } else {
+      onSortDurationChange('none');
+    }
+  };
+
+  const getSortIcon = () => {
+    if (sortBy === 'az') return '↑';
+    if (sortBy === 'za') return '↓';
+    return '◇'; // neutral indicator when none
+  };
+
+  const getDurationSortIcon = () => {
+    if (sortDuration === 'asc') return '↑';
+    if (sortDuration === 'desc') return '↓';
+    return '◇'; // neutral indicator when none
+  };
+
   return (
-    <div className="search-container">
-      <div className="search-bar-wrapper">
-        <Search className="search-icon" size={20} />
-        <input
-          ref={searchRef}
-          type="text"
-          className="search-input"
-          placeholder="What do you want to play?"
-          value={searchQuery}
-          onChange={(e) => onSearchChange(e.target.value)}
-          onFocus={() => setIsFocused(true)}
-          onKeyDown={handleKeyDown}
-        />
-        {searchQuery && (
-          <button className="clear-button" onClick={clearSearch}>
-            <X size={18} />
-          </button>
+    <>
+      <div className="search-container">
+        <div className="search-bar-wrapper">
+          <Search className="search-icon" size={20} />
+          <input
+            ref={searchRef}
+            type="text"
+            className="search-input"
+            placeholder="What do you want to play?"
+            value={searchQuery}
+            onChange={(e) => onSearchChange(e.target.value)}
+            onFocus={() => setIsFocused(true)}
+            onKeyDown={handleKeyDown}
+          />
+          {searchQuery && (
+            <button className="clear-button" onClick={clearSearch}>
+              <X size={18} />
+            </button>
+          )}
+        </div>
+
+        {showFilters && (
+          <>
+            <div className="search-filters">
+              <span className="filter-label">Sort:</span>
+              <button
+                className={`filter-chip ${sortBy !== 'none' ? 'active' : ''}`}
+                onClick={handleSortCycle}
+                title="Cycle: A-Z → Z-A → None"
+              >
+                Name {getSortIcon()}
+              </button>
+              <button
+                className={`filter-chip ${sortDuration !== 'none' ? 'active' : ''}`}
+                onClick={handleDurationSortCycle}
+                title="Cycle: Short → Long → None"
+              >
+                Duration {getDurationSortIcon()}
+              </button>
+            </div>
+            </>
         )}
       </div>
 
-      {isFocused && suggestions.length > 0 && (
-        <div ref={suggestionsRef} className="suggestions-dropdown">
-          <div className="suggestions-header">
-            <span>Suggestions</span>
-          </div>
-          {suggestions.map((song, index) => (
-            <div
-              key={song.id}
-              className={`suggestion-item ${index === selectedIndex ? 'selected' : ''}`}
-              onClick={() => handleSuggestionClick(song)}
-              onMouseEnter={() => setSelectedIndex(index)}
-            >
-              <div className="suggestion-content">
-                <div className="suggestion-title">{song.title}</div>
-                <div className="suggestion-artist">{song.artist}</div>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {showFilters && (
-        <div className="search-filters">
-          <span className="filter-label">Sort:</span>
-          <button
-            className={`filter-chip ${sortBy === 'none' ? 'active' : ''}`}
-            onClick={() => onSortChange && onSortChange('none')}
-          >
-            None
-          </button>
-          <button
-            className={`filter-chip ${sortBy === 'az' ? 'active' : ''}`}
-            onClick={() => onSortChange && onSortChange('az')}
-          >
-            A-Z
-          </button>
-          <button
-            className={`filter-chip ${sortBy === 'za' ? 'active' : ''}`}
-            onClick={() => onSortChange && onSortChange('za')}
-          >
-            Z-A
-          </button>
-          <button
-            className={`filter-chip ${sortBy === 'duration' ? 'active' : ''}`}
-            onClick={() => onSortChange && onSortChange('duration')}
-          >
-            Duration ↑
-          </button>
-        </div>
-      )}
-    </div>
+      <SearchSuggestions
+        isFocused={isFocused}
+        suggestions={suggestions}
+        searchHistory={searchHistory}
+        searchQuery={searchQuery}
+        selectedIndex={selectedIndex}
+        onSuggestionClick={handleSuggestionClick}
+        onHistoryClick={handleHistoryClick}
+        onClearHistory={clearHistory}
+        onSetIsFocused={setIsFocused}
+        searchInputRef={searchRef}
+      />
+    </>
   );
 };
 

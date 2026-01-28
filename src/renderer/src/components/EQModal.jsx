@@ -44,26 +44,21 @@ const EQModal = ({
     if (onSetPreset) onSetPreset(preset);
   };
 
-  const handleReset = () => {
-    bands.forEach((_, i) => onBandChange(i, 0));
-    setSelectedPresetName('Flat');
-  };
-
   const stop = (e) => e.stopPropagation();
 
   // --- RENDER
   return (
-    <div className="modal-overlay" onClick={onClose} aria-hidden={false}>
+    <div className="eqmodal-overlay" onClick={onClose} aria-hidden={false} style={{ display: isOpen ? 'flex' : 'none' }}>
       <div
         role="dialog"
         aria-modal="true"
-        aria-label="Equalizer"
+        aria-label="Custom Equalizer"
         className="modal-content eqmodal"
         onClick={stop}
       >
         {/* Header */}
         <div className="modal-header">
-          <h2 className="modal-title">Equalizer</h2>
+          <h2 className="modal-title">Custom Equalizer</h2>
           <div className="modal-actions">
             {onSavePreset && (
               <button

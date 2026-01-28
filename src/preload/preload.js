@@ -2,7 +2,7 @@ const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('electronAPI', {
   selectOsuFolder: () => ipcRenderer.invoke('select-osu-folder'),
-  scanOsuFolder: (folderPath, forceRescan = false) => ipcRenderer.invoke('scan-osu-folder', folderPath, forceRescan),
+  scanOsuFolder: (folderPath, forceRescan = false, scanAllMaps = false) => ipcRenderer.invoke('scan-osu-folder', folderPath, forceRescan, scanAllMaps),
   readFile: (filePath) => ipcRenderer.invoke('read-file', filePath),
   windowMinimize: () => ipcRenderer.invoke('window-minimize'),
   windowMaximize: () => ipcRenderer.invoke('window-maximize'),

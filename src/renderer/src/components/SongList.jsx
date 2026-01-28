@@ -2,11 +2,11 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import SongItem from './SongItem';
 import './SongList.css';
 
-const ITEMS_PER_PAGE = 50;
-
-const SongList = ({ songs, onSongSelect, currentSong, songDurations, isPlaylist, onRemoveFromPlaylist, allSongs, onAddToPlaylist, playlists }) => {
-  const [currentPage, setCurrentPage] = useState(1);
+const SongList = ({ songs, onSongSelect, currentSong, songDurations, isPlaylist, onRemoveFromPlaylist, allSongs, onAddToPlaylist, playlists, favorites = {}, onToggleFavorite, isPlayingNow = false, itemsPerPage = 50, currentPage: controlledPage, onPageChange }) => {
+  const [internalPage, setInternalPage] = useState(1);
   const listRef = useRef(null);
+  const isControlled = typeof controlledPage === 'number' && controlledPage > 0;
+  const currentPage = isControlled ? controlledPage : internalPage;
 
   // Get durations from allSongs if available (for playlist songs)
   const getSongDuration = (song) => {
@@ -23,24 +23,29 @@ const SongList = ({ songs, onSongSelect, currentSong, songDurations, isPlaylist,
     return null;
   };
 
-  // Reset to page 1 when songs change
+  // Reset to page 1 when songs change (only for uncontrolled pagination)
   useEffect(() => {
-    setCurrentPage(1);
+    if (isControlled) return;
+    setInternalPage(1);
     if (listRef.current) {
       listRef.current.scrollTop = 0;
     }
-  }, [songs.length]);
+  }, [songs.length, isControlled]);
 
   // Calculate pagination
-  const totalPages = Math.ceil(songs.length / ITEMS_PER_PAGE);
-  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
-  const endIndex = startIndex + ITEMS_PER_PAGE;
+  const totalPages = Math.ceil(songs.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
   const paginatedSongs = useMemo(() => {
     return songs.slice(startIndex, endIndex);
-  }, [songs, startIndex, endIndex]);
+  }, [songs, startIndex, endIndex, itemsPerPage]);
 
   const handlePageChange = (page) => {
-    setCurrentPage(page);
+    if (onPageChange) {
+      onPageChange(page);
+    } else {
+      setInternalPage(page);
+    }
     if (listRef.current) {
       listRef.current.scrollTop = 0;
     }
@@ -68,7 +73,7 @@ const SongList = ({ songs, onSongSelect, currentSong, songDurations, isPlaylist,
             key={song.id}
             song={song}
             index={startIndex + index + 1}
-            isPlaying={currentSong?.id === song.id}
+            isPlaying={isPlayingNow && currentSong?.id === song.id}
             isSelected={currentSong?.id === song.id}
             onSelect={onSongSelect}
             duration={getSongDuration(song)}
@@ -77,6 +82,8 @@ const SongList = ({ songs, onSongSelect, currentSong, songDurations, isPlaylist,
             allSongs={allSongs}
             onAddToPlaylist={onAddToPlaylist}
             playlists={playlists}
+            isFavorite={favorites[song.id] || false}
+            onToggleFavorite={onToggleFavorite}
           />
         ))}
       </div>
@@ -89,9 +96,34 @@ const SongList = ({ songs, onSongSelect, currentSong, songDurations, isPlaylist,
           >
             Previous
           </button>
-          <span className="pagination-info">
-            Page {currentPage} of {totalPages} ({songs.length} songs)
-          </span>
+          <div className="pagination-pages">
+            {currentPage > 3 && (
+              <>
+                <button className="pagination-page" onClick={() => handlePageChange(1)}>1</button>
+                {currentPage > 4 && <span className="pagination-ellipsis">...</span>}
+              </>
+            )}
+            {Array.from({ length: totalPages }, (_, i) => i + 1)
+              .filter(page => {
+                // Show current page, and 2 pages before/after
+                return page >= currentPage - 2 && page <= currentPage + 2;
+              })
+              .map(page => (
+                <button
+                  key={page}
+                  className={`pagination-page ${page === currentPage ? 'active' : ''}`}
+                  onClick={() => handlePageChange(page)}
+                >
+                  {page}
+                </button>
+              ))}
+            {currentPage < totalPages - 2 && (
+              <>
+                {currentPage < totalPages - 3 && <span className="pagination-ellipsis">...</span>}
+                <button className="pagination-page" onClick={() => handlePageChange(totalPages)}>{totalPages}</button>
+              </>
+            )}
+          </div>
           <button
             className="pagination-button"
             onClick={() => handlePageChange(currentPage + 1)}

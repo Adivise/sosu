@@ -16,7 +16,7 @@
   position: sticky;
   top: 0;
   background-color: #121212;
-  z-index: 10;
+  z-index: 5;
 }
 
 .song-list-header-item {
@@ -71,7 +71,7 @@
 
 .pagination-button:hover:not(:disabled) {
   background-color: #282828;
-  border-color: #1db954;
+  border-color: var(--accent-color, #1db954);
 }
 
 .pagination-button:disabled {
@@ -84,3 +84,43 @@
   font-size: 14px;
 }
 
+.pagination-pages {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.pagination-page {
+  min-width: 36px;
+  height: 36px;
+  padding: 0 8px;
+  background-color: #1a1a1a;
+  border: 1px solid #3e3e3e;
+  border-radius: 4px;
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pagination-page:hover {
+  background-color: #282828;
+  border-color: var(--accent-color, #1db954);
+}
+
+.pagination-page.active {
+  background-color: var(--accent-color, #1db954);
+  border-color: var(--accent-color, #1db954);
+  color: var(--accent-contrast);
+  font-weight: 600;
+}
+
+.pagination-ellipsis {
+  color: #b3b3b3;
+  padding: 0 4px;
+  user-select: none;
+}

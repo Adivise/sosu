@@ -13,6 +13,7 @@ export default function useAudioEqualizer({ audioRef, eqBands = [], onSetup } = 
   const audioContextRef = useRef(null);
   const sourceNodeRef = useRef(null);
   const filterNodesRef = useRef([]);
+  const lastAudioElementRef = useRef(null);
 
   // helper to create/resume AudioContext
   const ensureAudioContext = useCallback(() => {
@@ -24,74 +25,88 @@ export default function useAudioEqualizer({ audioRef, eqBands = [], onSetup } = 
     return audioContextRef.current;
   }, []);
 
-  // build filter nodes and connect chain
-  const buildFiltersAndConnect = useCallback(
-    (audioEl) => {
-      const context = ensureAudioContext();
-      if (!context || !audioEl) return;
+  // build filter nodes and connect chain - NOT useCallback so it always uses latest eqBands
+  const buildFiltersAndConnect = (audioEl, forceNewSource = false) => {
+    const context = ensureAudioContext();
+    if (!context || !audioEl) return;
 
-      // Create source only once (MediaElementSource can't be created twice for same element)
-      if (!sourceNodeRef.current) {
-        try {
-          sourceNodeRef.current = context.createMediaElementSource(audioEl);
-        } catch (err) {
-          // If this fails, most likely a previous source exists; keep going
-          console.warn('createMediaElementSource failed (maybe already created):', err);
-        }
-      }
+    // Check if audio element changed or we need to force new source
+    const audioElChanged = lastAudioElementRef.current !== audioEl;
+    const needNewSource = audioElChanged || forceNewSource || !sourceNodeRef.current;
 
-      // Disconnect previous filters safely
+    if (needNewSource && sourceNodeRef.current) {
+      // Disconnect old source
       try {
-        if (filterNodesRef.current.length) {
-          filterNodesRef.current.forEach((n) => {
-            try { n.disconnect(); } catch (e) {}
-          });
-        }
+        sourceNodeRef.current.disconnect();
       } catch (e) {}
+      sourceNodeRef.current = null;
+    }
 
-      // Create new filters from eqBands
-      const filters = eqBands.map((band) => {
-        const f = context.createBiquadFilter();
-        f.type = 'peaking';
-        if (typeof band.frequency === 'number') f.frequency.value = band.frequency;
-        else f.frequency.value = band.freq || 1000;
-        f.Q.value = typeof band.Q === 'number' ? band.Q : (band.q || 1);
-        f.gain.value = typeof band.gain === 'number' ? band.gain : 0;
-        return f;
-      });
-
-      filterNodesRef.current = filters;
-
-      // Connect chain: source -> f0 -> f1 -> ... -> destination
+    // Create source if needed
+    if (!sourceNodeRef.current) {
       try {
-        if (sourceNodeRef.current) {
-          let prev = sourceNodeRef.current;
-          filters.forEach((f) => {
-            prev.connect(f);
-            prev = f;
-          });
-          prev.connect(context.destination);
-        } else {
-          // fallback: connect nothing if source not available
-          console.warn('Source node not available when connecting filters.');
-        }
+        sourceNodeRef.current = context.createMediaElementSource(audioEl);
+        lastAudioElementRef.current = audioEl;
       } catch (err) {
-        console.error('Error connecting filter chain:', err);
+        console.warn('[EQ] createMediaElementSource failed:', err);
+        // If source wasn't created, we can't proceed
+        if (!sourceNodeRef.current) {
+          return;
+        }
       }
+    }
 
-      if (onSetup) {
-        try { onSetup(filters); } catch (e) {}
+    // Disconnect previous filters safely
+    try {
+      if (filterNodesRef.current.length) {
+        filterNodesRef.current.forEach((n) => {
+          try { n.disconnect(); } catch (e) {}
+        });
       }
-    },
-    [ensureAudioContext, eqBands, onSetup]
-  );
+    } catch (e) {}
+
+    // Create new filters from CURRENT eqBands
+    const filters = eqBands.map((band) => {
+      const f = context.createBiquadFilter();
+      f.type = 'peaking';
+      // Support both 'freq' and 'frequency' property names
+      if (typeof band.freq === 'number') f.frequency.value = band.freq;
+      else if (typeof band.frequency === 'number') f.frequency.value = band.frequency;
+      else f.frequency.value = 1000;
+      f.Q.value = typeof band.Q === 'number' ? band.Q : (band.q || 1);
+      f.gain.value = typeof band.gain === 'number' ? band.gain : 0;
+      return f;
+    });
+
+    filterNodesRef.current = filters;
+
+    // Connect chain: source -> f0 -> f1 -> ... -> destination
+    try {
+      if (sourceNodeRef.current) {
+        let prev = sourceNodeRef.current;
+        filters.forEach((f) => {
+          prev.connect(f);
+          prev = f;
+        });
+        prev.connect(context.destination);
+      }
+    } catch (err) {
+      console.error('[EQ] Error connecting filter chain:', err);
+    }
+
+    if (onSetup) {
+      try { onSetup(filters); } catch (e) {}
+    }
+  };
 
   // update existing filters' gain values when eqBands change
   useEffect(() => {
     if (!filterNodesRef.current || !filterNodesRef.current.length) {
       // If filters do not exist yet, attempt to build if audio is ready
       const audio = audioRef?.current;
-      if (audio) buildFiltersAndConnect(audio);
+      if (audio) {
+        buildFiltersAndConnect(audio);
+      }
       return;
     }
 
@@ -101,9 +116,7 @@ export default function useAudioEqualizer({ audioRef, eqBands = [], onSetup } = 
         const g = eqBands[idx]?.gain ?? 0;
         try {
           filter.gain.value = g;
-        } catch (e) {
-          // ignore if node not ready
-        }
+        } catch (e) {}
       });
     } else {
       // lengths differ — rebuild chain to ensure alignment
@@ -120,23 +133,18 @@ export default function useAudioEqualizer({ audioRef, eqBands = [], onSetup } = 
     const trySetupAndResume = () => {
       const ctx = ensureAudioContext();
       if (!ctx) return;
-      // Build chain if not yet built
-      if (!filterNodesRef.current || filterNodesRef.current.length !== eqBands.length) {
-        buildFiltersAndConnect(audio);
-      }
-      // Try to resume if suspended (many browsers require user gesture)
+      
+      buildFiltersAndConnect(audio, false);
+      
+      // Try to resume if suspended
       if (ctx.state === 'suspended') {
-        ctx.resume().catch((err) => {
-          // resume may fail without user gesture — that's fine; user gesture (play) will retry
-          // console.warn('AudioContext resume failed:', err);
-        });
+        ctx.resume().catch(() => {});
       }
     };
 
-    // Attach listeners
+    // Attach listeners - use 'loadeddata' instead of 'loadedmetadata' to ensure audio is ready
     audio.addEventListener('play', trySetupAndResume);
-    audio.addEventListener('canplay', trySetupAndResume);
-    audio.addEventListener('loadedmetadata', trySetupAndResume);
+    audio.addEventListener('loadeddata', trySetupAndResume);
 
     // If audio is already ready/playing, attempt immediate setup
     if (!audio.paused || audio.readyState >= 2) {
@@ -145,11 +153,11 @@ export default function useAudioEqualizer({ audioRef, eqBands = [], onSetup } = 
 
     return () => {
       audio.removeEventListener('play', trySetupAndResume);
-      audio.removeEventListener('canplay', trySetupAndResume);
-      audio.removeEventListener('loadedmetadata', trySetupAndResume);
+      audio.removeEventListener('loadeddata', trySetupAndResume);
     };
+    // Re-attach listeners when eqBands change to use latest values
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [audioRef, eqBands.length, ensureAudioContext, buildFiltersAndConnect]);
+  }, [audioRef, eqBands, ensureAudioContext]);
 
   // utility to set a single band gain immediately
   const setBandGain = useCallback((idx, gain) => {

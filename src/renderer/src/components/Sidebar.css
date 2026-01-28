@@ -1,12 +1,25 @@
 .sidebar {
   width: 240px;
   height: 100%;
-  background-color: #000000;
+  background-color: rgba(12, 12, 12, 0.6);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-right: 1px solid rgba(255, 255, 255, 0.1);
   padding: 24px 16px;
   display: flex;
   flex-direction: column;
   gap: 24px;
   overflow-y: auto;
+  position: relative;
+  z-index: 10;
+}
+
+.sidebar-scroll {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  padding-right: 4px;
 }
 
 .sidebar-header {
@@ -18,7 +31,7 @@
 }
 
 .sidebar-logo {
-  color: #1db954;
+  color: var(--accent-color);
 }
 
 .sidebar-title-container {
@@ -38,8 +51,8 @@
   display: inline-flex;
   align-items: center;
   padding: 2px 8px;
-  background-color: #1db954;
-  color: #000000;
+  background-color: var(--accent-color);
+  color: var(--accent-contrast);
   font-size: 10px;
   font-weight: 700;
   border-radius: 10px;
@@ -91,8 +104,8 @@
   gap: 12px;
   width: 100%;
   padding: 12px 16px;
-  background-color: #1db954;
-  color: #ffffff;
+  background-color: var(--accent-color);
+  color: var(--accent-contrast);
   border: none;
   border-radius: 4px;
   font-size: 14px;
@@ -102,7 +115,7 @@
 }
 
 .folder-button:hover {
-  background-color: #1ed760;
+  background-color: var(--accent-color-hover);
   transform: scale(1.02);
 }
 
@@ -156,7 +169,7 @@
   border-radius: 8px;
 }
 .playlists-list::-webkit-scrollbar-thumb:hover {
-  background: #1db954;
+  background: var(--accent-color);
 }
 
 .playlists-category-header {
@@ -191,7 +204,7 @@
 
 .create-playlist-button:hover {
   background-color: #282828;
-  border-color: #1db954;
+  border-color: var(--accent-color);
   color: #ffffff;
 }
 
@@ -217,7 +230,7 @@
 
 .playlist-item.active {
   background-color: #1a1a1a;
-  color: #1db954;
+  color: var(--accent-color);
 }
 
 .playlist-name {

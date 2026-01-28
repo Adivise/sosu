@@ -41,7 +41,7 @@
   border-radius: 8px;
 }
 .playlist-menu-list::-webkit-scrollbar-thumb:hover {
-  background: #1db954;
+  background: var(--accent-color);
 }
 
 .playlist-menu-empty {

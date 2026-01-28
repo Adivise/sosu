@@ -2,15 +2,52 @@
   display: flex;
   flex-direction: column;
   height: 100vh;
-  background-color: #121212;
+  background-color: rgba(12, 12, 12, 0.5);
   color: #ffffff;
   overflow: hidden;
+  position: relative;
+}
+
+/* Blurred album art background covering entire viewport */
+.app-blur-background {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-size: 100% 100%;
+  background-position: center;
+  background-repeat: no-repeat;
+  z-index: 1;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.3s ease-in-out, filter 0.3s ease;
+  animation: fadeInBlur 0.3s ease-in-out forwards;
+}
+
+@keyframes fadeInBlur {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 0.85;
+  }
 }
 
 .app-content {
   display: flex;
   flex: 1;
   overflow: hidden;
-  height: calc(100vh - 32px - 90px);
+  height: calc(100vh - 32px);
+  position: relative;
+  z-index: 5;
+  padding-bottom: 90px;
 }
+
+/* Hide PlayerBar when modal is open */
+.app:has(.modal-overlay) .player-bar,
+.app:has(.eqmodal-overlay) .player-bar {
+  display: none;
+}
+
 

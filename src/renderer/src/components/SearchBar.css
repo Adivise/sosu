@@ -3,21 +3,35 @@
   width: 100%;
   max-width: 600px;
   margin-left: 20px;
+  z-index: 1000;
 }
 
 .search-bar-wrapper {
   position: relative;
   display: flex;
   align-items: center;
-  background-color: #ffffff;
-  border-radius: 4px;
-  padding: 8px 16px;
+  background-color: #282828;
+  border: 1px solid #3e3e3e;
+  border-radius: 8px;
+  padding: 10px 16px;
   gap: 12px;
+  transition: all 0.2s;
+}
+
+.search-bar-wrapper:focus-within {
+  background-color: #3e3e3e;
+  border-color: var(--accent-color);
+  box-shadow: 0 0 0 2px rgba(29, 185, 84, 0.1);
 }
 
 .search-icon {
-  color: #121212;
+  color: #b3b3b3;
   flex-shrink: 0;
+  transition: color 0.2s;
+}
+
+.search-bar-wrapper:focus-within .search-icon {
+  color: var(--accent-color);
 }
 
 .search-input {
@@ -25,13 +39,13 @@
   border: none;
   outline: none;
   background: transparent;
-  color: #121212;
+  color: #ffffff;
   font-size: 14px;
   font-weight: 400;
 }
 
 .search-input::placeholder {
-  color: #6b6b6b;
+  color: #b3b3b3;
 }
 
 .clear-button {
@@ -42,13 +56,16 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #121212;
+  color: #b3b3b3;
   opacity: 0.6;
-  transition: opacity 0.2s;
+  transition: all 0.2s;
+  border-radius: 4px;
 }
 
 .clear-button:hover {
   opacity: 1;
+  color: #ffffff;
+  background-color: rgba(255, 255, 255, 0.1);
 }
 
 .suggestions-dropdown {
@@ -56,13 +73,65 @@
   top: 100%;
   left: 0;
   right: 0;
-  margin-top: 8px;
   background-color: #282828;
-  border-radius: 4px;
+  border-radius: 0 0 4px 4px;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
   max-height: 400px;
   overflow-y: auto;
-  z-index: 1000;
+  z-index: 9999;
+  margin-top: 0;
+  border-top: 1px solid #383838;
+  scrollbar-width: thin;
+  scrollbar-color: var(--accent-color) rgba(255, 255, 255, 0.05);
+}
+
+.suggestions-dropdown-portal {
+  background-color: #282828;
+  border-radius: 0 0 4px 4px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  max-height: 400px;
+  overflow-y: auto;
+  border-top: 1px solid #383838;
+  scrollbar-width: thin;
+  scrollbar-color: var(--accent-color) rgba(255, 255, 255, 0.05);
+}
+
+.suggestions-dropdown::-webkit-scrollbar {
+  width: 8px;
+}
+
+.suggestions-dropdown::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 4px;
+}
+
+.suggestions-dropdown::-webkit-scrollbar-thumb {
+  background: var(--accent-color);
+  border-radius: 4px;
+  transition: background 0.2s;
+}
+
+.suggestions-dropdown::-webkit-scrollbar-thumb:hover {
+  background: var(--accent-color-hover);
+}
+
+.suggestions-dropdown-portal::-webkit-scrollbar {
+  width: 8px;
+}
+
+.suggestions-dropdown-portal::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 4px;
+}
+
+.suggestions-dropdown-portal::-webkit-scrollbar-thumb {
+  background: var(--accent-color);
+  border-radius: 4px;
+  transition: background 0.2s;
+}
+
+.suggestions-dropdown-portal::-webkit-scrollbar-thumb:hover {
+  background: var(--accent-color-hover);
 }
 
 .suggestions-header {
@@ -73,6 +142,29 @@
   text-transform: uppercase;
   letter-spacing: 1px;
   border-bottom: 1px solid #3e3e3e;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.clear-history-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px 8px;
+  color: #b3b3b3;
+  opacity: 0.7;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  border-radius: 4px;
+}
+
+.clear-history-btn:hover {
+  opacity: 1;
+  color: #ff4444;
+  background: rgba(255, 68, 68, 0.1);
 }
 
 .suggestion-item {
@@ -80,6 +172,22 @@
   cursor: pointer;
   transition: background-color 0.2s;
   border-bottom: 1px solid #3e3e3e;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.history-item {
+  opacity: 0.9;
+}
+
+.history-item:hover {
+  opacity: 1;
+}
+
+.history-icon {
+  color: #b3b3b3;
+  flex-shrink: 0;
 }
 
 .suggestion-item:last-child {
@@ -114,6 +222,8 @@
   gap: 8px;
   margin-top: 12px;
   flex-wrap: wrap;
+  position: relative;
+  z-index: 10;
 }
 
 .filter-label {
@@ -136,13 +246,131 @@
 
 .filter-chip:hover {
   background-color: #282828;
-  border-color: #1db954;
+  border-color: var(--accent-color);
   color: #ffffff;
 }
 
 .filter-chip.active {
-  background-color: #1db954;
-  border-color: #1db954;
+  background-color: var(--accent-color);
+  border-color: var(--accent-color);
+  color: var(--accent-contrast);
+}
+
+/* Advanced Filters Toggle */
+.advanced-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 10px;
+}
+
+/* Advanced Filters Panel */
+.advanced-filters {
+  margin-top: 16px;
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  animation: slideDown 0.25s ease;
+  position: relative;
+  z-index: 1;
+  pointer-events: auto;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.filter-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.filter-section-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.duration-range-inputs {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.range-input-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.range-input-group label {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.7);
+  font-weight: 500;
+}
+
+.range-input {
+  width: 80px;
+  padding: 6px 10px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  color: #ffffff;
+  font-size: 13px;
+  outline: none;
+  transition: all 0.2s;
+}
+
+.range-input:focus {
+  border-color: var(--accent-color);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.range-separator {
+  color: rgba(255, 255, 255, 0.5);
+  font-weight: 600;
+}
+
+.duration-presets {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.preset-btn {
+  padding: 6px 12px;
+  font-size: 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  color: rgba(255, 255, 255, 0.8);
+  cursor: pointer;
+  transition: all 0.2s;
+  font-weight: 500;
+}
+
+.preset-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.2);
   color: #ffffff;
 }
 
+.preset-btn.reset {
+  color: rgba(255, 100, 100, 0.9);
+  border-color: rgba(255, 100, 100, 0.2);
+}
+
+.preset-btn.reset:hover {
+  background: rgba(255, 100, 100, 0.1);
+  border-color: rgba(255, 100, 100, 0.4);
+  color: #ff6464;
+}

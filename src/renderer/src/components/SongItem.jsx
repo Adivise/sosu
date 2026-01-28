@@ -1,9 +1,9 @@
 import React, { useState, useRef } from 'react';
-import { Play, Pause, Music, Plus, X } from 'lucide-react';
+import { Play, Pause, Music, Plus, X, Heart } from 'lucide-react';
 import PlaylistMenu from './PlaylistMenu';
 import './SongItem.css';
 
-const SongItem = ({ song, index, isPlaying, isSelected, onSelect, duration, isPlaylist, onRemoveFromPlaylist, allSongs, onAddToPlaylist, playlists }) => {
+const SongItem = ({ song, index, isPlaying, isSelected, onSelect, duration, isPlaylist, onRemoveFromPlaylist, allSongs, onAddToPlaylist, playlists, isFavorite = false, onToggleFavorite }) => {
   const [isHovered, setIsHovered] = useState(false);
   const [showPlaylistMenu, setShowPlaylistMenu] = useState(false);
   const addButtonRef = useRef(null);
@@ -85,8 +85,14 @@ const SongItem = ({ song, index, isPlaying, isSelected, onSelect, duration, isPl
       onClick={handleClick}
     >
       <div className="song-item-number">
-        {isPlaying ? (
-          <Pause size={16} />
+        {isSelected ? (
+          isPlaying ? (
+            <Pause size={16} />
+          ) : isHovered ? (
+            <Play size={16} fill="currentColor" />
+          ) : (
+            <span>{index.toString().padStart(2, '0')}</span>
+          )
         ) : isHovered ? (
           <Play size={16} fill="currentColor" />
         ) : (
@@ -100,9 +106,16 @@ const SongItem = ({ song, index, isPlaying, isSelected, onSelect, duration, isPl
               <img 
                 src={`osu://${encodeURIComponent(song.imageFile)}`} 
                 alt={song.title}
+                loading="lazy"
                 onError={(e) => {
                   e.target.style.display = 'none';
-                  e.target.nextSibling.style.display = 'flex';
+                  const placeholder = e.target.nextElementSibling;
+                  if (placeholder) placeholder.style.display = 'flex';
+                }}
+                onLoad={(e) => {
+                  e.target.style.display = 'block';
+                  const placeholder = e.target.nextElementSibling;
+                  if (placeholder) placeholder.style.display = 'none';
                 }}
               />
               <div className="song-item-image-placeholder" style={{ display: 'none' }}>
@@ -134,6 +147,24 @@ const SongItem = ({ song, index, isPlaying, isSelected, onSelect, duration, isPl
       >
         {song.artist}
       </div>
+      
+      
+      {/* Favorite Heart */}
+      {onToggleFavorite && (
+        <div className="song-item-favorite">
+          <button
+            className={`favorite-btn ${isFavorite ? 'active' : ''}`}
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggleFavorite(song.id);
+            }}
+            title={isFavorite ? 'Remove from favorites' : 'Add to favorites'}
+          >
+            <Heart size={18} fill={isFavorite ? 'currentColor' : 'none'} />
+          </button>
+        </div>
+      )}
+      
       <div className="song-item-duration" style={{ position: 'relative' }}>
         {isPlaylist && onRemoveFromPlaylist ? (
           <>

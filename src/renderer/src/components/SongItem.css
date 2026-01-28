@@ -1,13 +1,13 @@
 .song-item {
   display: grid;
-  grid-template-columns: 40px 2fr 1.5fr 80px;
-  gap: 16px;
-  padding: 8px 16px;
+  grid-template-columns: 50px 2.5fr 1.8fr 50px 100px;
+  gap: 12px;
+  padding: 10px 16px;
   border-radius: 4px;
   cursor: pointer;
   transition: background-color 0.22s cubic-bezier(.68,-0.55,.27,1.55), color 0.25s, box-shadow 0.22s;
   align-items: center;
-  overflow: hidden;
+  overflow: visible;
   animation: rowAppear 0.28s cubic-bezier(.68,-0.55,.27,1.55);
 }
 
@@ -23,7 +23,7 @@
 }
 
 .song-item:focus-visible {
-  outline: 2px solid #1db954;
+  outline: 2px solid var(--accent-color);
 }
 
 .song-item:hover, .song-item.selected, .song-item.playing {
@@ -36,15 +36,17 @@
 
 .song-item.playing {
   background-color: #1a1a1a;
-  color: #1db954;
+  color: var(--accent-color);
 }
 
 .song-item.selected {
   background-color: #1a1a1a;
+  border-left: 3px solid var(--accent-color);
+  padding-left: 13px;
 }
 
 .song-item.selected .song-item-name {
-  color: #1db954;
+  color: var(--accent-color);
 }
 
 .song-item-number {
@@ -56,7 +58,7 @@
 }
 
 .song-item.playing .song-item-number {
-  color: #1db954;
+  color: var(--accent-color);
 }
 
 .song-item-title {
@@ -114,7 +116,7 @@
 }
 
 .song-item-name:hover {
-  color: #1db954;
+  color: var(--accent-color);
   text-decoration: underline;
 }
 
@@ -170,11 +172,37 @@
 
 .add-to-playlist-button:hover {
   background-color: #1a1a1a;
-  color: #1db954;
+  color: var(--accent-color);
 }
 
 .remove-from-playlist-button:hover {
   background-color: #1a1a1a;
   color: #e81123;
 }
+/* Favorite Heart */
+.song-item-favorite {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
 
+.favorite-btn {
+  background: none;
+  border: none;
+  padding: 4px;
+  cursor: pointer;
+  color: rgba(255, 255, 255, 0.3);
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.favorite-btn:hover {
+  color: #ff4444;
+  transform: scale(1.1);
+}
+
+.favorite-btn.active {
+  color: #ff4444;
+}

@@ -10,29 +10,48 @@ Whether you're practicing, listening to your favorite beatmaps, or organizing yo
 
 Take your osu! music experience to the next level with SOSU.
 
-<p align="center">
-  <img src="https://media.discordapp.net/attachments/1371261802067001415/1452169367599976560/main.png?ex=6948d59d&is=6947841d&hm=05ac77f7b814a36f770ae3cd7fc02165f9c5ac39b27aded3ec107665085c3054&=&format=webp&quality=lossless&width=1155&height=770" alt="Main Screenshot"/>
-  <img src="https://media.discordapp.net/attachments/1371261802067001415/1452169368002760875/setting.png?ex=6948d59d&is=6947841d&hm=e4c7e2cbb9c72062bf9dc5f8d9aa33839eb418100718dedc4490906c9431be8c&=&format=webp&quality=lossless&width=1155&height=770" alt="Setting Screenshot"/>
-  <img src="https://media.discordapp.net/attachments/1371261802067001415/1452169367247650887/equalizer.png?ex=6948d59d&is=6947841d&hm=39b8daddc47338530c1a21bb2640bcb27b1f078491d68678b8ef56fb3f91993e&=&format=webp&quality=lossless&width=1157&height=770" alt="Equalizer Screenshot"/>
-</p>
-
 ### 🎬 Watch demo on youtbue
 [![Watch the video](https://img.youtube.com/vi/d_4Dcfb4kIA/0.jpg)](https://www.youtube.com/watch?v=d_4Dcfb4kIA)
 
 # 🌟 Features
 
+### Core
 - 🎵 **Music Player** - Play songs from your osu! Songs folder
 - 🎨 **Modern UI** - Beautiful, dark-themed interface inspired by Spotify
 - 📁 **Playlist Support** - Create and manage custom playlists
-- 🔍 **Search & Filter** - Quickly find songs by title, artist, or folder name
-- 🎮 **Discord Rich Presence** - Show what you're listening to on Discord
-- 🔗 **Beatmap Links** - Click on song titles/artists to open beatmaps on osu.ppy.sh
-- ⚡ **Fast & Lightweight** - Optimized performance with metadata caching
-- 🎛️ **Playback Controls** - Shuffle, repeat, autoplay, and volume control
+- 📑 **Views: Library, Favorites, Recently Played, Most Played** - Multiple ways to browse your osu! music
+- 💾 **Auto Save** - Playlists, filters, equalizer, theme, playback state and more are saved automatically
+
+### Search, Filters & Library
+- 🔍 **Search Bar with Suggestions** - Real-time search with history and smart suggestions by title / artist / folder
+- 🎚️ **Duration Filter** - Hide songs shorter than a minimum duration (per second)
+- 🎤 **Artist Filter** - Hide songs from specific artists using a searchable list
+- 🏷️ **Title Filters** - Hide songs whose titles match custom keywords (contains / starts with / ends with)
+- 🧹 **Duplicate Title Filter** - Optionally show only one song per title to reduce clutter in Library
+- 📈 **Filter Statistics** - See total / visible / hidden songs, plus a breakdown (duration / artist / title / duplicates)
+- 📄 **Per-View Pagination** - Library, Favorites, Most Played, playlists etc. each remember their own current page
+
+### Playback & Audio
+- 🎛️ **Full Playback Controls** - Shuffle, repeat, autoplay, next/previous, seek and volume control
+- 🎚️ **10-Band Equalizer** - Custom EQ with multiple presets and fine 0.1 dB adjustments
+- 🎵 **Per-Song Favorites** - Mark favorites, with dedicated Favorites view
+- 📈 **Play Count Tracking** - Tracks how often you play each song, powering the Most Played view
+- 🕒 **Playback Speed Control** - Change speed (0.5x–2.0x) with presets and a detailed slider
+- 📊 **Progress Bar** - Visual timeline with drag-to-seek support
+
+### Integrations & Streaming
+- 🎮 **Discord Rich Presence** - Show current song on your Discord profile
+- 🌐 **Widget Server (OBS/Stream)** - Built-in HTTP + WebSocket server for overlay widgets in OBS / Streamlabs
+- 📡 **Widget API Docs & Themes** - Auto-generated docs and theme browser at `http://localhost:3737/`
+- 🔗 **Beatmap Links** - Click song titles/artists to open beatmaps on osu.ppy.sh
+
+### Appearance & Data
+- 🖼️ **Blurred Album Art Background** - Optional blurred background based on current song cover
+- 🎨 **Custom Accent Color** - Select any accent color or use presets (Spotify green, violet, pink, etc.)
+- 🧾 **Backup & Restore** - Export/import all playlists, favorites, ratings, play counts and settings as JSON
+- ♻️ **Rescan & Reset** - Rescan osu! Songs folder or fully reset the app to first-run state from Settings
+- ⚡ **Fast & Lightweight** - Optimized scanning and metadata caching for large osu! libraries
 - 📱 **Cross-Platform** - Available for Windows, macOS, and Linux
-- 🔄 **Session Persistence** - Automatically saves your playlists and preferences
-- 🎯 **Smart Metadata** - Automatically extracts song information from audio files
-- 📊 **Progress Tracking** - Visual progress bar with seek functionality
 
 <details>
 <summary>🎮 Playback Features [CLICK ME]</summary>
@@ -55,8 +74,9 @@ Take your osu! music experience to the next level with SOSU.
 - 📁 **Playlists** - Create unlimited custom playlists
 - ➕ **Add to Playlist** - Quickly add songs to any playlist
 - 🗑️ **Remove from Playlist** - Remove songs from playlists
-- 🔍 **Search** - Real-time search across all songs
-- 🎵 **Song List** - Browse all your osu! songs in one place
+- 🔍 **Search** - Real-time search across all songs with smart suggestions
+- 🎵 **Song List** - Browse all your osu! songs in Library, Favorites, Recently Played, and Most Played views
+- 🧭 **Per-View Pagination** - Each view remembers its own page (e.g. Library page 3, Favorites page 1)
 
 ### Integration Features
 - 🎮 **Discord Rich Presence** - Show current song on Discord
@@ -200,6 +220,13 @@ sosu/
 - **Shuffle**: Enable shuffle mode to play songs randomly
 - **Repeat**: Enable repeat mode to loop the current song
 - **Autoplay**: Enable autoplay to automatically play the next song
+- **Views**: Switch between Library, Favorites, Recently Played, and Most Played from the sidebar
+- **Filters Tab (Settings)**:
+  - Set a minimum song duration (hide songs shorter than X seconds)
+  - Hide specific artists from your library
+  - Hide songs by title terms (contains / starts with / ends with)
+  - Enable/disable duplicate title filtering (only one song per title)
+  - See filter statistics (total / visible / hidden / duplicates)
 - **Discord Rich Presence**: Enable in Settings to show your current song on Discord
 - **Beatmap Links**: Click on any song title or artist name to open the beatmap on osu.ppy.sh
 

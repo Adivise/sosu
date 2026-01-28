@@ -10,12 +10,13 @@ import {
   Repeat,
   RotateCw,
   Plus,
-  LucideFileVolume2
+  LucideFileVolume2,
+  Gauge
 } from 'lucide-react';
 import PlaylistMenu from './PlaylistMenu';
-import EQModal from './EQModal';
 import './PlayerBar.css';
 import useAudioEqualizer from './useAudioEqualizer';
+import { DEFAULT_EQ_BANDS } from './eqConstants';
 
 const PlayerBar = ({
   currentSong,
@@ -38,30 +39,25 @@ const PlayerBar = ({
   playlists,
   onAddToPlaylist,
   eqBands: eqBandsProp,
-  onEqBandsChange
+  onEqBandsChange,
+  showEQModal,
+  onOpenEQModal
 }) => {
   const audioRef = useRef(null);
   const [isMuted, setIsMuted] = useState(false);
   const [showPlaylistMenu, setShowPlaylistMenu] = useState(false);
   const playlistButtonRef = useRef(null);
   const playerMenuContainerRef = useRef(null);
+  
+  // Playback speed control (0.5x - 2.0x)
+  const [playbackRate, setPlaybackRate] = useState(() => {
+    const saved = localStorage.getItem('playbackRate');
+    return saved ? parseFloat(saved) : 1.0;
+  });
+  const [showSpeedControl, setShowSpeedControl] = useState(false);
 
   // Many-band EQ with more presets
-  const DEFAULT_BANDS = [
-    { freq: 32, gain: 0, label: 'Sub' },
-    { freq: 64, gain: 0, label: 'Bass' },
-    { freq: 125, gain: 0, label: 'Low' },
-    { freq: 250, gain: 0, label: 'Low-Mid' },
-    { freq: 500, gain: 0, label: 'Mid' },
-    { freq: 1000, gain: 0, label: 'High-Mid' },
-    { freq: 2000, gain: 0, label: 'Presence' },
-    { freq: 4000, gain: 0, label: 'Brilliance' },
-    { freq: 8000, gain: 0, label: 'Air' },
-    { freq: 16000, gain: 0, label: 'Sparkle' },
-  ];
-  // Use eqBands from props, or initialize with default
-  const eqBands = eqBandsProp || DEFAULT_BANDS;
-  const [showEQ, setShowEQ] = useState(false);
+  // Use eqBands from props directly (no fallback needed)
   
   // Update parent when EQ bands change
   const handleEqBandsChange = (newBands) => {
@@ -72,15 +68,86 @@ const PlayerBar = ({
 
   // EQ Presets
   const EQ_PRESETS = [
-    // { name: 'Flat', bands: DEFAULT_BANDS.map(b => ({ ...b, gain: 0 })) },
-    // { name: 'Bass Boost', bands: DEFAULT_BANDS.map((b, i) => ({ ...b, gain: i < 2 ? 8 : 0 })) },
-    // { name: 'Treble Boost', bands: DEFAULT_BANDS.map((b, i) => ({ ...b, gain: i >= 7 ? 8 : 0 })) },
-    // { name: 'V Shape', bands: DEFAULT_BANDS.map((b, i) => ({ ...b, gain: [0,1,8,2,0,0,-2,-2,4,6][i] })) },
-    // { name: 'Vocal', bands: DEFAULT_BANDS.map((b, i) => ({ ...b, gain: i === 5 ? 6 : 0 })) },
+    { 
+      name: 'Default', 
+      bands: DEFAULT_EQ_BANDS.map(b => ({ ...b, gain: 0 })) 
+    },
+    { 
+      name: 'Bass Boost', 
+      bands: DEFAULT_EQ_BANDS.map((b, i) => ({ ...b, gain: [6, 5, 3, 1, 0, 0, 0, 0, 0, 0][i] })) 
+    },
+    { 
+      name: 'Treble Boost', 
+      bands: DEFAULT_EQ_BANDS.map((b, i) => ({ ...b, gain: [0, 0, 0, 0, 0, 2, 4, 5, 6, 7][i] })) 
+    },
+    { 
+      name: 'V-Shape', 
+      bands: DEFAULT_EQ_BANDS.map((b, i) => ({ ...b, gain: [6, 4, 2, 0, -2, -3, -2, 2, 5, 6][i] })) 
+    },
+    { 
+      name: 'Vocal Boost', 
+      bands: DEFAULT_EQ_BANDS.map((b, i) => ({ ...b, gain: [0, 0, 1, 3, 5, 4, 2, 0, 0, 0][i] })) 
+    },
+    { 
+      name: 'Rock', 
+      bands: DEFAULT_EQ_BANDS.map((b, i) => ({ ...b, gain: [4, 3, 2, 1, -1, -1, 1, 3, 4, 5][i] })) 
+    },
+    { 
+      name: 'Pop', 
+      bands: DEFAULT_EQ_BANDS.map((b, i) => ({ ...b, gain: [2, 3, 2, 0, -1, -1, 2, 3, 4, 4][i] })) 
+    },
+    { 
+      name: 'Classical', 
+      bands: DEFAULT_EQ_BANDS.map((b, i) => ({ ...b, gain: [3, 2, 1, 0, 0, 0, 1, 2, 3, 4][i] })) 
+    },
+    { 
+      name: 'Electronic', 
+      bands: DEFAULT_EQ_BANDS.map((b, i) => ({ ...b, gain: [5, 4, 2, 0, -2, -2, 0, 3, 5, 6][i] })) 
+    },
+    { 
+      name: 'Hip-Hop', 
+      bands: DEFAULT_EQ_BANDS.map((b, i) => ({ ...b, gain: [6, 5, 3, 1, -1, -1, 1, 2, 3, 4][i] })) 
+    },
+    { 
+      name: 'Jazz', 
+      bands: DEFAULT_EQ_BANDS.map((b, i) => ({ ...b, gain: [2, 2, 1, 0, 0, 0, 2, 3, 3, 3][i] })) 
+    },
+    { 
+      name: 'Acoustic', 
+      bands: DEFAULT_EQ_BANDS.map((b, i) => ({ ...b, gain: [3, 2, 1, 0, 1, 2, 3, 3, 2, 2][i] })) 
+    },
+    { 
+      name: 'Lounge', 
+      bands: DEFAULT_EQ_BANDS.map((b, i) => ({ ...b, gain: [-2, -1, 0, 1, 2, 2, 1, 0, -1, -2][i] })) 
+    },
+    { 
+      name: 'Metal', 
+      bands: DEFAULT_EQ_BANDS.map((b, i) => ({ ...b, gain: [5, 4, 2, 0, -3, -3, 0, 3, 5, 6][i] })) 
+    },
+    { 
+      name: 'R&B', 
+      bands: DEFAULT_EQ_BANDS.map((b, i) => ({ ...b, gain: [4, 4, 2, 1, 0, 0, 1, 2, 3, 3][i] })) 
+    },
   ];
 
   // Hookup WebAudio EQ
-  useAudioEqualizer({ audioRef, eqBands });
+  const [setBandGain] = useAudioEqualizer({ audioRef, eqBands: eqBandsProp });
+
+  // Force re-apply EQ when song changes to ensure filters are applied
+  useEffect(() => {
+    if (currentSong && eqBandsProp && audioRef.current) {
+      // Small delay to ensure audio is ready
+      const timer = setTimeout(() => {
+        // Trigger filter update by setting each band gain
+        eqBandsProp.forEach((band, idx) => {
+          if (setBandGain) {
+            setBandGain(idx, band.gain);
+          }
+        });
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [currentSong?.id, eqBandsProp, setBandGain]);
 
   useEffect(() => {
     const audio = audioRef.current;
@@ -102,12 +169,16 @@ const PlayerBar = ({
       }
     };
 
-    audio.addEventListener('timeupdate', updateTime);
+    const handleTimeUpdate = () => {
+      updateTime();
+    };
+
+    audio.addEventListener('timeupdate', handleTimeUpdate);
     audio.addEventListener('loadedmetadata', updateDuration);
     audio.addEventListener('ended', handleEnded);
 
     return () => {
-      audio.removeEventListener('timeupdate', updateTime);
+      audio.removeEventListener('timeupdate', handleTimeUpdate);
       audio.removeEventListener('loadedmetadata', updateDuration);
       audio.removeEventListener('ended', handleEnded);
     };
@@ -115,6 +186,19 @@ const PlayerBar = ({
 
   // Track the last song to detect song changes vs play/pause
   const lastSongRef = useRef(null);
+
+  // When currentSong is cleared (e.g. reset app), stop audio completely
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    if (!currentSong) {
+      audio.pause();
+      audio.currentTime = 0;
+      audio.src = '';
+      lastSongRef.current = null;
+    }
+  }, [currentSong]);
 
   useEffect(() => {
     const audio = audioRef.current;
@@ -130,7 +214,8 @@ const PlayerBar = ({
         audio.pause();
         
         audio.src = `osu://${encodeURIComponent(currentSong.audioFile)}`;
-        audio.load();
+        // Don't call audio.load() as it breaks MediaElementSource connection
+        // Browser will load automatically when src changes
         
         // Wait for audio to be ready before playing (fixes double-click bug)
         const handleCanPlay = () => {
@@ -206,6 +291,15 @@ const PlayerBar = ({
     }
   });
 
+  // Apply playback rate to audio element
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (audio) {
+      audio.playbackRate = playbackRate;
+      localStorage.setItem('playbackRate', playbackRate.toString());
+    }
+  }, [playbackRate]);
+
   const handleSeek = (e) => {
     const audio = audioRef.current;
     if (!audio) return;
@@ -218,12 +312,58 @@ const PlayerBar = ({
     onTimeUpdate(newTime);
   };
 
+  const handleProgressMouseDown = (e) => {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    const progressBar = e.currentTarget;
+    
+    const handleMouseMove = (moveEvent) => {
+      const rect = progressBar.getBoundingClientRect();
+      const x = moveEvent.clientX - rect.left;
+      const percentage = Math.max(0, Math.min(1, x / rect.width));
+      const newTime = percentage * duration;
+      audio.currentTime = newTime;
+      onTimeUpdate(newTime);
+    };
+
+    const handleMouseUp = () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+
+    handleMouseMove(e);
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+  };
+
   const handleVolumeSeek = (e) => {
     const rect = e.currentTarget.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const percentage = Math.max(0, Math.min(1, x / rect.width));
     onVolumeChange(percentage);
     setIsMuted(false);
+  };
+
+  const handleVolumeMouseDown = (e) => {
+    const volumeBar = e.currentTarget;
+    
+    const handleMouseMove = (moveEvent) => {
+      const rect = volumeBar.getBoundingClientRect();
+      const x = moveEvent.clientX - rect.left;
+      const percentage = Math.max(0, Math.min(1, x / rect.width));
+      onVolumeChange(percentage);
+      setIsMuted(false);
+    };
+
+    const handleMouseUp = () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+
+    handleMouseMove(e);
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
   };
 
   const toggleMute = () => {
@@ -251,32 +391,35 @@ const PlayerBar = ({
     <div className="player-bar">
       <audio ref={audioRef} volume={volume} />
 
-      {/* EQ Modal */}
-      <EQModal
-        isOpen={showEQ}
-        onClose={() => setShowEQ(false)}
-        bands={eqBands}
-        onBandChange={(idx, gain) => {
-          const next = eqBands.slice();
-          next[idx] = { ...next[idx], gain };
-          handleEqBandsChange(next);
-        }}
-        presets={EQ_PRESETS}
-        onSetPreset={(preset) => handleEqBandsChange(preset.bands)}
-      />
-
       <div className="player-bar-content">
         <div className="player-bar-left">
           {currentSong.imageFile ? (
-            <img 
-              src={`osu://${encodeURIComponent(currentSong.imageFile)}`} 
-              alt={currentSong.title}
-              className="player-bar-image"
-              onError={(e) => {
-                e.target.style.display = 'none';
-              }}
-            />
-          ) : null}
+            <>
+              <img 
+                src={`osu://${encodeURIComponent(currentSong.imageFile)}`} 
+                alt={currentSong.title}
+                className="player-bar-image"
+                loading="eager"
+                onError={(e) => {
+                  e.target.style.display = 'none';
+                  const placeholder = e.target.nextElementSibling;
+                  if (placeholder) placeholder.style.display = 'flex';
+                }}
+                onLoad={(e) => {
+                  e.target.style.display = 'block';
+                  const placeholder = e.target.nextElementSibling;
+                  if (placeholder) placeholder.style.display = 'none';
+                }}
+              />
+              <div className="player-bar-image" style={{ display: 'none', alignItems: 'center', justifyContent: 'center', background: '#282828' }}>
+                <LucideFileVolume2 size={32} style={{ opacity: 0.5 }} />
+              </div>
+            </>
+          ) : (
+            <div className="player-bar-image" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#282828' }}>
+              <LucideFileVolume2 size={32} style={{ opacity: 0.5 }} />
+            </div>
+          )}
           <div className="player-bar-song-info">
             <div 
               className="player-bar-song-title"
@@ -440,7 +583,7 @@ const PlayerBar = ({
           </div>
           <div className="player-progress">
             <span className="player-time">{formatTime(currentTime)}</span>
-            <div className="progress-bar" onClick={handleSeek}>
+            <div className="progress-bar" onMouseDown={handleProgressMouseDown}>
               <div 
                 className="progress-bar-fill" 
                 style={{ width: `${duration ? (currentTime / duration) * 100 : 0}%` }}
@@ -461,7 +604,7 @@ const PlayerBar = ({
             >
               {isMuted ? <VolumeX size={18} /> : <Volume2 size={18} />}
             </button>
-            <div className="volume-bar" onClick={handleVolumeSeek}>
+            <div className="volume-bar" onMouseDown={handleVolumeMouseDown}>
               <div 
                 className="volume-bar-fill" 
                 style={{ width: `${isMuted ? 0 : volume * 100}%` }}
@@ -472,11 +615,137 @@ const PlayerBar = ({
             <button
               className="control-button"
               style={{ padding: '2px 6px', fontSize: 12, height: 28 }}
-              onClick={() => setShowEQ(true)}
+              onClick={() => onOpenEQModal()}
               title="Equalizer Settings"
             >
               <LucideFileVolume2 size={20} fill="EQ" />
             </button>
+            
+            {/* Speed Control */}
+            <div style={{ position: 'relative' }}>
+              <button
+                className="control-button"
+                style={{ padding: '4px 8px', fontSize: 11, height: 28, minWidth: 50 }}
+                onClick={() => setShowSpeedControl(!showSpeedControl)}
+                title="Playback Speed"
+              >
+                <Gauge size={16} style={{ marginRight: 4 }} />
+                {playbackRate.toFixed(2)}x
+              </button>
+              
+              {showSpeedControl && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    right: 0,
+                    bottom: '100%',
+                    marginBottom: 8,
+                    background: 'rgba(30, 30, 35, 0.98)',
+                    border: '1px solid rgba(255, 255, 255, 0.1)',
+                    borderRadius: 12,
+                    padding: '12px 16px',
+                    minWidth: 200,
+                    boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4)',
+                    backdropFilter: 'blur(10px)',
+                    zIndex: 1000,
+                    animation: 'fadeInSlide 0.22s cubic-bezier(.68,-0.55,.27,1.55)'
+                  }}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div style={{ marginBottom: 8, fontSize: 12, fontWeight: 600, color: 'rgba(255, 255, 255, 0.9)' }}>
+                    Playback Speed
+                  </div>
+                  
+                  {/* Quick preset buttons */}
+                  <div style={{ display: 'flex', gap: 6, marginBottom: 12, flexWrap: 'wrap' }}>
+                    {[0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0].map(speed => (
+                      <button
+                        key={speed}
+                        onClick={() => setPlaybackRate(speed)}
+                        style={{
+                          padding: '4px 10px',
+                          fontSize: 11,
+                          border: playbackRate === speed ? `1px solid var(--accent-color)` : '1px solid rgba(255, 255, 255, 0.1)',
+                          borderRadius: 6,
+                          background: playbackRate === speed ? 'rgba(var(--accent-rgb), 0.15)' : 'rgba(255, 255, 255, 0.05)',
+                          color: playbackRate === speed ? 'var(--accent-color)' : 'rgba(255, 255, 255, 0.7)',
+                          cursor: 'pointer',
+                          transition: 'all 0.2s',
+                          fontWeight: playbackRate === speed ? 600 : 400
+                        }}
+                        onMouseEnter={(e) => {
+                          if (playbackRate !== speed) {
+                            e.target.style.background = 'rgba(255, 255, 255, 0.08)';
+                            e.target.style.borderColor = 'rgba(255, 255, 255, 0.2)';
+                          }
+                        }}
+                        onMouseLeave={(e) => {
+                          if (playbackRate !== speed) {
+                            e.target.style.background = 'rgba(255, 255, 255, 0.05)';
+                            e.target.style.borderColor = 'rgba(255, 255, 255, 0.1)';
+                          }
+                        }}
+                      >
+                        {speed}x
+                      </button>
+                    ))}
+                  </div>
+                  
+                  {/* Slider */}
+                  <div style={{ marginTop: 12 }}>
+                    <input
+                      type="range"
+                      min="0.5"
+                      max="2.0"
+                      step="0.05"
+                      value={playbackRate}
+                      onChange={(e) => setPlaybackRate(parseFloat(e.target.value))}
+                      className="speed-range"
+                      style={{
+                        width: '100%',
+                        height: 4,
+                        borderRadius: 2,
+                        outline: 'none',
+                        appearance: 'none',
+                        background: `linear-gradient(to right, var(--accent-color) 0%, var(--accent-color) ${((playbackRate - 0.5) / 1.5) * 100}%, rgba(255, 255, 255, 0.1) ${((playbackRate - 0.5) / 1.5) * 100}%, rgba(255, 255, 255, 0.1) 100%)`,
+                        cursor: 'pointer'
+                      }}
+                    />
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 6, fontSize: 10, color: 'rgba(255, 255, 255, 0.5)' }}>
+                      <span>0.5x</span>
+                      <span>2.0x</span>
+                    </div>
+                  </div>
+                  
+                  {/* Reset button */}
+                  <button
+                    onClick={() => setPlaybackRate(1.0)}
+                    style={{
+                      width: '100%',
+                      marginTop: 12,
+                      padding: '6px',
+                      fontSize: 11,
+                      border: '1px solid rgba(255, 255, 255, 0.1)',
+                      borderRadius: 6,
+                      background: 'rgba(255, 255, 255, 0.05)',
+                      color: 'rgba(255, 255, 255, 0.7)',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.target.style.background = 'rgba(255, 255, 255, 0.08)';
+                      e.target.style.color = 'rgba(255, 255, 255, 0.9)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.target.style.background = 'rgba(255, 255, 255, 0.05)';
+                      e.target.style.color = 'rgba(255, 255, 255, 0.7)';
+                    }}
+                  >
+                    Reset to Normal (1.0x)
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>

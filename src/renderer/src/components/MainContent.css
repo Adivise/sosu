@@ -2,11 +2,20 @@
   flex: 1;
   display: flex;
   flex-direction: column;
-  background-color: #181818;
+  background-color: rgba(12, 12, 12, 0.6);
   min-width: 0;
   height: 100%;
   animation: slideFadeIn 0.34s cubic-bezier(.68,-0.55,.27,1.55);
-  overflow: hidden;
+  overflow: visible;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+/* Ensure content is above blur */
+.main-content-header,
+.main-content-body {
+  position: relative;
+  z-index: 10;
 }
 
 @keyframes slideFadeIn {
@@ -29,7 +38,7 @@
   width: 28px;
   height: 28px;
   border: 4px solid #282828;
-  border-top: 4px solid #52e078;
+  border-top: 4px solid var(--accent-color);
   border-radius: 50%;
   animation: spin 1s linear infinite;
   display: inline-block;
@@ -43,13 +52,16 @@
 
 .main-content-header {
   margin-bottom: 24px;
+  position: relative;
+  z-index: 100;
 }
 
 .main-content-body {
   flex: 1;
   overflow-y: auto;
+  overflow-x: hidden;
   scrollbar-width: thin;
-  scrollbar-color: #232323 #181818;
+  scrollbar-color: var(--accent-color) #181818;
 }
 
 .main-content-body::-webkit-scrollbar {
@@ -57,11 +69,12 @@
   background: #181818;
 }
 .main-content-body::-webkit-scrollbar-thumb {
-  background: #232323;
+  background: var(--accent-color);
   border-radius: 8px;
+  transition: background 0.2s;
 }
 .main-content-body::-webkit-scrollbar-thumb:hover {
-  background: #1db954;
+  background: var(--accent-color-hover);
 }
 
 .empty-state {

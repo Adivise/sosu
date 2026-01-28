@@ -6,7 +6,7 @@ import path from 'path';
 import { shell } from 'electron';
 import { widgetThemesPath } from '../config/paths.js';
 
-let APP_VERSION = '1.0.0';
+let APP_VERSION;
 
 let server = null;
 let wss = null;
@@ -39,7 +39,7 @@ async function ensureDefaultTheme() {
 <html><head><meta charset="UTF-8"><title>sosu widget</title></head>
 <body style="margin:0;padding:24px;font-family:sans-serif;background:#111;color:#fff;text-align:center;padding-top:60px;">
 <h2 style="margin:0 0 12px;">⚠️ Default theme not available</h2>
-<p style="opacity:0.8;">Please check your internet connection and visit <a href="/themes" style="color:#667eea;">/themes</a> to download themes.</p>
+<p style="opacity:0.8;">Please check your internet connection and visit <a href="/widgets" style="color:#667eea;">/widgets</a> to download themes.</p>
 </body></html>`;
         fs.writeFileSync(indexPath, fallback, 'utf-8');
         const meta = {
@@ -62,7 +62,6 @@ function loadTheme(themeName) {
   const theme = themeName || 'default';
   
   try {
-    ensureDefaultTheme();
     // Ensure widget themes directory exists
     if (!fs.existsSync(widgetThemesPath)) {
       fs.mkdirSync(widgetThemesPath, { recursive: true });
@@ -80,7 +79,7 @@ function loadTheme(themeName) {
     <h1>🎵 Theme Not Found</h1>
     <p>Theme "${theme}" does not exist.</p>
     <p style="opacity:0.7;font-size:14px;">Expected location: ${themePath}</p>
-    <p style="margin-top:30px;"><a href="/themes" style="color:#667eea;">View available themes</a></p>
+    <p style="margin-top:30px;"><a href="/widgets" style="color:#667eea;">View available themes</a></p>
     </body></html>`;
     }
   } catch (err) {
@@ -97,7 +96,6 @@ function loadTheme(themeName) {
 // Function to list available themes
 function listThemes() {
   try {
-    ensureDefaultTheme();
     if (!fs.existsSync(widgetThemesPath)) {
       return ['default'];
     }
@@ -298,13 +296,16 @@ async function downloadThemeFromGitHub(themeName) {
 }
 
 export function startServer(port = 3737) {
-  return new Promise((resolve, reject) => {
+  return new Promise(async (resolve, reject) => {
     if (server) {
       reject(new Error('Server is already running'));
       return;
     }
 
     currentPort = port;
+    
+    // Ensure default theme exists before starting server
+    await ensureDefaultTheme();
 
     server = http.createServer(async (req, res) => {
       // Parse URL to handle query parameters
@@ -314,8 +315,8 @@ export function startServer(port = 3737) {
       if (url.pathname === '/widget') {
         const themeParam = url.searchParams.get('theme');
         if (!themeParam) {
-          res.writeHead(302, { Location: '/themes' });
-          res.end('Redirecting to /themes');
+          res.writeHead(302, { Location: '/widgets' });
+          res.end('Redirecting to /widgets');
           return;
         }
         const themeHTML = loadTheme(themeParam);
@@ -360,12 +361,12 @@ export function startServer(port = 3737) {
         });
       }
       // Themes preview and actions
-      else if (url.pathname === '/themes') {
+      else if (url.pathname === '/widgets') {
         const action = url.searchParams.get('action');
         const name = url.searchParams.get('name');
 
         // API: Get available themes from GitHub
-        if (url.pathname === '/themes' && url.searchParams.get('api') === 'github') {
+        if (url.pathname === '/widgets' && url.searchParams.get('api') === 'github') {
           try {
             const githubThemes = await fetchGitHubThemes();
             res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
@@ -429,6 +430,9 @@ export function startServer(port = 3737) {
         }
 
         // HTML preview page
+        // Ensure default theme exists before listing
+        await ensureDefaultTheme();
+        
         const themes = listThemes();
         const base = `http://localhost:${currentPort}`;
         
@@ -462,7 +466,7 @@ export function startServer(port = 3737) {
 
         const html = `<!DOCTYPE html>
 <html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>sosu - widgets</title>
+<title>sosu - Widget Themes</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body { 
@@ -804,7 +808,7 @@ export function startServer(port = 3737) {
     }
     
     async function openFolder(name){ 
-      const r = await fetch('/themes?action=open&name=' + encodeURIComponent(name)); 
+      const r = await fetch('/widgets?action=open&name=' + encodeURIComponent(name)); 
       const j = await r.json(); 
       showToast(j.success ? '✓ Opened folder' : '✗ ' + (j.error||'Failed')); 
     }
@@ -814,7 +818,7 @@ export function startServer(port = 3737) {
       if(btn) btn.textContent = 'Downloading...';
       showToast('⏳ Downloading ' + name + '...');
       
-      const r = await fetch('/themes?action=download&name=' + encodeURIComponent(name)); 
+      const r = await fetch('/widgets?action=download&name=' + encodeURIComponent(name)); 
       const j = await r.json(); 
       
       if(btn) btn.disabled = false;
@@ -832,7 +836,7 @@ export function startServer(port = 3737) {
       if(btn) btn.textContent = 'Updating...';
       showToast('⏳ Updating ' + name + '...');
       
-      const r = await fetch('/themes?action=download&name=' + encodeURIComponent(name)); 
+      const r = await fetch('/widgets?action=download&name=' + encodeURIComponent(name)); 
       const j = await r.json(); 
       
       if(btn) btn.disabled = false;
@@ -847,7 +851,7 @@ export function startServer(port = 3737) {
     
     async function deleteTheme(name){ 
       if(!confirm('Delete theme "' + name + '"?')) return; 
-      const r = await fetch('/themes?action=delete&name=' + encodeURIComponent(name)); 
+      const r = await fetch('/widgets?action=delete&name=' + encodeURIComponent(name)); 
       const j = await r.json(); 
       showToast(j.success ? '✓ Deleted' : '✗ ' + (j.error||'Failed')); 
       if(j.success) setTimeout(()=>location.reload(), 800); 
@@ -855,7 +859,7 @@ export function startServer(port = 3737) {
     
     async function checkThemeUpdates() {
       try {
-        const r = await fetch('/themes?api=github');
+        const r = await fetch('/widgets?api=github');
         const data = await r.json();
         
         if(!data.success || !data.themes) return;
@@ -883,7 +887,7 @@ export function startServer(port = 3737) {
     
     async function checkThemeUpdates() {
       try {
-        const r = await fetch('/themes?api=github');
+        const r = await fetch('/widgets?api=github');
         const data = await r.json();
         
         if(!data.success || !data.themes) return;
@@ -914,7 +918,7 @@ export function startServer(port = 3737) {
       container.innerHTML = '<div class="loading">Loading available themes from GitHub...</div>';
       
       try {
-        const r = await fetch('/themes?api=github');
+        const r = await fetch('/widgets?api=github');
         const data = await r.json();
         
         if(!data.success || !data.themes || data.themes.length === 0) {
@@ -949,7 +953,7 @@ export function startServer(port = 3737) {
               <iframe src="/preview?theme=\${theme.name}" frameborder="0"></iframe>
             </div>
             <div class="meta">
-              <span>Download to use this theme in OBS</span>
+              <span>Download to use this widget in OBS</span>
             </div>
           \`;
           grid.appendChild(card);
@@ -1027,52 +1031,361 @@ export function startServer(port = 3737) {
       } 
       // Documentation
       else if (url.pathname === '/docs') {
-        res.writeHead(200, { 
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*'
-        });
-        res.end(JSON.stringify({
-          name: 'sosu Widget & API Server',
-          version: '1.0.0',
-          description: 'Now Playing widget for OBS and JSON API for current song data',
-          endpoints: {
-            api: [
-              {
-                path: '/json',
-                method: 'GET',
-                description: 'Get current song data as JSON',
-                usage: 'http://localhost:' + currentPort + '/json'
-              },
-              {
-                path: '/status',
-                method: 'GET',
-                description: 'Get server status',
-                usage: 'http://localhost:' + currentPort + '/status'
-              },
-              {
-                path: '/image',
-                method: 'GET',
-                description: 'Get album art image of currently playing song'
-              },
-              {
-                path: '/themes',
-                method: 'GET',
-                description: 'List all available widget themes',
-                usage: 'http://localhost:' + currentPort + '/themes'
-              },
-              {
-                path: '/docs',
-                method: 'GET',
-                description: 'Get API documentation (this page)',
-                usage: 'http://localhost:' + currentPort + '/docs'
-              }
-            ]
-          },
-          websocket: {
-            url: 'ws://localhost:' + currentPort,
-            description: 'Real-time updates (used by widget automatically)'
-          }
-        }, null, 2));
+        const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>sosu Widget API Documentation</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    :root {
+      --bg: #0a0e14;
+      --card: #151a21;
+      --border: rgba(255,255,255,0.08);
+      --text: #e6edf3;
+      --muted: #8b949e;
+      --accent: #58a6ff;
+      --accent-hover: #79c0ff;
+      --success: #3fb950;
+      --purple: #bc8cff;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      padding: 0;
+      margin: 0;
+    }
+    .header {
+      background: linear-gradient(135deg, rgba(88, 166, 255, 0.1), rgba(188, 140, 255, 0.1));
+      border-bottom: 1px solid var(--border);
+      padding: 32px 24px;
+    }
+    .container {
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+    .title {
+      font-size: 32px;
+      font-weight: 800;
+      margin-bottom: 8px;
+      background: linear-gradient(135deg, var(--accent), var(--purple));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .subtitle {
+      color: var(--muted);
+      font-size: 16px;
+    }
+    .content {
+      padding: 32px 24px;
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+    .section {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 24px;
+      margin-bottom: 24px;
+    }
+    .section-title {
+      font-size: 20px;
+      font-weight: 700;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .icon {
+      font-size: 24px;
+    }
+    .endpoint {
+      background: rgba(0,0,0,0.3);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px;
+      margin-bottom: 16px;
+      transition: all 0.2s;
+    }
+    .endpoint:hover {
+      border-color: var(--accent);
+      transform: translateX(4px);
+    }
+    .endpoint-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 8px;
+    }
+    .method {
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-weight: 700;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .method.get { background: rgba(63, 185, 80, 0.2); color: var(--success); border: 1px solid var(--success); }
+    .endpoint-path {
+      font-family: 'Consolas', monospace;
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--accent);
+    }
+    .endpoint-desc {
+      color: var(--muted);
+      font-size: 14px;
+      margin-bottom: 12px;
+    }
+    .code-block {
+      background: rgba(0,0,0,0.4);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px 16px;
+      font-family: 'Consolas', monospace;
+      font-size: 13px;
+      color: var(--text);
+      overflow-x: auto;
+      position: relative;
+    }
+    .copy-btn {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      background: rgba(88, 166, 255, 0.2);
+      border: 1px solid var(--accent);
+      color: var(--accent);
+      padding: 6px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 600;
+      transition: all 0.2s;
+    }
+    .copy-btn:hover {
+      background: var(--accent);
+      color: #000;
+    }
+    .ws-info {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 16px;
+      margin-top: 16px;
+    }
+    .info-card {
+      background: rgba(0,0,0,0.3);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px;
+    }
+    .info-label {
+      font-size: 12px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+    .info-value {
+      font-family: 'Consolas', monospace;
+      color: var(--accent);
+      font-size: 14px;
+      font-weight: 600;
+    }
+    .badge {
+      display: inline-block;
+      padding: 4px 10px;
+      background: rgba(188, 140, 255, 0.2);
+      border: 1px solid var(--purple);
+      color: var(--purple);
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 700;
+      margin-left: 8px;
+    }
+    a {
+      color: var(--accent);
+      text-decoration: none;
+      font-weight: 600;
+    }
+    a:hover {
+      color: var(--accent-hover);
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="container">
+      <h1 class="title">🎵 sosu Widget API</h1>
+      <p class="subtitle">Real-time now-playing data for OBS, StreamLabs, and custom integrations</p>
+    </div>
+  </div>
+
+  <div class="content">
+    <div class="section">
+      <h2 class="section-title"><span class="icon">🚀</span> Quick Start</h2>
+      <p style="color: var(--muted); margin-bottom: 16px;">
+        Add a Browser Source to OBS with one of these URLs. Server must be running (port ${currentPort}).
+      </p>
+      <div class="code-block">
+        <button class="copy-btn" onclick="copy('http://localhost:${currentPort}/widget?theme=default')">Copy</button>
+        http://localhost:${currentPort}/widget?theme=default
+      </div>
+      <p style="color: var(--muted); margin-top: 12px; font-size: 14px;">
+        Browse and download more themes at <a href="/widgets">/widgets</a>
+      </p>
+    </div>
+
+    <div class="section">
+      <h2 class="section-title"><span class="icon">📡</span> HTTP Endpoints</h2>
+      
+      <div class="endpoint">
+        <div class="endpoint-header">
+          <span class="method get">GET</span>
+          <span class="endpoint-path">/json</span>
+        </div>
+        <p class="endpoint-desc">Get current song data as JSON</p>
+        <div class="code-block">
+          <button class="copy-btn" onclick="copy('http://localhost:${currentPort}/json')">Copy</button>
+          http://localhost:${currentPort}/json
+        </div>
+      </div>
+
+      <div class="endpoint">
+        <div class="endpoint-header">
+          <span class="method get">GET</span>
+          <span class="endpoint-path">/widget</span>
+          <span class="badge">?theme=NAME</span>
+        </div>
+        <p class="endpoint-desc">Display widget overlay for OBS (specify theme parameter)</p>
+        <div class="code-block">
+          <button class="copy-btn" onclick="copy('http://localhost:${currentPort}/widget?theme=minimal')">Copy</button>
+          http://localhost:${currentPort}/widget?theme=minimal
+        </div>
+      </div>
+
+      <div class="endpoint">
+        <div class="endpoint-header">
+          <span class="method get">GET</span>
+          <span class="endpoint-path">/image</span>
+        </div>
+        <p class="endpoint-desc">Get current song's album art image</p>
+        <div class="code-block">
+          <button class="copy-btn" onclick="copy('http://localhost:${currentPort}/image')">Copy</button>
+          http://localhost:${currentPort}/image
+        </div>
+      </div>
+
+      <div class="endpoint">
+        <div class="endpoint-header">
+          <span class="method get">GET</span>
+          <span class="endpoint-path">/widgets</span>
+        </div>
+        <p class="endpoint-desc">Browse, preview, and download widget themes</p>
+        <div class="code-block">
+          <button class="copy-btn" onclick="copy('http://localhost:${currentPort}/widgets')">Copy</button>
+          http://localhost:${currentPort}/widgets
+        </div>
+      </div>
+
+      <div class="endpoint">
+        <div class="endpoint-header">
+          <span class="method get">GET</span>
+          <span class="endpoint-path">/status</span>
+        </div>
+        <p class="endpoint-desc">Check server status and uptime</p>
+        <div class="code-block">
+          <button class="copy-btn" onclick="copy('http://localhost:${currentPort}/status')">Copy</button>
+          http://localhost:${currentPort}/status
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2 class="section-title"><span class="icon">⚡</span> WebSocket Protocol</h2>
+      <p style="color: var(--muted); margin-bottom: 16px;">
+        Connect via WebSocket for real-time updates. Data is pushed ~every second while music plays.
+      </p>
+      
+      <div class="ws-info">
+        <div class="info-card">
+          <div class="info-label">WebSocket URL</div>
+          <div class="info-value">ws://localhost:${currentPort}</div>
+        </div>
+        <div class="info-card">
+          <div class="info-label">Protocol</div>
+          <div class="info-value">JSON messages</div>
+        </div>
+        <div class="info-card">
+          <div class="info-label">Update Rate</div>
+          <div class="info-value">~1 message/sec</div>
+        </div>
+      </div>
+
+      <p style="color: var(--muted); margin: 16px 0 12px; font-weight: 600;">Example Message:</p>
+      <div class="code-block" style="padding-right: 60px;">
+        <button class="copy-btn" onclick="copy(exampleJson)">Copy</button>
+        <pre style="margin:0; white-space: pre-wrap;">{
+  "title": "Song Title",
+  "artist": "Artist Name",
+  "album": "Album Name",
+  "duration": 180.0,
+  "currentTime": 45.5,
+  "imageFile": "/path/to/image.jpg",
+  "paused": false
+}</pre>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2 class="section-title"><span class="icon">🎨</span> Creating Custom Themes</h2>
+      <p style="color: var(--muted); margin-bottom: 12px;">
+        Build your own widget themes! Check the developer guide:
+      </p>
+      <div class="code-block">
+        <button class="copy-btn" onclick="copy('https://github.com/Adivise/sosu-widgets')">Copy</button>
+        https://github.com/Adivise/sosu-widgets
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const exampleJson = \`{
+  "title": "Song Title",
+  "artist": "Artist Name",
+  "album": "Album Name",
+  "duration": 180.0,
+  "currentTime": 45.5,
+  "imageFile": "/path/to/image.jpg",
+  "paused": false
+}\`;
+
+    function copy(text) {
+      navigator.clipboard.writeText(text).then(() => {
+        const btn = event.target;
+        const orig = btn.textContent;
+        btn.textContent = '✓ Copied!';
+        btn.style.background = 'rgba(63, 185, 80, 0.3)';
+        btn.style.borderColor = '#3fb950';
+        btn.style.color = '#3fb950';
+        setTimeout(() => {
+          btn.textContent = orig;
+          btn.style.background = '';
+          btn.style.borderColor = '';
+          btn.style.color = '';
+        }, 2000);
+      });
+    }
+  </script>
+</body>
+</html>`;
+        res.writeHead(200, { 'Content-Type': 'text/html' });
+        res.end(html);
       } 
       // Image serving - current playing song's album art
       else if (url.pathname === '/image') {
@@ -1149,7 +1462,7 @@ export function startServer(port = 3737) {
       resolve({ port, url: `http://localhost:${port}` });
       // Auto-open themes page on start
       try {
-        shell.openExternal(`http://localhost:${port}/themes`);
+        shell.openExternal(`http://localhost:${port}/widgets`);
       } catch (e) {
         console.error('[Widget] Failed to open themes page:', e);
       }
