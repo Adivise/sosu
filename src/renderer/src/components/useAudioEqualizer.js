@@ -95,7 +95,7 @@ export default function useAudioEqualizer({ audioRef, eqBands = [], onSetup } = 
     }
 
     if (onSetup) {
-      try { onSetup(filters); } catch (e) {}
+      try { onSetup(filters, { context: context, source: sourceNodeRef.current }); } catch (e) {}
     }
   };
 

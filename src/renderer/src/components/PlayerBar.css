@@ -1,8 +1,8 @@
 .player-bar {
   height: 90px;
   background: rgba(12, 12, 12, 0.6);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(var(--backdrop-blur)) saturate(var(--backdrop-saturate));
+  -webkit-backdrop-filter: blur(var(--backdrop-blur));
   border-top: 1px solid rgba(255, 255, 255, 0.1);
   padding: 0 16px;
   display: flex;
@@ -12,7 +12,84 @@
   bottom: 0;
   left: 0;
   right: 0;
+  transform: translateY(0);
+  transition: opacity 180ms ease, transform 180ms ease;
+  will-change: opacity, transform;
 }
+
+/* Stretch VU across the top edge of the bar (flush inside the bar) */
+.player-bar-top-stretch{
+  position: absolute;
+  top: -30px; /* move strip outside (above) the player bar */
+  left: 0; right: 0; /* full window width */
+  width: 102.6%;
+  height: 40px; /* provide adequate headroom outside the bar */
+  z-index: 120;
+  pointer-events: none;
+  overflow: visible; /* allow VU to sit outside */
+  /* no rounded corners when outside */
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+  display: flex;
+  align-items: center;
+}
+
+.player-bar-top-stretch-debug{
+  position: absolute;
+  right: 18px;
+  top: 0;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  font-size: 11px;
+  color: rgba(255,255,255,0.6);
+  padding-right: 6px;
+}
+
+
+.mini-vu{
+  display:flex;
+  gap:6px;
+  align-items:flex-end;
+  width:40px; /* compact */
+  height:14px;
+  margin: 0;
+  border-radius: 4px;
+  padding: 0;
+  background: transparent; /* don't alter playerbar appearance */
+}
+
+.mini-vu.inactive{ opacity: 0.45; filter: grayscale(0.4); }
+.mini-vu.active{ opacity: 1; }
+
+/* Position VU overlay near the right side (volume control) */
+.player-bar-right { position: relative; }
+.player-bar-vu-overlay { position: absolute; top: -8px; right: 10px; z-index: 120; pointer-events: none; }
+
+.vu-bar{
+  flex:1 1 0;
+  background: rgba(255,255,255,0.03);
+  border-radius:3px;
+  overflow:hidden;
+  display:flex;
+  align-items:flex-end;
+  min-width:6px;
+}
+.vu-fill{
+  width:100%;
+  background: linear-gradient(180deg, var(--accent-color) 0%, rgba(var(--accent-rgb),0.9) 40%, rgba(255,0,0,0.9) 100%);
+  transition: height 0.06s linear;
+  min-height: 1px;
+}
+
+
+/* Hidden state applied when modals/open overlays are present */
+.player-bar.modal-hidden {
+  opacity: 0;
+  transform: translateY(6px);
+  pointer-events: none;
+  visibility: visible;
+} 
 
 .player-bar.empty {
   justify-content: center;
@@ -93,7 +170,7 @@
 
 .player-bar-add-to-playlist:hover {
   background-color: #1a1a1a;
-  color: #1db954;
+  color: var(--accent-color);
 }
 
 .player-bar-center {
@@ -249,6 +326,28 @@
   border-radius: 50%;
   opacity: 0;
   transition: opacity 0.2s;
+}
+
+.volume-percent {
+  position: absolute;
+  bottom: 100%;
+  transform: translateX(-50%);
+  margin-bottom: 8px;
+  padding: 4px 6px;
+  font-size: 11px;
+  background: rgba(6,6,6,0.85);
+  color: #fff;
+  border-radius: 6px;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.12s, transform 0.12s;
+  z-index: 3000;
+}
+
+.volume-percent.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(-2px);
 }
 
 /* Playback speed slider thumb (white) */

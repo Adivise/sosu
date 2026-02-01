@@ -97,6 +97,31 @@
   font-size: 16px;
 }
 
+/* Styles for the no-results helper */
+.no-results-state h2 {
+  font-size: 20px;
+  color: #fff;
+}
+
+.no-results-state p {
+  color: rgba(255,255,255,0.75);
+}
+
+.no-results-state .settings-button {
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(255,255,255,0.06);
+  background: rgba(255,255,255,0.03);
+  color: rgba(255,255,255,0.9);
+  cursor: pointer;
+}
+
+.no-results-state .settings-button.primary {
+  background: var(--accent-color);
+  color: var(--accent-contrast, #000);
+  border: none;
+}
+
 .playlist-header {
   display: flex;
   align-items: center;

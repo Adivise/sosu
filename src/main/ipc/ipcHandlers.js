@@ -213,6 +213,23 @@ export async function init({ mainWindow, userDataPath }) {
         }
     });
 
+    // Open a file system path in the OS (folder or file)
+    ipcMain.handle('open-path', async (e, targetPath) => {
+        try {
+            // Use shell.openPath to open folder or file in the default file manager
+            const res = await shell.openPath(targetPath);
+            // openPath returns an empty string on success on some platforms
+            if (res && res.length > 0) {
+                console.error('shell.openPath returned:', res);
+                return { success: false, error: res };
+            }
+            return { success: true };
+        } catch (error) {
+            console.error('Error opening path:', error);
+            return { success: false, error: error.message };
+        }
+    });
+
     ipcMain.handle('set-rich-presence', async (e, enabled, presenceData) => {
         return discord.setRichPresence(enabled, presenceData);
     });

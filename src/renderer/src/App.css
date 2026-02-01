@@ -44,10 +44,15 @@
   padding-bottom: 90px;
 }
 
-/* Hide PlayerBar when modal is open */
+/* Hide PlayerBar smoothly when modal is open */
 .app:has(.modal-overlay) .player-bar,
 .app:has(.eqmodal-overlay) .player-bar {
-  display: none;
+  opacity: 0;
+  transform: translateY(6px);
+  pointer-events: none;
 }
+
+/* Also add a helper class (fallback for environments that don't support :has) */
+.app.modal-open .player-bar { opacity: 0; transform: translateY(6px); pointer-events: none; }
 
 

@@ -19,6 +19,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getSongsCache: () => ipcRenderer.invoke('get-songs-cache'),
   saveSongsCache: (cache) => ipcRenderer.invoke('save-songs-cache', cache),
   openExternal: (url) => ipcRenderer.invoke('open-external', url),
+  openPath: (path) => ipcRenderer.invoke('open-path', path),
   
   // Widget Server APIs
   widgetStartServer: (port) => ipcRenderer.invoke('widget-start-server', port),

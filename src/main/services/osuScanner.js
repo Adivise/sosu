@@ -2,15 +2,16 @@ import fs from 'fs/promises';
 import path from 'path';
 import { parseFile } from 'music-metadata';
 import parseOsuFile from '../core/parseOsu.js';
+import os from 'os';
 
 // Configuration
-const CONCURRENT_SCANS = 8; // Number of folders to scan in parallel
-const CONCURRENT_METADATA = 4; // Number of metadata parsing operations in parallel
+const CONCURRENT_SCANS = process.env.OSU_SCANS ? Math.max(1, parseInt(process.env.OSU_SCANS, 10)) : Math.max(4, Math.min(16, os.cpus().length * 2)); // Number of folders to scan in parallel (dynamic)
+const CONCURRENT_METADATA = process.env.OSU_METADATA ? Math.max(1, parseInt(process.env.OSU_METADATA, 10)) : Math.max(2, Math.min(8, os.cpus().length)); // Number of metadata parsing operations in parallel (dynamic)
 
 /**
  * Process a single song folder
  */
-async function processSongFolder(entry, folderPath, cacheMap, cacheFolderMtimes, scanAllMaps = false) {
+async function processSongFolder(entry, folderPath, cacheMap, cacheFolderMtimes, scanAllMaps = false, preFiles = null, preFolderMtime = null) {
     const songPath = path.join(folderPath, entry.name);
     
     // Check if this song exists in cache
@@ -18,16 +19,19 @@ async function processSongFolder(entry, folderPath, cacheMap, cacheFolderMtimes,
     if (cachedSong) {
         // Verify the cached song data is still valid
         try {
-            // Check if folder still exists and get its mtime
-            const folderStat = await fs.stat(songPath);
-            if (!folderStat.isDirectory()) throw new Error('Not a directory');
-            
-            const currentMtime = folderStat.mtime.getTime();
+            // Use pre-provided mtime if available to avoid extra stat
+            let currentMtime = preFolderMtime;
+            if (currentMtime == null) {
+                const folderStat = await fs.stat(songPath);
+                if (!folderStat.isDirectory()) throw new Error('Not a directory');
+                currentMtime = folderStat.mtime.getTime();
+            }
             const cachedMtime = cacheFolderMtimes.get(entry.name);
             
             // If mtime hasn't changed, we can safely reuse cache without checking audio file
             if (cachedMtime && currentMtime === cachedMtime) {
-                return { song: cachedSong, reused: true };
+                const updatedSong = { ...cachedSong, _folderMtime: currentMtime };
+                return { song: updatedSong, reused: true };
             }
             
             // Folder was modified, check if audio file still exists
@@ -47,9 +51,9 @@ async function processSongFolder(entry, folderPath, cacheMap, cacheFolderMtimes,
     }
     
     // This is a new song to scan
-    let files;
+    let files = preFiles;
     try {
-        files = await fs.readdir(songPath);
+        if (!files) files = await fs.readdir(songPath);
     } catch {
         return { song: null, reused: false };
     }
@@ -93,6 +97,15 @@ async function processSongFolder(entry, folderPath, cacheMap, cacheFolderMtimes,
         return { song: null, reused: false };
     }
 
+    // Try to get folder mtime (use pre-provided if available)
+    let folderMtime = preFolderMtime;
+    if (folderMtime == null) {
+        try {
+            const folderStat = await fs.stat(songPath);
+            folderMtime = folderStat.mtime.getTime();
+        } catch {}
+    }
+
     // Return metadata task (will be processed in parallel batch)
     return {
         metadataTask: {
@@ -102,10 +115,11 @@ async function processSongFolder(entry, folderPath, cacheMap, cacheFolderMtimes,
             entry,
             osuMetadata,
             imageFiles,
-            files
+            files,
+            folderMtime
         },
         reused: false
-    };
+    }; 
 }
 
 /**
@@ -158,12 +172,8 @@ async function processMetadata(metadataTask) {
         if (folderMatch) beatmapSetId = parseInt(folderMatch[1]);
     }
 
-    // Get folder mtime for caching
-    let folderMtime = null;
-    try {
-        const folderStat = await fs.stat(songPath);
-        folderMtime = folderStat.mtime.getTime();
-    } catch {}
+    // Use folder mtime passed from earlier step if available to avoid extra stat
+    const folderMtime = metadataTask.folderMtime || null;
 
     // Use deterministic ID based on folder name + audio filename
     const stableId = `${entry.name}::${audioFileName || 'audio'}`;
@@ -173,18 +183,25 @@ async function processMetadata(metadataTask) {
         folderName: entry.name,
         folderPath: songPath,
         title: osuMetadata.title || audioMetadata?.common?.title || entry.name,
+        titleUnicode: osuMetadata.titleUnicode || null,
         artist:
             osuMetadata.artist ||
             audioMetadata?.common?.artist ||
             audioMetadata?.common?.artists?.join(', ') ||
             'Unknown Artist',
+        artistUnicode: osuMetadata.artistUnicode || null,
+        creator: osuMetadata.creator || audioMetadata?.common?.composer || null,
+        version: osuMetadata.version || osuMetadata.difficulty || null,
+        mode: (typeof osuMetadata.mode === 'number') ? osuMetadata.mode : null,
         album: audioMetadata?.common?.album || null,
         audioFile: audioFilePath,
         audioFileName,
         imageFile,
         imageFileName,
         duration,
-        bpm: osuMetadata.bpm || null,
+        bpmMin: osuMetadata.bpmMin || null,
+        bpmMax: osuMetadata.bpmMax || osuMetadata.bpm || null,
+        bpm: osuMetadata.bpmMax || osuMetadata.bpm || null,
         difficulty: osuMetadata.difficulty || null,
         year: audioMetadata?.common?.year || null,
         genre: audioMetadata?.common?.genre?.join(', ') || null,
@@ -264,36 +281,56 @@ export async function scanOsuFolder(folderPath, eventSender, existingCache = nul
             invalidBeatmapId: []
         };
         
-        for (const entry of entries) {
-            if (entry.isDirectory()) {
-                // Skip folders named "Failed"
-                if (entry.name === 'Failed') {
-                    skippedFolders.failed.push(entry.name);
-                    continue;
-                }
-                
+        // Check folders in parallel to avoid serial fs operations
+        const dirEntries = entries.filter(e => e.isDirectory());
+        const checkResults = await processInParallel(
+            dirEntries,
+            async (entry) => {
+                if (entry.name === 'Failed') return { entry, status: 'failed' };
                 currentFolderNames.add(entry.name);
                 try {
                     const songPath = path.join(folderPath, entry.name);
-                    const files = await fs.readdir(songPath);
+                    const [files, folderStat] = await Promise.all([fs.readdir(songPath), fs.stat(songPath)]);
                     const osuFiles = files.filter(f => f.endsWith('.osu'));
                     const audioFiles = files.filter(f => /\.(mp3|ogg|wav|flac)$/i.test(f));
-                    
-                    if (osuFiles.length === 0 && audioFiles.length === 0) {
-                        skippedFolders.noBothFiles.push(entry.name);
-                    } else if (osuFiles.length === 0) {
-                        skippedFolders.noOsuFile.push(entry.name);
-                    } else if (audioFiles.length === 0) {
-                        skippedFolders.noAudioFile.push(entry.name);
-                    } else {
-                        // Add to valid folders - beatmapId will be checked in processSongFolder
-                        validFolders.push(entry);
-                    }
+                    if (osuFiles.length === 0 && audioFiles.length === 0) return { entry, status: 'noBoth', files, folderMtime: folderStat.mtime.getTime() };
+                    if (osuFiles.length === 0) return { entry, status: 'noOsu', files, folderMtime: folderStat.mtime.getTime() };
+                    if (audioFiles.length === 0) return { entry, status: 'noAudio', files, folderMtime: folderStat.mtime.getTime() };
+                    return { entry, status: 'valid', files, folderMtime: folderStat.mtime.getTime() };
                 } catch (err) {
-                    skippedFolders.readError.push(entry.name);
+                    return { entry, status: 'readError' };
                 }
+            },
+            CONCURRENT_SCANS
+        );
+
+        for (const res of checkResults) {
+            if (!res || !res.entry) continue;
+            const name = res.entry.name;
+            switch (res.status) {
+                case 'failed':
+                    skippedFolders.failed.push(name);
+                    break;
+                case 'noBoth':
+                    skippedFolders.noBothFiles.push(name);
+                    break;
+                case 'noOsu':
+                    skippedFolders.noOsuFile.push(name);
+                    break;
+                case 'noAudio':
+                    skippedFolders.noAudioFile.push(name);
+                    break;
+                case 'readError':
+                    skippedFolders.readError.push(name);
+                    break;
+                case 'valid':
+                    // Store object with pre-read files and folder mtime to avoid re-reading
+                    validFolders.push({ entry: res.entry, files: res.files, folderMtime: res.folderMtime });
+                    break;
+                default:
+                    break;
             }
-        }
+        } 
         
         // Log skipped folders for debugging
         const totalSkipped = Object.values(skippedFolders).reduce((sum, arr) => sum + arr.length, 0);
@@ -339,7 +376,7 @@ export async function scanOsuFolder(folderPath, eventSender, existingCache = nul
         let foldersProcessed = 0;
         const folderResults = await processInParallel(
             validFolders,
-            (entry) => processSongFolder(entry, folderPath, cacheMap, cacheFolderMtimes, scanAllMaps),
+            (vf) => processSongFolder(vf.entry, folderPath, cacheMap, cacheFolderMtimes, scanAllMaps, vf.files, vf.folderMtime),
             CONCURRENT_SCANS,
             (completed) => {
                 foldersProcessed = completed;

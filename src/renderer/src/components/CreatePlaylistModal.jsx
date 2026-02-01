@@ -7,9 +7,37 @@ const CreatePlaylistModal = ({ isOpen, onClose, onCreate }) => {
   const inputRef = useRef(null);
 
   useEffect(() => {
-    if (isOpen && inputRef.current) {
-      inputRef.current.focus();
-    }
+    if (!isOpen) return;
+
+    const tryFocus = () => {
+      try {
+        // Blur any currently focused element first to avoid races where a button remains focused
+        try { if (document && document.activeElement && document.activeElement !== inputRef.current) { document.activeElement.blur(); } } catch (e) {}
+
+        if (inputRef.current) {
+          // focus and select text if any; try multiple scheduling strategies to avoid races with dialogs/transitions
+          inputRef.current.focus();
+          try { inputRef.current.select && inputRef.current.select(); } catch (e) {}
+          console.debug && console.debug('[CreatePlaylistModal] attempted focus on input');
+        }
+      } catch (e) {}
+    };
+
+    // Attempt immediate focus, then schedule for next ticks in case focus was blocked
+    tryFocus();
+    const t1 = setTimeout(tryFocus, 20);
+    const t2 = setTimeout(tryFocus, 120);
+    const t3 = setTimeout(tryFocus, 200);
+    const t4 = setTimeout(tryFocus, 500);
+    const raf = requestAnimationFrame(tryFocus);
+
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+      clearTimeout(t3);
+      clearTimeout(t4);
+      try { cancelAnimationFrame(raf); } catch (e) {}
+    };
   }, [isOpen]);
 
   useEffect(() => {

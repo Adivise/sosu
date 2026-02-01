@@ -1,4 +1,5 @@
 import React, { useRef, useEffect, useState } from 'react';
+import ReactDOM from 'react-dom';
 import { 
   Play, 
   Pause, 
@@ -17,6 +18,8 @@ import PlaylistMenu from './PlaylistMenu';
 import './PlayerBar.css';
 import useAudioEqualizer from './useAudioEqualizer';
 import { DEFAULT_EQ_BANDS } from './eqConstants';
+import MiniVUWaveform from './MiniVUWaveform';
+import VUPanel from './VUPanel';
 
 const PlayerBar = ({
   currentSong,
@@ -41,13 +44,24 @@ const PlayerBar = ({
   eqBands: eqBandsProp,
   onEqBandsChange,
   showEQModal,
-  onOpenEQModal
+  onOpenEQModal,
+  vuEnabled
 }) => {
   const audioRef = useRef(null);
   const [isMuted, setIsMuted] = useState(false);
   const [showPlaylistMenu, setShowPlaylistMenu] = useState(false);
+  const [menuPortalEl, setMenuPortalEl] = useState(null);
+  const [playerMenuPos, setPlayerMenuPos] = useState({ x: -9999, y: -9999 });
+  const [playerMenuReady, setPlayerMenuReady] = useState(false);
   const playlistButtonRef = useRef(null);
+  const playerMenuRef = useRef(null);
+  // legacy ref (kept for compatibility) - not used for absolute positioning anymore
   const playerMenuContainerRef = useRef(null);
+
+  // Volume percent tooltip state
+  const [showVolumePercent, setShowVolumePercent] = useState(false);
+  const volumeHideTimeoutRef = useRef(null);
+
   
   // Playback speed control (0.5x - 2.0x)
   const [playbackRate, setPlaybackRate] = useState(() => {
@@ -56,82 +70,102 @@ const PlayerBar = ({
   });
   const [showSpeedControl, setShowSpeedControl] = useState(false);
 
+
+
   // Many-band EQ with more presets
   // Use eqBands from props directly (no fallback needed)
   
+  // Portal root for playlist menu
+  useEffect(() => {
+    if (showPlaylistMenu) {
+      const el = document.createElement('div');
+      el.className = 'playerbar-menu-root';
+      document.body.appendChild(el);
+      setMenuPortalEl(el);
+      return () => {
+        if (el.parentNode) el.parentNode.removeChild(el);
+        setMenuPortalEl(null);
+      };
+    }
+    return undefined;
+  }, [showPlaylistMenu]);
+
+  // Measure and position the portal menu when it appears
+  useEffect(() => {
+    if (!showPlaylistMenu) {
+      setPlayerMenuReady(false);
+      setPlayerMenuPos({ x: -9999, y: -9999 });
+      return;
+    }
+
+    const id = setTimeout(() => {
+      const btn = playlistButtonRef.current;
+      const menuEl = playerMenuRef.current;
+      if (!btn || !menuEl) return;
+
+      // Temporarily ensure menu is measurable
+      menuEl.style.left = '0px';
+      menuEl.style.top = '0px';
+      menuEl.style.visibility = 'hidden';
+
+      const btnRect = btn.getBoundingClientRect();
+      const subRect = menuEl.getBoundingClientRect();
+      const margin = 8;
+
+      let x = Math.round(btnRect.right + 8);
+      let y = Math.round(btnRect.top + Math.round((btnRect.height - subRect.height) / 2));
+
+      if (x + subRect.width > window.innerWidth - margin) {
+        x = Math.round(btnRect.left - subRect.width - 8);
+      }
+      if (y + subRect.height > window.innerHeight - margin) {
+        y = Math.max(margin, Math.round(window.innerHeight - margin - subRect.height));
+      }
+      if (y < margin) y = margin;
+
+      try {
+        menuEl.style.left = `${x}px`;
+        menuEl.style.top = `${y}px`;
+        menuEl.style.visibility = 'visible';
+        menuEl.style.opacity = '0.02';
+        menuEl.style.pointerEvents = 'auto';
+        menuEl.style.transform = 'translateX(-4px) scale(0.995)';
+      } catch (e) {}
+
+      setPlayerMenuPos({ x, y });
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        try { menuEl.style.opacity = ''; menuEl.style.transform = ''; } catch(e) {}
+        setPlayerMenuReady(true);
+      }));
+    }, 0);
+
+    return () => clearTimeout(id);
+  }, [showPlaylistMenu]);
+
   // Update parent when EQ bands change
   const handleEqBandsChange = (newBands) => {
     if (onEqBandsChange) {
       onEqBandsChange(newBands);
     }
   };
+  // Hookup WebAudio EQ and request analyser setup for VU meter
+  const [setBandGain] = useAudioEqualizer({
+    audioRef,
+    eqBands: eqBandsProp,
+    onSetup: (filters, ctxInfo) => {
+      // Expose context and source to analyser setup via event - PlayerBar will listen
+      try { window.dispatchEvent(new CustomEvent('sosu:audio-eq-setup', { detail: ctxInfo })); } catch (e) {}
+    }
+  });
 
-  // EQ Presets
-  const EQ_PRESETS = [
-    { 
-      name: 'Default', 
-      bands: DEFAULT_EQ_BANDS.map(b => ({ ...b, gain: 0 })) 
-    },
-    { 
-      name: 'Bass Boost', 
-      bands: DEFAULT_EQ_BANDS.map((b, i) => ({ ...b, gain: [6, 5, 3, 1, 0, 0, 0, 0, 0, 0][i] })) 
-    },
-    { 
-      name: 'Treble Boost', 
-      bands: DEFAULT_EQ_BANDS.map((b, i) => ({ ...b, gain: [0, 0, 0, 0, 0, 2, 4, 5, 6, 7][i] })) 
-    },
-    { 
-      name: 'V-Shape', 
-      bands: DEFAULT_EQ_BANDS.map((b, i) => ({ ...b, gain: [6, 4, 2, 0, -2, -3, -2, 2, 5, 6][i] })) 
-    },
-    { 
-      name: 'Vocal Boost', 
-      bands: DEFAULT_EQ_BANDS.map((b, i) => ({ ...b, gain: [0, 0, 1, 3, 5, 4, 2, 0, 0, 0][i] })) 
-    },
-    { 
-      name: 'Rock', 
-      bands: DEFAULT_EQ_BANDS.map((b, i) => ({ ...b, gain: [4, 3, 2, 1, -1, -1, 1, 3, 4, 5][i] })) 
-    },
-    { 
-      name: 'Pop', 
-      bands: DEFAULT_EQ_BANDS.map((b, i) => ({ ...b, gain: [2, 3, 2, 0, -1, -1, 2, 3, 4, 4][i] })) 
-    },
-    { 
-      name: 'Classical', 
-      bands: DEFAULT_EQ_BANDS.map((b, i) => ({ ...b, gain: [3, 2, 1, 0, 0, 0, 1, 2, 3, 4][i] })) 
-    },
-    { 
-      name: 'Electronic', 
-      bands: DEFAULT_EQ_BANDS.map((b, i) => ({ ...b, gain: [5, 4, 2, 0, -2, -2, 0, 3, 5, 6][i] })) 
-    },
-    { 
-      name: 'Hip-Hop', 
-      bands: DEFAULT_EQ_BANDS.map((b, i) => ({ ...b, gain: [6, 5, 3, 1, -1, -1, 1, 2, 3, 4][i] })) 
-    },
-    { 
-      name: 'Jazz', 
-      bands: DEFAULT_EQ_BANDS.map((b, i) => ({ ...b, gain: [2, 2, 1, 0, 0, 0, 2, 3, 3, 3][i] })) 
-    },
-    { 
-      name: 'Acoustic', 
-      bands: DEFAULT_EQ_BANDS.map((b, i) => ({ ...b, gain: [3, 2, 1, 0, 1, 2, 3, 3, 2, 2][i] })) 
-    },
-    { 
-      name: 'Lounge', 
-      bands: DEFAULT_EQ_BANDS.map((b, i) => ({ ...b, gain: [-2, -1, 0, 1, 2, 2, 1, 0, -1, -2][i] })) 
-    },
-    { 
-      name: 'Metal', 
-      bands: DEFAULT_EQ_BANDS.map((b, i) => ({ ...b, gain: [5, 4, 2, 0, -3, -3, 0, 3, 5, 6][i] })) 
-    },
-    { 
-      name: 'R&B', 
-      bands: DEFAULT_EQ_BANDS.map((b, i) => ({ ...b, gain: [4, 4, 2, 1, 0, 0, 1, 2, 3, 3][i] })) 
-    },
-  ];
+  // Mini VU waveform state/refs
+  const analyserRefs = React.useRef({ left: null, right: null, mix: null, splitter: null, raf: null, ctx: null });
+  const [leftLevel, setLeftLevel] = useState(0);
+  const [rightLevel, setRightLevel] = useState(0);
+  // small debug display for RMS (percentage 0-100)
+  const [rmsDisplay, setRmsDisplay] = useState(0);
+  const lastRmsRef = useRef({ val: 0, lastUpdate: 0 });
 
-  // Hookup WebAudio EQ
-  const [setBandGain] = useAudioEqualizer({ audioRef, eqBands: eqBandsProp });
 
   // Force re-apply EQ when song changes to ensure filters are applied
   useEffect(() => {
@@ -261,9 +295,10 @@ const PlayerBar = ({
     const audio = audioRef.current;
     if (!audio) return;
 
-    // Set volume immediately - ensure it's set as soon as audio element exists
+    // Set volume immediately - use a perceptual mapping (power curve) so low slider values are much quieter
+    const mapVolume = (v) => Math.pow(Math.max(0, Math.min(1, v || 0)), 2);
     const setVolumeValue = () => {
-      audio.volume = isMuted ? 0 : volume;
+      audio.volume = isMuted ? 0 : mapVolume(volume);
     };
     
     // Set volume immediately
@@ -285,7 +320,8 @@ const PlayerBar = ({
   useEffect(() => {
     const audio = audioRef.current;
     if (audio) {
-      const targetVolume = isMuted ? 0 : (volume !== undefined ? volume : 1);
+      const mapVolume = (v) => Math.pow(Math.max(0, Math.min(1, v || 0)), 2);
+      const targetVolume = isMuted ? 0 : (volume !== undefined ? mapVolume(volume) : 1);
       // Always sync volume to ensure it matches state
       audio.volume = targetVolume;
     }
@@ -299,6 +335,168 @@ const PlayerBar = ({
       localStorage.setItem('playbackRate', playbackRate.toString());
     }
   }, [playbackRate]);
+
+  // Cleanup any pending hide timeout on unmount
+  useEffect(() => {
+    return () => {
+      try { clearTimeout(volumeHideTimeoutRef.current); } catch (e) {}
+    };
+  }, []);
+
+  // Setup analyser nodes when useAudioEqualizer signals that AudioContext/source are ready
+  useEffect(() => {
+    const handle = (ev) => {
+      try {
+        if (!vuEnabled) {
+          // If VU is disabled, ensure any existing analyser loops are stopped and disconnected
+          try { if (analyserRefs.current.raf) cancelAnimationFrame(analyserRefs.current.raf); } catch(e) {}
+          try { if (analyserRefs.current.left) analyserRefs.current.left.disconnect(); } catch(e) {}
+          try { if (analyserRefs.current.right) analyserRefs.current.right.disconnect(); } catch(e) {}
+          try { if (analyserRefs.current.splitter) analyserRefs.current.splitter.disconnect(); } catch(e) {}
+          return;
+        }
+
+        const { context, source } = ev?.detail || {};
+        console.debug && console.debug('[PlayerBar] received audio-eq-setup', { hasContext: !!context, hasSource: !!source });
+        if (!context || !source) return;
+        try { console.debug && console.debug('[PlayerBar] audio state', { ctxState: context.state, audioReady: audioRef.current?.readyState, audioPaused: audioRef.current?.paused, audioSrc: audioRef.current?.src }); } catch (e) {}
+
+        // Clean previous
+        try {
+          if (analyserRefs.current.raf) cancelAnimationFrame(analyserRefs.current.raf);
+        } catch (e) {}
+        try {
+          if (analyserRefs.current.left) analyserRefs.current.left.disconnect();
+        } catch (e) {}
+        try {
+          if (analyserRefs.current.right) analyserRefs.current.right.disconnect();
+        } catch (e) {}
+        try {
+          if (analyserRefs.current.splitter) analyserRefs.current.splitter.disconnect();
+        } catch (e) {}
+
+        // Create nodes
+        const splitter = context.createChannelSplitter(2);
+        // Ensure audio context is running
+        try { if (context.state === 'suspended') { context.resume().catch(err => console.warn('[PlayerBar] resume ctx failed', err)); } } catch (e) { console.warn('[PlayerBar] ctx resume error', e); }        const analyserL = context.createAnalyser();
+        const analyserR = context.createAnalyser();
+        // A mix analyser that listens to the combined source (works for mono/stereo)
+        const mixAnalyser = context.createAnalyser();
+
+        // Prefer a higher FFT size for better frequency resolution and smoother visuals
+        analyserL.fftSize = 2048;
+        analyserR.fftSize = 2048;
+        mixAnalyser.fftSize = 2048;
+
+        // Slightly higher smoothing to avoid jitter while remaining responsive
+        analyserL.smoothingTimeConstant = 0.12;
+        analyserR.smoothingTimeConstant = 0.12;
+        mixAnalyser.smoothingTimeConstant = 0.12;
+
+        // Connect source -> splitter -> analysers (parallel to existing EQ chain)
+        try { source.connect(splitter); } catch (e) { console.warn('[PlayerBar] source.connect(splitter) failed', e); }
+        try { splitter.connect(analyserL, 0); } catch (e) { console.warn('[PlayerBar] splitter.connect L failed', e); }
+        try { splitter.connect(analyserR, 1); } catch (e) { console.warn('[PlayerBar] splitter.connect R failed', e); }
+        // Also connect source directly to mix analyser (to get a combined waveform)
+        try { source.connect(mixAnalyser); } catch (e) { console.warn('[PlayerBar] source.connect(mixAnalyser) failed', e); }
+
+        analyserRefs.current = { left: analyserL, right: analyserR, mix: mixAnalyser, splitter, raf: null, ctx: context };
+
+        // Notify global listeners (Visualizer components) that analyser is ready
+        try {
+          try { window.__sosu_lastAnalyser = mixAnalyser; } catch (e) {}
+          window.dispatchEvent(new CustomEvent('sosu:analyser-ready', { detail: { analyser: mixAnalyser } }));
+        } catch (e) {}
+
+        const bufL = new Uint8Array(analyserL.fftSize);
+        const bufR = new Uint8Array(analyserR.fftSize);
+        const bufMix = new Uint8Array(analyserRefs.current.mix.fftSize);
+
+        let lastLogAt = 0;
+        const sample = () => {
+          try {
+            // Use the mix analyser for a reliable mono waveform/RMS (works with mono or stereo sources)
+            let rmsL = 0, rmsR = 0;
+            try {
+              const mix = analyserRefs.current.mix;
+              if (mix) {
+                mix.getByteTimeDomainData(bufMix);
+                let sum = 0;
+                let min = 255, max = 0;
+                for (let i = 0; i < bufMix.length; i++) {
+                  const vraw = bufMix[i];
+                  if (vraw < min) min = vraw;
+                  if (vraw > max) max = vraw;
+                  const v = (vraw - 128) / 128;
+                  sum += v * v;
+                }
+                const rms = Math.sqrt(sum / bufMix.length);
+                rmsL = rmsR = rms;
+
+                // Debug: occasionally log buffer range when it's all flat
+                const now = Date.now();
+                if ((max - min) <= 2 && now - lastLogAt > 3000) {
+                  console.debug && console.debug('[PlayerBar] mix analyser flat sample', { min, max, rms, paused: audioRef.current?.paused, ready: audioRef.current?.readyState });
+                  lastLogAt = now;
+                }
+              } else {
+                analyserL.getByteTimeDomainData(bufL);
+                analyserR.getByteTimeDomainData(bufR);
+
+                // compute RMS normalized 0..1
+                let sumL = 0, sumR = 0;
+                for (let i = 0; i < bufL.length; i++) {
+                  const v = (bufL[i] - 128) / 128;
+                  sumL += v * v;
+                }
+                for (let i = 0; i < bufR.length; i++) {
+                  const v = (bufR[i] - 128) / 128;
+                  sumR += v * v;
+                }
+                rmsL = Math.sqrt(sumL / bufL.length);
+                rmsR = Math.sqrt(sumR / bufR.length);
+                // Fallback for mono sources: mirror left into right if right is silent
+                if (rmsR < 0.0005 && rmsL > 0) rmsR = rmsL;
+              }
+            } catch (e) {}
+
+            // Smoothly update state
+            setLeftLevel(prev => prev * 0.75 + rmsL * 0.25);
+            setRightLevel(prev => prev * 0.75 + rmsR * 0.25);
+
+            // Update simple display infrequently to avoid re-renders
+            try {
+              const now = Date.now();
+              lastRmsRef.val = Math.max(rmsL, rmsR);
+              if (now - lastRmsRef.lastUpdate > 250) {
+                try { setRmsDisplay(Math.round(lastRmsRef.val * 100)); } catch (e) {}
+                lastRmsRef.lastUpdate = now;
+              }
+            } catch (e) {}
+
+            // Log once if levels stay zero for a while to help debugging
+            const now2 = Date.now();
+            if (now2 - lastLogAt > 3000) {
+              console.debug && console.debug('[PlayerBar] VU sample', { left: rmsL, right: rmsR });
+              lastLogAt = now2;
+            }
+          } catch (e) { console.warn('[PlayerBar] VU sample failed', e); }
+          analyserRefs.current.raf = requestAnimationFrame(sample);
+        };
+
+        analyserRefs.current.raf = requestAnimationFrame(sample);
+      } catch (e) { console.warn('[PlayerBar] analyser setup failed', e); }
+    };
+
+    window.addEventListener('sosu:audio-eq-setup', handle);
+    return () => {
+      window.removeEventListener('sosu:audio-eq-setup', handle);
+      try { if (analyserRefs.current.raf) cancelAnimationFrame(analyserRefs.current.raf); } catch (e) {}
+      try { if (analyserRefs.current.left) analyserRefs.current.left.disconnect(); } catch (e) {}
+      try { if (analyserRefs.current.right) analyserRefs.current.right.disconnect(); } catch (e) {}
+      try { if (analyserRefs.current.splitter) analyserRefs.current.splitter.disconnect(); } catch (e) {}
+    };
+  }, [vuEnabled]);
 
   const handleSeek = (e) => {
     const audio = audioRef.current;
@@ -343,6 +541,11 @@ const PlayerBar = ({
     const percentage = Math.max(0, Math.min(1, x / rect.width));
     onVolumeChange(percentage);
     setIsMuted(false);
+
+    // Show percentage briefly when user clicks on the bar
+    try { clearTimeout(volumeHideTimeoutRef.current); } catch (e) {}
+    setShowVolumePercent(true);
+    volumeHideTimeoutRef.current = setTimeout(() => setShowVolumePercent(false), 800);
   };
 
   const handleVolumeMouseDown = (e) => {
@@ -354,12 +557,23 @@ const PlayerBar = ({
       const percentage = Math.max(0, Math.min(1, x / rect.width));
       onVolumeChange(percentage);
       setIsMuted(false);
+
+      // keep percent visible while dragging
+      try { clearTimeout(volumeHideTimeoutRef.current); } catch (e) {}
+      setShowVolumePercent(true);
     };
 
     const handleMouseUp = () => {
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
+      // hide a moment after release
+      try { clearTimeout(volumeHideTimeoutRef.current); } catch (e) {}
+      volumeHideTimeoutRef.current = setTimeout(() => setShowVolumePercent(false), 800);
     };
+
+    // show immediately when starting drag
+    try { clearTimeout(volumeHideTimeoutRef.current); } catch (e) {}
+    setShowVolumePercent(true);
 
     handleMouseMove(e);
     document.addEventListener('mousemove', handleMouseMove);
@@ -389,7 +603,14 @@ const PlayerBar = ({
 
   return (
     <div className="player-bar">
-      <audio ref={audioRef} volume={volume} />
+      <audio ref={audioRef} volume={isMuted ? 0 : Math.pow(Math.max(0, Math.min(1, volume || 0)), 2)} />
+
+      {/* Stretch VU across the top edge of the player bar */}
+      {vuEnabled && (
+        <div className="player-bar-top-stretch">
+          <VUPanel defaultHeight={30} />
+        </div>
+      )}
 
       <div className="player-bar-content">
         <div className="player-bar-left">
@@ -425,18 +646,12 @@ const PlayerBar = ({
               className="player-bar-song-title"
               onClick={(e) => {
                 e.stopPropagation();
-                if (currentSong.beatmapSetId) {
-                  const beatmapUrl = currentSong.beatmapId 
-                    ? `https://osu.ppy.sh/beatmapsets/${currentSong.beatmapSetId}#osu/${currentSong.beatmapId}`
-                    : `https://osu.ppy.sh/beatmapsets/${currentSong.beatmapSetId}`;
-                  if (window.electronAPI?.openExternal) {
-                    window.electronAPI.openExternal(beatmapUrl);
-                  } else {
-                    window.open(beatmapUrl, '_blank');
-                  }
+                // Jump to this song in the library list
+                if (currentSong?.id) {
+                  window.dispatchEvent(new CustomEvent('sosu:jump-to-song', { detail: { songId: currentSong.id } }));
                 }
               }}
-              title={currentSong.beatmapSetId ? 'Click to open beatmap on osu.ppy.sh' : ''}
+              title="Jump to this song in Library"
             >
               {currentSong.title}
             </div>
@@ -444,18 +659,12 @@ const PlayerBar = ({
               className="player-bar-song-artist"
               onClick={(e) => {
                 e.stopPropagation();
-                if (currentSong.beatmapSetId) {
-                  const beatmapUrl = currentSong.beatmapId 
-                    ? `https://osu.ppy.sh/beatmapsets/${currentSong.beatmapSetId}#osu/${currentSong.beatmapId}`
-                    : `https://osu.ppy.sh/beatmapsets/${currentSong.beatmapSetId}`;
-                  if (window.electronAPI?.openExternal) {
-                    window.electronAPI.openExternal(beatmapUrl);
-                  } else {
-                    window.open(beatmapUrl, '_blank');
-                  }
+                // Search by this artist in the main search bar
+                if (currentSong?.artist) {
+                  window.dispatchEvent(new CustomEvent('sosu:set-search-query', { detail: { query: currentSong.artist } }));
                 }
               }}
-              title={currentSong.beatmapSetId ? 'Click to open beatmap on osu.ppy.sh' : ''}
+              title="Search by this artist"
             >
               {currentSong.artist}
             </div>
@@ -466,62 +675,44 @@ const PlayerBar = ({
                 ref={playlistButtonRef}
                 className="player-bar-add-to-playlist"
                 onClick={() => {
-                  setShowPlaylistMenu(!showPlaylistMenu);
-                  // Position menu to stay within viewport
-                  setTimeout(() => {
-                    if (playerMenuContainerRef.current && playlistButtonRef.current) {
-                      const menuRect = playerMenuContainerRef.current.getBoundingClientRect();
-                      const buttonRect = playlistButtonRef.current.getBoundingClientRect();
-                      const viewportHeight = window.innerHeight;
-                      
-                      // If menu would go above viewport, show it below instead
-                      if (buttonRect.top - menuRect.height < 0) {
-                        playerMenuContainerRef.current.style.bottom = 'auto';
-                        playerMenuContainerRef.current.style.top = '100%';
-                        playerMenuContainerRef.current.style.marginTop = '8px';
-                        playerMenuContainerRef.current.style.marginBottom = '0';
-                      } else {
-                        playerMenuContainerRef.current.style.top = 'auto';
-                        playerMenuContainerRef.current.style.bottom = '100%';
-                        playerMenuContainerRef.current.style.marginBottom = '8px';
-                        playerMenuContainerRef.current.style.marginTop = '0';
-                      }
-                      
-                      // Ensure menu doesn't go off right edge
-                      const menuRight = buttonRect.right;
-                      const viewportWidth = window.innerWidth;
-                      if (menuRight > viewportWidth - 20) {
-                        playerMenuContainerRef.current.style.right = '0';
-                        playerMenuContainerRef.current.style.left = 'auto';
-                      }
-                    }
-                  }, 0);
+                  // Toggle portal-based menu
+                  setPlayerMenuReady(false);
+                  setPlayerMenuPos({ x: -9999, y: -9999 });
+                  setShowPlaylistMenu(prev => !prev);
                 }}
                 title="Add to playlist"
               >
                 <Plus size={18} />
               </button>
-              {showPlaylistMenu && (
-                <div 
-                  ref={playerMenuContainerRef}
-                  style={{ 
-                    position: 'absolute', 
-                    left: 0, 
-                    bottom: '100%', 
-                    marginBottom: '8px',
-                    zIndex: 1000,
-                    animation: 'fadeInSlide 0.22s cubic-bezier(.68,-0.55,.27,1.55)'
+
+              {/* Old inline menu removed; using portal below for consistent visuals */}
+
+              {menuPortalEl && showPlaylistMenu && ReactDOM.createPortal(
+                <div
+                  ref={playerMenuRef}
+                  className={`context-submenu ${playerMenuReady ? 'ready' : 'measuring'}`}
+                  style={{
+                    position: 'fixed',
+                    left: playerMenuReady ? `${playerMenuPos.x}px` : '-9999px',
+                    top: playerMenuReady ? `${playerMenuPos.y}px` : '-9999px',
+                    visibility: playerMenuReady ? 'visible' : 'hidden',
+                    opacity: playerMenuReady ? 1 : 0,
+                    pointerEvents: playerMenuReady ? 'auto' : 'none',
+                    zIndex: 2300,
+                    background: 'transparent',
+                    border: 'none',
+                    padding: 0
                   }}
+                  onClick={(e) => e.stopPropagation()}
                 >
                   <PlaylistMenu
                     playlists={playlists}
-                    onAddToPlaylist={(playlistId) => {
-                      onAddToPlaylist(playlistId, currentSong);
-                      setShowPlaylistMenu(false);
-                    }}
+                    onAddToPlaylist={(playlistId) => { onAddToPlaylist(playlistId, currentSong); setShowPlaylistMenu(false); }}
                     onClose={() => setShowPlaylistMenu(false)}
+                    onCreate={() => { window.dispatchEvent(new CustomEvent('sosu:create-playlist')); setShowPlaylistMenu(false); }}
                   />
-                </div>
+                </div>,
+                menuPortalEl
               )}
             </div>
           )}
@@ -595,7 +786,8 @@ const PlayerBar = ({
           </div>
         </div>
 
-        <div className="player-bar-right">
+        <div className="player-bar-right" style={{ position: 'relative' }}>
+
           <div className="volume-control" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <button 
               className="control-button"
@@ -605,6 +797,9 @@ const PlayerBar = ({
               {isMuted ? <VolumeX size={18} /> : <Volume2 size={18} />}
             </button>
             <div className="volume-bar" onMouseDown={handleVolumeMouseDown}>
+              <div className={`volume-percent ${showVolumePercent ? 'show' : ''}`} style={{ left: `${isMuted ? 0 : Math.round(volume * 100)}%` }}>
+                {isMuted ? '0%' : `${Math.round(volume * 100)}%`}
+              </div>
               <div 
                 className="volume-bar-fill" 
                 style={{ width: `${isMuted ? 0 : volume * 100}%` }}
@@ -620,6 +815,8 @@ const PlayerBar = ({
             >
               <LucideFileVolume2 size={20} fill="EQ" />
             </button>
+
+
             
             {/* Speed Control */}
             <div style={{ position: 'relative' }}>

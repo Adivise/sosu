@@ -10,6 +10,11 @@ files:
   - "!README.md"
   - "!electron.vite.config.mjs"
   - "!LICENSE"
+  - "!SECURITY.md"
+  - "!README.dev.md"
+  - "!README.user.md"
+  - "!CONTRIBUTING.md"
+  - "!CODE_OF_CONDUCT.md"
 asarUnpack:
   - 'resources/**'
 asar: true

@@ -25,7 +25,9 @@
 }
 
 .eqmodal-overlay ~ .player-bar {
-  display: none;
+  opacity: 0;
+  transform: translateY(6px);
+  pointer-events: none;
 }
 
 /* Container – matches .settings-modal */
@@ -176,7 +178,7 @@
   color: var(--accent-contrast, #000);
   border-color: var(--accent-color);
   font-weight: 700;
-  box-shadow: 0 4px 12px rgba(29, 185, 84, 0.3);
+  box-shadow: 0 4px 12px var(--accent-color);
 }
 
 /* EQ Bands */
@@ -203,8 +205,79 @@
 .eq-band:hover {
   border-color: var(--accent-color);
   background: #1e1e1e;
-  box-shadow: 0 4px 16px rgba(29, 185, 84, 0.15);
+  box-shadow: 0 4px 16px var(--accent-color);
 }
+
+/* Highlight modified bands and add small reset button */
+.eq-band.modified { 
+  border-left: 4px solid var(--accent-color);
+  box-shadow: 0 8px 22px rgba(0,0,0,0.6);
+}
+
+/* Tooltip that shows the dB change for modified bands */
+.eq-band-tooltip {
+  position: absolute;
+  top: -40px;
+  left: 50%;
+  transform: translateX(-50%) translateY(6px);
+  padding: 6px 8px;
+  border-radius: 6px;
+  font-size: 12px;
+  background: rgba(12,12,12,0.92);
+  color: #fff;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.6);
+  opacity: 0;
+  transition: opacity 0.14s, transform 0.14s;
+  pointer-events: none;
+  z-index: 2000;
+}
+
+.eq-band:hover .eq-band-tooltip {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+.eq-band-tooltip.positive {
+  background: rgba(29,185,84,0.95);
+  color: var(--accent-contrast, #000);
+}
+
+.eq-band-tooltip.negative {
+  background: rgba(200,80,80,0.95);
+  color: #fff;
+}
+
+.eq-band-tooltip::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: -6px;
+  width: 0;
+  height: 0;
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-top: 6px solid rgba(12,12,12,0.92);
+}
+
+.eq-band-tooltip.positive::after { border-top-color: rgba(29,185,84,0.95); }
+.eq-band-tooltip.negative::after { border-top-color: rgba(200,80,80,0.95); }
+
+/* Small summary in the header when bands have been adjusted */
+.eq-modified-summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-right: 8px;
+  padding: 6px 8px;
+  background: rgba(255,255,255,0.02);
+  border-radius: 8px;
+  border: 1px solid rgba(255,255,255,0.03);
+  color: #f1f1f1;
+  font-size: 13px;
+}
+
+
 
 .eq-band-top {
   display: flex;
@@ -258,14 +331,14 @@
   border-radius: 50%;
   background: var(--accent-color);
   cursor: pointer;
-  box-shadow: 0 2px 6px rgba(29, 185, 84, 0.4);
+  box-shadow: 0 2px 6px var(--accent-color);
   transition: all 0.15s ease-out;
 }
 
 .eq-slider::-webkit-slider-thumb:active {
   width: 18px;
   height: 18px;
-  box-shadow: 0 4px 12px rgba(29, 185, 84, 0.6);
+  box-shadow: 0 4px 12px var(--accent-color);
 }
 
 .eq-slider::-moz-range-track {
@@ -280,14 +353,14 @@
   background: var(--accent-color);
   cursor: pointer;
   border: none;
-  box-shadow: 0 2px 6px rgba(29, 185, 84, 0.4);
+  box-shadow: 0 2px 6px var(--accent-color);
   transition: all 0.15s ease-out;
 }
 
 .eq-slider::-moz-range-thumb:active {
   width: 18px;
   height: 18px;
-  box-shadow: 0 4px 12px rgba(29, 185, 84, 0.6);
+  box-shadow: 0 4px 12px var(--accent-color);
 }
 
 /* Band labels */
@@ -349,7 +422,7 @@
   font-size: 13px;
   font-weight: 700;
   cursor: pointer;
-  background: rgba(29, 185, 84, 0.2);
+  background: var(--accent-color);
   color: var(--accent-color);
   transition: all 0.17s;
   border: 1.5px solid transparent;
@@ -361,7 +434,7 @@
   background: var(--accent-color);
   color: var(--accent-contrast, #000);
   border-color: var(--accent-color);
-  box-shadow: 0 4px 12px rgba(29, 185, 84, 0.3);
+  box-shadow: 0 4px 12px var(--accent-color);
 }
 
 /* Buttons – inherit .settings-button style */
@@ -406,7 +479,7 @@
 
 .settings-button.primary:hover {
   background: var(--accent-color-hover);
-  box-shadow: 0 4px 12px rgba(29, 185, 84, 0.3);
+  box-shadow: 0 4px 12px var(--accent-color);
 }
 
 /* Scrollbar */

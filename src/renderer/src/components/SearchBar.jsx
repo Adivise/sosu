@@ -49,6 +49,25 @@ const SearchBar = ({ searchQuery, onSearchChange, songs, showFilters = false, so
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  // Listen for programmatic search queries (e.g., clicking artist in PlayerBar)
+  useEffect(() => {
+    const handler = (ev) => {
+      const q = ev?.detail?.query || '';
+      if (typeof onSearchChange === 'function') {
+        onSearchChange(q);
+        setIsFocused(true);
+        // Focus input and move cursor to end
+        if (searchRef.current) {
+          searchRef.current.focus();
+          const v = searchRef.current.value || '';
+          try { searchRef.current.selectionStart = searchRef.current.selectionEnd = v.length; } catch(e) {}
+        }
+      }
+    };
+    window.addEventListener('sosu:set-search-query', handler);
+    return () => window.removeEventListener('sosu:set-search-query', handler);
+  }, [onSearchChange]);
+
   const handleKeyDown = (e) => {
     if (suggestions.length === 0) return;
 
@@ -62,7 +81,8 @@ const SearchBar = ({ searchQuery, onSearchChange, songs, showFilters = false, so
       setSelectedIndex(prev => prev > 0 ? prev - 1 : -1);
     } else if (e.key === 'Enter' && selectedIndex >= 0) {
       e.preventDefault();
-      const query = suggestions[selectedIndex].title;
+      const s = suggestions[selectedIndex];
+      const query = s.matchType === 'artist' ? s.artist : s.title;
       onSearchChange(query);
       addToHistory(query);
       setIsFocused(false);
@@ -76,7 +96,7 @@ const SearchBar = ({ searchQuery, onSearchChange, songs, showFilters = false, so
   };
 
   const handleSuggestionClick = (song) => {
-    const newQuery = song.title;
+    const newQuery = song.matchType === 'artist' ? song.artist : song.title;
     onSearchChange(newQuery);
     addToHistory(newQuery);
     setIsFocused(false);
@@ -105,14 +125,19 @@ const SearchBar = ({ searchQuery, onSearchChange, songs, showFilters = false, so
   };
 
   // Cycle through sort options: none -> az -> za -> none
+  // If current sort is an unrelated mode (e.g., artist-az), switch to name asc
   const handleSortCycle = () => {
     if (sortBy === 'none') {
       onSortChange('az');
       onSortDurationChange('none'); // Reset duration sort when Name is selected
     } else if (sortBy === 'az') {
       onSortChange('za');
-    } else {
+    } else if (sortBy === 'za') {
       onSortChange('none');
+    } else {
+      // Any other mode (artist-az/za etc) -> switch to Name asc
+      onSortChange('az');
+      onSortDurationChange('none');
     }
   };
 
@@ -167,11 +192,24 @@ const SearchBar = ({ searchQuery, onSearchChange, songs, showFilters = false, so
             <div className="search-filters">
               <span className="filter-label">Sort:</span>
               <button
-                className={`filter-chip ${sortBy !== 'none' ? 'active' : ''}`}
+                className={`filter-chip ${(sortBy === 'az' || sortBy === 'za') ? 'active' : ''}`}
                 onClick={handleSortCycle}
                 title="Cycle: A-Z → Z-A → None"
               >
                 Name {getSortIcon()}
+              </button>
+              <button
+                className={`filter-chip ${sortBy === 'artist-az' || sortBy === 'artist-za' ? 'active' : ''}`}
+                onClick={() => {
+                  // Cycle artist sort: none -> artist-az -> artist-za -> none
+                  if (sortBy === 'artist-az') onSortChange('artist-za');
+                  else if (sortBy === 'artist-za') onSortChange('none');
+                  else onSortChange('artist-az');
+                  onSortDurationChange('none'); // reset duration sort
+                }}
+                title="Cycle: Artist A-Z → Artist Z-A → None"
+              >
+                Artist {sortBy === 'artist-az' ? '↑' : sortBy === 'artist-za' ? '↓' : '◇'}
               </button>
               <button
                 className={`filter-chip ${sortDuration !== 'none' ? 'active' : ''}`}

@@ -157,20 +157,36 @@
   overflow-y: auto;
   max-height: 250px;
   scrollbar-width: thin;
-  scrollbar-color: #232323 #181818;
+  scrollbar-color: var(--accent-color) transparent;
 }
 
-.playlists-list::-webkit-scrollbar {
-  width: 8px;
-  background: #181818;
+/* Themed sidebar scrollbars: always accent colored and slightly prominent */
+.sidebar, .sidebar-scroll, .playlists-list {
+  scrollbar-width: thin; /* Firefox */
+  /* thumb color, track color */
+  scrollbar-color: var(--accent-color) transparent;
 }
+
+.sidebar::-webkit-scrollbar, .sidebar-scroll::-webkit-scrollbar, .playlists-list::-webkit-scrollbar {
+  width: 7px;
+  background: transparent;
+}
+/* Always show accent-colored thumb (gradient) with subtle glow */
+.sidebar::-webkit-scrollbar-thumb, .sidebar-scroll::-webkit-scrollbar-thumb, .playlists-list::-webkit-scrollbar-thumb {
+  background: var(--accent-color);
+  border-radius: 8px;
+  transition: background 0.2s;
+}
+
+.sidebar::-webkit-scrollbar-thumb:hover, .sidebar-scroll::-webkit-scrollbar-thumb:hover, .playlists-list::-webkit-scrollbar-thumb:hover {
+  background: var(--accent-color-hover);
+}
+
+/* keep a slightly darker/faint fallback for old browsers */
 .playlists-list::-webkit-scrollbar-thumb {
-  background: #232323;
   border-radius: 8px;
 }
-.playlists-list::-webkit-scrollbar-thumb:hover {
-  background: var(--accent-color);
-}
+
 
 .playlists-category-header {
   display: flex;

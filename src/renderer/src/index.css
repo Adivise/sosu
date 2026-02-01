@@ -3,6 +3,8 @@
   --accent-color-hover: #1ed760;
   --accent-color-dark: #15a349;
   --accent-contrast: #000000;
+  --backdrop-blur: 6px;
+  --backdrop-saturate: 120%;
 }
 
 * {

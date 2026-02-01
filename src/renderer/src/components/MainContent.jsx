@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import SearchBar from './SearchBar';
 import SongList from './SongList';
 import './MainContent.css';
@@ -21,11 +21,18 @@ const MainContent = ({
   blurIntensity = 60,
   favorites = {},
   onToggleFavorite,
-  ratings = {},
-  onSetRating,
   isPlayingNow = false,
   itemsPerPage = 50,
-  onDisplayedSongsChange
+  onDisplayedSongsChange,
+  onAddArtistToFilter = null, // handler from App to add artist to hidden list
+  onOpenSongDetails = null,
+  onPreviewSelect = null,
+  onClearPreview = null,
+  onCreatePlaylist = null,
+  highlightedSongId = null,
+  showSongBadges = true,
+  playCounts = {},
+  nameFilter = ''
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
@@ -41,17 +48,40 @@ const MainContent = ({
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   const [pageByView, setPageByView] = useState({});
 
+  // Restore saved per-view pages from sessionStorage on mount
+  useEffect(() => {
+    try {
+      const pages = {};
+      for (let i = 0; i < sessionStorage.length; i++) {
+        const key = sessionStorage.key(i);
+        if (key && key.startsWith('sosu:page:')) {
+          const view = key.slice('sosu:page:'.length);
+          const val = Math.max(1, parseInt(sessionStorage.getItem(key), 10) || 1);
+          pages[view] = val;
+        }
+      }
+      if (Object.keys(pages).length > 0) {
+        console.debug && console.debug('[MainContent] restoring saved pages', pages);
+        // Merge saved pages so they win over any existing defaults
+        setPageByView(prev => ({ ...prev, ...pages }));
+      }
+    } catch (e) {}
+  }, []);
+
+  // Skip resetting pages on initial mount (we restore saved pages first)
+  const _skipPageResetOnMountRef = React.useRef(false);
+
   // Persist sort settings
-  React.useEffect(() => {
+  useEffect(() => {
     localStorage.setItem('sortBy', sortBy);
   }, [sortBy]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     localStorage.setItem('sortDuration', sortDuration);
   }, [sortDuration]);
 
   // Debounce search query
-  React.useEffect(() => {
+  useEffect(() => {
     const timer = setTimeout(() => setDebouncedQuery(searchQuery), 150);
     return () => clearTimeout(timer);
   }, [searchQuery]);
@@ -65,6 +95,54 @@ const MainContent = ({
   }, [currentView, selectedPlaylistId]);
 
   const currentPageForView = pageByView[viewKey] || 1;
+
+  // Track previous dependency values so we can tell what changed (view vs filters)
+  const prevDepsRef = React.useRef({ viewKey, debouncedQuery, minDurationValue, durationMin: durationFilter.min, durationMax: durationFilter.max, sortBy, sortDuration, nameFilter });
+
+  // If user changes search query or filters, reset the current page for this view to 1
+  useEffect(() => {
+    // Avoid resetting to page 1 during initial mount when we've restored saved pages
+    if (!_skipPageResetOnMountRef.current) {
+      _skipPageResetOnMountRef.current = true;
+      console.debug && console.debug('[MainContent] skipped initial page reset', { viewKey });
+      // Initialize prevDeps to current values
+      prevDepsRef.current = { viewKey, debouncedQuery, minDurationValue, durationMin: durationFilter.min, durationMax: durationFilter.max, sortBy, sortDuration, nameFilter };
+      return;
+    }
+
+    // Determine what changed: view only vs filters
+    const prev = prevDepsRef.current || {};
+    const viewChanged = prev.viewKey !== viewKey;
+    const filtersChanged = prev.debouncedQuery !== debouncedQuery || prev.minDurationValue !== minDurationValue || prev.durationMin !== durationFilter.min || prev.durationMax !== durationFilter.max || prev.sortBy !== sortBy || prev.sortDuration !== sortDuration || prev.nameFilter !== nameFilter;
+
+    if (viewChanged && !filtersChanged) {
+      // Attempt to restore saved page for this view if present
+      try {
+        const saved = sessionStorage.getItem(`sosu:page:${viewKey}`);
+        if (saved != null) {
+          const v = Math.max(1, parseInt(saved, 10) || 1);
+          setPageByView(prev => ({ ...prev, [viewKey]: v }));
+          console.debug && console.debug('[MainContent] restored page for view change', { viewKey, restoredPage: v });
+          // update prev and return
+          prevDepsRef.current = { viewKey, debouncedQuery, minDurationValue, durationMin: durationFilter.min, durationMax: durationFilter.max, sortBy, sortDuration, nameFilter };
+          return;
+        }
+      } catch (e) {}
+
+      // No saved value -> reset to 1
+      setPageByView(prev => ({ ...prev, [viewKey]: 1 }));
+      try { sessionStorage.setItem(`sosu:page:${viewKey}`, '1'); } catch (e) {}
+      console.debug && console.debug('[MainContent] reset page to 1 (no saved) on view change', { viewKey });
+    } else {
+      // Filters changed (or both changed) -> reset to 1
+      setPageByView(prev => ({ ...prev, [viewKey]: 1 }));
+      try { sessionStorage.setItem(`sosu:page:${viewKey}`, '1'); } catch (e) {}
+      console.debug && console.debug('[MainContent] resetting page to 1 due to filter/view change', { viewKey });
+    }
+
+    // Update previous dependency snapshot
+    prevDepsRef.current = { viewKey, debouncedQuery, minDurationValue, durationMin: durationFilter.min, durationMax: durationFilter.max, sortBy, sortDuration, nameFilter };
+  }, [viewKey, debouncedQuery, minDurationValue, durationFilter.min, durationFilter.max, sortBy, sortDuration, nameFilter]);
 
   const filteredSongs = useMemo(() => {
     let result = songs || [];
@@ -109,6 +187,17 @@ const MainContent = ({
       );
     }
 
+    // ✅ Sorting by artist (new)
+    if (allowSort && sortBy === 'artist-az') {
+      result = [...result].sort((a, b) =>
+        (a.artist || '').toLowerCase().localeCompare((b.artist || '').toLowerCase())
+      );
+    } else if (allowSort && sortBy === 'artist-za') {
+      result = [...result].sort((a, b) =>
+        (b.artist || '').toLowerCase().localeCompare((a.artist || '').toLowerCase())
+      );
+    }
+
     // ✅ Sorting by duration (disabled on Recently/Most Played)
     if (allowSort && sortDuration === 'asc') {
       result = [...result].sort((a, b) => {
@@ -129,7 +218,7 @@ const MainContent = ({
 
   // Notify parent component when displayed songs change (with comparison to avoid unnecessary updates)
   const prevFilteredSongsRef = useRef([]);
-  React.useEffect(() => {
+  useEffect(() => {
     if (onDisplayedSongsChange) {
       // Check if songs actually changed (compare IDs)
       const prevIds = prevFilteredSongsRef.current.map(s => s.id).join(',');
@@ -141,6 +230,13 @@ const MainContent = ({
       }
     }
   }, [filteredSongs, onDisplayedSongsChange]);
+
+  // Helpful message when there are no results (give quick actions)
+  const noResultsMessage = (query) => {
+    if (!query) return 'No songs found. Try changing filters or your search.';
+    return `No results for "${query}". Try clearing the search or checking Filters (Settings).`;
+  };
+
 
   // ✅ Loading state
   if (loading) {
@@ -251,6 +347,31 @@ const MainContent = ({
             <p>This playlist doesn't contain any songs yet</p>
           </div>
         ) : songs.length > 0 ? (
+          // When there are songs available but filters/search hide all results, show a helpful message with quick actions
+          filteredSongs.length === 0 ? (
+            <div className="empty-state no-results-state">
+              <h2>{noResultsMessage(debouncedQuery)}</h2>
+              <p style={{ opacity: 0.85, marginTop: 8 }}>
+                Suggestions: clear the search, check Filters (hidden artists / title filters / minimum duration), or switch view.
+              </p>
+
+              <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+                <button
+                  className="settings-button"
+                  onClick={() => { setSearchQuery(''); setDebouncedQuery(''); if (listRef.current) listRef.current.scrollTop = 0; }}
+                >
+                  Clear Search
+                </button>
+                <button
+                  className="settings-button primary"
+                  onClick={() => window.dispatchEvent(new CustomEvent('sosu:open-settings'))}
+                >
+                  Open Filters (Settings)
+                </button>
+              </div>
+            </div>
+          ) : (
+
           <SongList
             songs={filteredSongs}
             onSongSelect={onSongSelect}
@@ -266,8 +387,6 @@ const MainContent = ({
             playlists={playlists}
             favorites={favorites}
             onToggleFavorite={onToggleFavorite}
-            ratings={ratings}
-            onSetRating={onSetRating}
             isPlayingNow={isPlayingNow}
             itemsPerPage={itemsPerPage}
             currentPage={currentPageForView}
@@ -276,9 +395,19 @@ const MainContent = ({
                 ...prev,
                 [viewKey]: page
               }));
+              try { sessionStorage.setItem(`sosu:page:${viewKey}`, String(page)); console.debug && console.debug('[MainContent] saved page change', { viewKey, page }); } catch (e) {}
             }}
+            onAddArtistToFilter={onAddArtistToFilter}
+            onOpenSongDetails={onOpenSongDetails}
+            onPreviewSelect={onPreviewSelect}
+            onClearPreview={onClearPreview}
+            onCreatePlaylist={onCreatePlaylist}
+            highlightedSongId={highlightedSongId}
+            playCounts={playCounts}
+            isMostPlayed={currentView === 'most-played'}
+            viewKey={viewKey}
           />
-        ) : null}
+        )) : null}
       </div>
     </div>
   );

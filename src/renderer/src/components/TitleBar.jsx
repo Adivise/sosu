@@ -2,7 +2,7 @@ import React from 'react';
 import { Minus, Square, X } from 'lucide-react';
 import './TitleBar.css';
 
-const TitleBar = () => {
+const TitleBar = ({ currentSong }) => {
   const handleMinimize = () => {
     if (window.electronAPI?.windowMinimize) {
       window.electronAPI.windowMinimize();
@@ -21,10 +21,12 @@ const TitleBar = () => {
     }
   };
 
+  const titleText = currentSong ? `${currentSong.title}${currentSong.artist ? ' — ' + currentSong.artist : ''}` : 'sosu';
+
   return (
     <div className="title-bar">
       <div className="title-bar-drag-region">
-        <div className="title-bar-title"></div>
+        <div className="title-bar-title" title={titleText} aria-label={titleText}>{titleText}</div>
       </div>
       <div className="title-bar-controls">
         <button 

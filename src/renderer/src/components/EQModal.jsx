@@ -26,6 +26,10 @@ const EQModal = ({
     return () => window.removeEventListener('keydown', onKey);
   }, [isOpen, onClose]);
 
+  // Track modified bands (anything not near 0 dB)
+  const modifiedBands = bands.filter(b => Math.abs(b.gain) > 0.05);
+  const modifiedCount = modifiedBands.length;
+
   const handleFineChange = useCallback(
     (idx, delta) => {
       const cur = bands[idx]?.gain ?? 0;
@@ -60,6 +64,13 @@ const EQModal = ({
         <div className="modal-header">
           <h2 className="modal-title">Custom Equalizer</h2>
           <div className="modal-actions">
+            {modifiedCount > 0 && (
+              <div className="eq-modified-summary" title={`Modified bands: ${modifiedCount}`}>
+                <span className="eq-modified-count">{modifiedCount} modified</span>
+
+              </div>
+            )}
+
             {onSavePreset && (
               <button
                 className="eq-action-btn"
@@ -101,7 +112,7 @@ const EQModal = ({
           {/* Band sliders */}
           <div className="eq-bands-grid" role="group" aria-label="Equalizer bands">
             {bands.map((band, idx) => (
-              <div key={band.freq || idx} className="eq-band">
+              <div key={band.freq || idx} className={`eq-band ${Math.abs(band.gain) > 0.05 ? 'modified' : ''}`}>
                 <div className="eq-band-top">
                   <button
                     className="eq-fine-btn"
@@ -132,6 +143,13 @@ const EQModal = ({
                     +
                   </button>
                 </div>
+
+                {/* Tooltip for modified bands */}
+                {Math.abs(band.gain) > 0.05 && (
+                  <div className={`eq-band-tooltip ${band.gain > 0 ? 'positive' : 'negative'}`} aria-hidden="true">
+                    {(band.gain > 0 ? '+' : '') + band.gain.toFixed(1)} dB
+                  </div>
+                )}
 
                 <div className="eq-band-meta">
                   <div className="eq-band-label">{band.label}</div>

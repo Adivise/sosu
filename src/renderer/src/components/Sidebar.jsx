@@ -3,7 +3,7 @@ import { Music, ListMusic, Plus, Settings2Icon, FileMusicIcon, Clock, Heart, Tre
 import { VERSION } from '../version';
 import './Sidebar.css';
 
-const Sidebar = ({ onSelectFolder, osuFolderPath, currentView, onViewChange, playlists, onCreatePlaylist, onSelectPlaylist, selectedPlaylistId }) => {
+const Sidebar = ({ onSelectFolder, osuFolderPath, currentView, onViewChange, playlists, onCreatePlaylist, onSelectPlaylist, selectedPlaylistId, onOpenSettings }) => {
   return (
     <div className="sidebar">
       <div className="sidebar-header">
@@ -73,7 +73,7 @@ const Sidebar = ({ onSelectFolder, osuFolderPath, currentView, onViewChange, pla
       </div>
 
       <div className="sidebar-section">
-        <button className="folder-button" onClick={onSelectFolder}>
+        <button className="folder-button" onClick={onOpenSettings || onSelectFolder}>
           <Settings2Icon size={18} />
           <span>Settings</span>
         </button>

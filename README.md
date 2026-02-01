@@ -13,85 +13,17 @@ Take your osu! music experience to the next level with SOSU.
 ### 🎬 Watch demo on youtbue
 [![Watch the video](https://img.youtube.com/vi/d_4Dcfb4kIA/0.jpg)](https://www.youtube.com/watch?v=d_4Dcfb4kIA)
 
-# 🌟 Features
+## Quick user features
+A short, friendly summary of core features for new users — full details and screenshots are in `README.user.md`.
 
-### Core
-- 🎵 **Music Player** - Play songs from your osu! Songs folder
-- 🎨 **Modern UI** - Beautiful, dark-themed interface inspired by Spotify
-- 📁 **Playlist Support** - Create and manage custom playlists
-- 📑 **Views: Library, Favorites, Recently Played, Most Played** - Multiple ways to browse your osu! music
-- 💾 **Auto Save** - Playlists, filters, equalizer, theme, playback state and more are saved automatically
-
-### Search, Filters & Library
-- 🔍 **Search Bar with Suggestions** - Real-time search with history and smart suggestions by title / artist / folder
-- 🎚️ **Duration Filter** - Hide songs shorter than a minimum duration (per second)
-- 🎤 **Artist Filter** - Hide songs from specific artists using a searchable list
-- 🏷️ **Title Filters** - Hide songs whose titles match custom keywords (contains / starts with / ends with)
-- 🧹 **Duplicate Title Filter** - Optionally show only one song per title to reduce clutter in Library
-- 📈 **Filter Statistics** - See total / visible / hidden songs, plus a breakdown (duration / artist / title / duplicates)
-- 📄 **Per-View Pagination** - Library, Favorites, Most Played, playlists etc. each remember their own current page
-
-### Playback & Audio
-- 🎛️ **Full Playback Controls** - Shuffle, repeat, autoplay, next/previous, seek and volume control
-- 🎚️ **10-Band Equalizer** - Custom EQ with multiple presets and fine 0.1 dB adjustments
-- 🎵 **Per-Song Favorites** - Mark favorites, with dedicated Favorites view
-- 📈 **Play Count Tracking** - Tracks how often you play each song, powering the Most Played view
-- 🕒 **Playback Speed Control** - Change speed (0.5x–2.0x) with presets and a detailed slider
-- 📊 **Progress Bar** - Visual timeline with drag-to-seek support
-
-### Integrations & Streaming
-- 🎮 **Discord Rich Presence** - Show current song on your Discord profile
-- 🌐 **Widget Server (OBS/Stream)** - Built-in HTTP + WebSocket server for overlay widgets in OBS / Streamlabs
-- 📡 **Widget API Docs & Themes** - Auto-generated docs and theme browser at `http://localhost:3737/`
-- 🔗 **Beatmap Links** - Click song titles/artists to open beatmaps on osu.ppy.sh
-
-### Appearance & Data
-- 🖼️ **Blurred Album Art Background** - Optional blurred background based on current song cover
-- 🎨 **Custom Accent Color** - Select any accent color or use presets (Spotify green, violet, pink, etc.)
-- 🧾 **Backup & Restore** - Export/import all playlists, favorites, ratings, play counts and settings as JSON
-- ♻️ **Rescan & Reset** - Rescan osu! Songs folder or fully reset the app to first-run state from Settings
-- ⚡ **Fast & Lightweight** - Optimized scanning and metadata caching for large osu! libraries
-- 📱 **Cross-Platform** - Available for Windows, macOS, and Linux
-
-<details>
-<summary>🎮 Playback Features [CLICK ME]</summary>
-
-## 🎮 Available Playback Features
-
-### Basic Controls
-- ▶️ **Play/Pause** - Start or pause playback
-- ⏭️ **Next** - Skip to the next song
-- ⏮️ **Previous** - Go back to the previous song
-- 🔊 **Volume Control** - Adjust playback volume with visual slider
-
-### Advanced Controls
-- 🔀 **Shuffle** - Randomize song playback order
-- 🔁 **Repeat** - Loop the current song
-- ⚡ **Autoplay** - Automatically play the next song when current ends
-- 📊 **Progress Bar** - Visual timeline with click-to-seek functionality
-
-### Music Management
-- 📁 **Playlists** - Create unlimited custom playlists
-- ➕ **Add to Playlist** - Quickly add songs to any playlist
-- 🗑️ **Remove from Playlist** - Remove songs from playlists
-- 🔍 **Search** - Real-time search across all songs with smart suggestions
-- 🎵 **Song List** - Browse all your osu! songs in Library, Favorites, Recently Played, and Most Played views
-- 🧭 **Per-View Pagination** - Each view remembers its own page (e.g. Library page 3, Favorites page 1)
-
-### Integration Features
-- 🎮 **Discord Rich Presence** - Show current song on Discord
-- 🔗 **Beatmap Links** - Direct links to osu.ppy.sh beatmaps
-- 💾 **Metadata Cache** - Fast loading with cached song information
-- 📂 **Folder Selection** - Easy osu! Songs folder selection
-
-</details>
-
-<details>
-<summary>🚀 Requirements [CLICK ME]</summary>
+- 🎵 Play songs from your local `osu!` Songs folder with quick scanning & caching
+- 🔍 Fast search with suggestions, useful filters (duration, artist, title) and duplicate handling
+- ▶️ Full playback experience: shuffle, repeat, autoplay, speed control and a 10-band EQ
+- 📁 Playlists, favorites, and play-counts (Most Played view)
+- 🌐 Optional integrations: Discord Rich Presence and OBS-compatible widget server
+- 🧾 Export/import settings & playlists, plus an easy Reset to defaults
 
 ## 📋 Requirements
-
-- [Node.js](https://nodejs.org/en/download/) - Version 20 or higher (for building from source)
 - [osu!](https://osu.ppy.sh/) - osu! game installation with Songs folder
 - **osu! Songs Folder** - Contains your beatmap audio files (.mp3, .ogg)
   - Default Windows location: `C:\Users\YourName\AppData\Local\osu!\Songs`
@@ -100,11 +32,7 @@ Take your osu! music experience to the next level with SOSU.
 
 > **Note:** SOSU reads audio files directly from your osu! Songs folder. No additional setup required!
 
-</details>
-
 # 🚀 Installation
-
-## For Regular Users
 
 ### Windows Users
 - Click [here](https://github.com/Adivise/sosu/releases/latest/download/sosu-2.0.0.exe) to download the recommended Windows installer
@@ -135,123 +63,6 @@ Take your osu! music experience to the next level with SOSU.
 
 > **Note:** `.yml` and `.blockmap` files are for auto-update and can be ignored by most users. Download the installer or portable/archive for your platform.
 
-<details>
-<summary>⭐ For Developers [CLICK ME]</summary>
-
-## ⭐ For Developers
-
-1. **Clone the Repository**
-   ```bash
-   git clone https://github.com/Adivise/sosu.git
-   cd sosu
-   ```
-
-2. **Install Dependencies**
-   ```bash
-   npm install
-   ```
-
-3. **Build the Application**
-   ```bash
-   # For Windows
-   npm run build
-   npm run build:electron -- --win
-   
-   # For macOS
-   npm run build
-   npm run build:electron -- --mac
-   
-   # For Linux
-   npm run build
-   npm run build:electron -- --linux
-   ```
-
-4. **Development Mode**
-   ```bash
-   npm run dev
-   ```
-   This will start the React development server and launch Electron with hot-reload enabled.
-
-### Available Scripts
-
-- `npm run dev` - Start development mode (React + Electron)
-- `npm run build` - Build React app for production
-- `npm run build:electron` - Build Electron app for distribution
-- `npm run sync-version` - Sync version from package.json to src/version.js
-- `npm start` - Start Electron app (requires built React app)
-
-### Project Structure
-
-```
-sosu/
-├── electron/          # Electron main process files
-│   ├── main.js       # Main process entry point
-│   └── preload.js    # Preload script for secure IPC
-├── src/              # React application source
-│   ├── components/   # React components
-│   ├── App.jsx       # Main app component
-│   └── index.jsx     # React entry point
-├── resources/        # App resources (icons, licenses)
-├── scripts/          # Build scripts
-└── public/           # Static files
-```
-
-</details>
-
-# ⚙️ Configuration
-
-## Electron Builder
-
-The build configuration is in `electron-builder.yml`. Key settings:
-
-- **App ID**: `com.sosu.app`
-- **Product Name**: `sosu`
-- **Icons**: Located in `resources/` directory
-- **Output**: `dist/` directory
-
-## User Data
-
-Application data is stored in:
-- **Windows**: `%APPDATA%/sosu/`
-- **macOS**: `~/Library/Application Support/sosu/`
-- **Linux**: `~/.config/sosu/`
-
-This includes:
-- User preferences
-- Playlists
-- Songs metadata cache
-- Widget Themes
-
-# 🔧 Troubleshooting
-
-## Songs Not Loading
-
-- Ensure you've selected the correct osu! Songs folder
-- Check that the folder contains `.mp3` or `.ogg` audio files
-- Try removing the folder and re-selecting it
-
-## Discord Rich Presence Not Working
-
-- Make sure Discord is running
-- Check that Rich Presence is enabled in Settings
-- Restart the application if it still doesn't work
-
-## Build Errors
-
-- Ensure all dependencies are installed: `npm install`
-- Make sure icon files in `resources/` are at least 256x256 pixels
-- Check that Node.js version is 20 or higher
-
-# 🤝 Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
-
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
-
 # 👥 Contributors
 
 <p align="center">
@@ -262,15 +73,7 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 
 # 📄 License
 
-This project is licensed under the Apache-2.0 License - see the [LICENSE](LICENSE) file for details.
-
-# 🙏 Acknowledgments
-
-- Built with [Electron](https://www.electronjs.org/)
-- UI components with [React](https://reactjs.org/)
-- Icons from [Lucide](https://lucide.dev/)
-- Music metadata parsing with [music-metadata](https://github.com/Borewit/music-metadata)
-- Discord integration with [discord-rpc](https://github.com/discord/discord-rpc)
+This project is licensed under the **Apache-2.0** License - see the [LICENSE](LICENSE) file for details.
 
 <p align="center">
   Made with ❤️ by <a href="https://github.com/Adivise">Adivise</a> for the osu! community

@@ -2,7 +2,7 @@ import React from 'react';
 import { Music2, FolderOpen } from 'lucide-react';
 import './FirstRunScreen.css';
 
-const FirstRunScreen = ({ onSelectFolder }) => {
+const FirstRunScreen = ({ onSelectFolder, errorMessage }) => {
   return (
     <div className="first-run-screen">
       <div className="first-run-content">
@@ -21,6 +21,11 @@ const FirstRunScreen = ({ onSelectFolder }) => {
           <br />
           This folder typically contains all your downloaded beatmaps.
         </p>
+        {errorMessage && (
+          <div className="first-run-error" role="alert">
+            {errorMessage}
+          </div>
+        )}
         <button 
           className="first-run-button"
           onClick={onSelectFolder}

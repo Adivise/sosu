@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { ListMusic, Plus } from 'lucide-react';
 import './PlaylistMenu.css';
 
-const PlaylistMenu = ({ playlists, onAddToPlaylist, onClose }) => {
+const PlaylistMenu = ({ playlists, onAddToPlaylist, onClose, onCreate }) => {
   const menuRef = useRef(null);
 
   useEffect(() => {
@@ -28,9 +28,11 @@ const PlaylistMenu = ({ playlists, onAddToPlaylist, onClose }) => {
               key={playlist.id}
               className="playlist-menu-item"
               onClick={() => {
+                console.debug && console.debug('[PlaylistMenu] clicked playlist', playlist.id, playlist.name);
                 onAddToPlaylist(playlist.id);
                 onClose();
               }}
+              aria-label={`Add to playlist ${playlist.name}`}
             >
               <ListMusic size={16} />
               <span>{playlist.name}</span>
@@ -38,6 +40,19 @@ const PlaylistMenu = ({ playlists, onAddToPlaylist, onClose }) => {
             </button>
           ))
         )}
+      </div>
+
+      {/* Footer: create playlist action (always present) */}
+      <div className="playlist-menu-footer">
+        <button
+          className="playlist-create-button"
+          onClick={() => {
+            if (onCreate) onCreate();
+            onClose();
+          }}
+        >
+          <Plus size={14} style={{ marginRight: 8 }} /> Create Playlist
+        </button>
       </div>
     </div>
   );

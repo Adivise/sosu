@@ -4,7 +4,7 @@
 
 .song-list-header {
   display: grid;
-  grid-template-columns: 40px 2fr 1.5fr 80px;
+  grid-template-columns: 40px 2fr 1.8fr 80px; /* default: no Plays column (number / title / artist / duration) */
   gap: 16px;
   padding: 8px 16px;
   border-bottom: 1px solid #282828;
@@ -17,6 +17,11 @@
   top: 0;
   background-color: #121212;
   z-index: 5;
+}
+
+/* When in Most Played view, show Plays column */
+.song-list.most-played .song-list-header {
+  grid-template-columns: 40px 2fr 1.5fr 64px 80px;
 }
 
 .song-list-header-item {

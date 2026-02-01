@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { X, FolderOpen, Trash2, Check, Monitor, Copy, Power, Settings, Palette, Music, Database, RotateCcw, Filter, XCircle, Search, Plus } from 'lucide-react';
 import './SettingsModal.css';
 
-const SettingsModal = ({ isOpen, onClose, osuFolderPath, onSelectFolder, onRemoveFolder, discordRpcEnabled, onSetDiscordRpcEnabled, widgetServerEnabled, onSetWidgetServerEnabled, albumArtBlur, onSetAlbumArtBlur, blurIntensity, onSetBlurIntensity, accentColor, onSetAccentColor, onClearCache, minDurationValue, setMinDurationValue, itemsPerPage, setItemsPerPage, onExportData, onImportData, onResetApp, hiddenArtists, setHiddenArtists, nameFilter, setNameFilter, nameFilterMode, setNameFilterMode, getAllArtists, filterStats, scanAllMaps, setScanAllMaps, dedupeTitlesEnabled, setDedupeTitlesEnabled, totalScanned }) => {
+const SettingsModal = ({ isOpen, onClose, osuFolderPath, onSelectFolder, onRemoveFolder, discordRpcEnabled, onSetDiscordRpcEnabled, widgetServerEnabled, onSetWidgetServerEnabled, albumArtBlur, onSetAlbumArtBlur, blurIntensity, onSetBlurIntensity, accentColor, onSetAccentColor, onClearCache, minDurationValue, setMinDurationValue, itemsPerPage, setItemsPerPage, onExportData, onImportData, onResetApp, hiddenArtists, setHiddenArtists, nameFilter, setNameFilter, nameFilterMode, setNameFilterMode, getAllArtists, filterStats, scanAllMaps, setScanAllMaps, dedupeTitlesEnabled, setDedupeTitlesEnabled, showSongBadges, onSetShowSongBadges, totalScanned, vuEnabled, onSetVuEnabled }) => {
   const [activeTab, setActiveTab] = useState('general');
   const [widgetServerRunning, setWidgetServerRunning] = useState(widgetServerEnabled);
   const [widgetUrl, setWidgetUrl] = useState(widgetServerEnabled ? 'http://localhost:3737/docs' : '');
@@ -98,19 +98,38 @@ const SettingsModal = ({ isOpen, onClose, osuFolderPath, onSelectFolder, onRemov
   }, [allArtists, artistSearch, hiddenArtists]);
 
   useEffect(() => {
-    if (!isOpen) return;
-    const onDocMouseDown = (e) => {
-      if (!artistDropdownRef.current) return;
-      if (!artistDropdownRef.current.contains(e.target)) {
+    // Only attach listeners while the modal is open and at least one dropdown is active
+    if (!isOpen || (!artistDropdownOpen && !titleModeDropdownOpen)) return;
+
+    const onDocClick = (e) => {
+      if (!artistDropdownRef.current && !titleModeDropdownRef.current) return;
+      if (artistDropdownRef.current && !artistDropdownRef.current.contains(e.target)) {
         setArtistDropdownOpen(false);
       }
       if (titleModeDropdownRef.current && !titleModeDropdownRef.current.contains(e.target)) {
         setTitleModeDropdownOpen(false);
       }
     };
-    document.addEventListener('mousedown', onDocMouseDown);
-    return () => document.removeEventListener('mousedown', onDocMouseDown);
-  }, [isOpen]);
+    // Use capture phase so we detect outside clicks even if inner handlers stop propagation
+    document.addEventListener('click', onDocClick, true);
+
+    // Also listen for focus changes in capture phase to close dropdown when focus moves outside
+    const onDocFocusIn = (e) => {
+      if (!artistDropdownRef.current && !titleModeDropdownRef.current) return;
+      if (artistDropdownRef.current && !artistDropdownRef.current.contains(e.target)) {
+        setArtistDropdownOpen(false);
+      }
+      if (titleModeDropdownRef.current && !titleModeDropdownRef.current.contains(e.target)) {
+        setTitleModeDropdownOpen(false);
+      }
+    };
+    document.addEventListener('focusin', onDocFocusIn, true);
+
+    return () => {
+      document.removeEventListener('click', onDocClick, true);
+      document.removeEventListener('focusin', onDocFocusIn, true);
+    };
+  }, [isOpen, artistDropdownOpen, titleModeDropdownOpen]);
 
   const titleModeLabel = useMemo(() => {
     if (nameFilterMode === 'startswith') return 'Starts with';
@@ -427,6 +446,31 @@ const SettingsModal = ({ isOpen, onClose, osuFolderPath, onSelectFolder, onRemov
                       />
                     ))}
                   </div>
+                </div>
+              </div>
+
+              <div className="settings-section settings-card">
+                <h3 className="settings-section-title">Audio Visualizer</h3>
+                <div className="settings-item" style={{ marginTop: '12px' }}>
+                  <label className="toggle-switch">
+                    <input type="checkbox" checked={vuEnabled} onChange={e => onSetVuEnabled(e.target.checked)} />
+                    <span className="switch-slider"></span>
+                  </label>
+                  <span className="settings-discord-desc">Show or hide the audio visualizer above the player bar.</span>
+                </div>
+              </div>
+
+
+              {/* Song badges (cover art / beatmap / duplicates) */}
+              <div className="settings-section settings-card">
+                <h3 className="settings-section-title">Badges</h3>
+                <p className="settings-section-sub">Customize additional visual elements in the song list.</p>
+                <div className="settings-item" style={{ marginTop: '12px' }}>
+                  <label className="toggle-switch">
+                    <input type="checkbox" checked={showSongBadges} onChange={e => onSetShowSongBadges(e.target.checked)} />
+                    <span className="switch-slider"></span>
+                  </label>
+                  <span className="settings-discord-desc">Toggle display of small badges in the songs list (cover art / beatmap / duplicate count)</span>
                 </div>
               </div>
             </>

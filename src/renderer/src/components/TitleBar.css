@@ -1,12 +1,12 @@
 .title-bar {
   height: 32px;
-  background-color: #000000;
+  background-color: var(--titlebar-bg, #000000);
   display: flex;
   align-items: center;
   justify-content: space-between;
   -webkit-app-region: drag;
   user-select: none;
-  border-bottom: 1px solid #282828;
+  border-bottom: 1px solid var(--titlebar-border, #282828);
   z-index: 1000;
 }
 
@@ -20,8 +20,12 @@
 
 .title-bar-title {
   font-size: 12px;
-  color: #b3b3b3;
+  color: var(--titlebar-text, #b3b3b3);
   font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: calc(100% - 180px);
 }
 
 .title-bar-controls {
@@ -34,7 +38,7 @@
   height: 32px;
   border: none;
   background: none;
-  color: #b3b3b3;
+  color: var(--titlebar-button, #b3b3b3);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -43,27 +47,27 @@
 }
 
 .title-bar-button:hover {
-  background-color: #1a1a1a;
+  background-color: var(--titlebar-hover, #1a1a1a);
 }
 
 .title-bar-button.minimize-button:hover {
-  background-color: #2a2a2a;
+  background-color: var(--titlebar-hover-muted, #2a2a2a);
 }
 
 .title-bar-button.maximize-button:hover {
-  background-color: #2a2a2a;
+  background-color: var(--titlebar-hover-muted, #2a2a2a);
 }
 
 .title-bar-button.close-button:hover {
-  background-color: #e81123;
-  color: #ffffff;
+  background-color: var(--titlebar-close-hover, #e81123);
+  color: var(--titlebar-close-contrast, #ffffff);
 }
 
 .title-bar-button:active {
-  background-color: #3a3a3a;
+  background-color: var(--titlebar-active, #3a3a3a);
 }
 
 .title-bar-button.close-button:active {
-  background-color: #c50e1f;
+  background-color: var(--titlebar-close-active, #c50e1f);
 }
 

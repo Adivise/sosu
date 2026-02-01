@@ -982,8 +982,9 @@ export function startServer(port = 3737) {
         });
         
         if (currentNowPlaying && currentNowPlaying.title) {
+          const isPaused = !!currentNowPlaying.paused;
           const responseData = {
-            status: 'playing',
+            status: isPaused ? 'paused' : 'playing',
             song: {
               title: currentNowPlaying.title,
               artist: currentNowPlaying.artist,
@@ -991,7 +992,7 @@ export function startServer(port = 3737) {
               duration: currentNowPlaying.duration || 0,
               currentTime: currentNowPlaying.currentTime || 0,
               imageFile: currentNowPlaying.imageFile || null,
-              paused: currentNowPlaying.paused || false
+              paused: isPaused
             },
             progress: {
               current: currentNowPlaying.currentTime || 0,
@@ -1495,11 +1496,16 @@ export function stopServer() {
 }
 
 export function updateNowPlaying(data) {
-  currentNowPlaying = data;
+  // Merge partial updates into the current state so widgets can receive lightweight updates
+  if (data === null) {
+    currentNowPlaying = null;
+  } else {
+    currentNowPlaying = Object.assign({}, currentNowPlaying || {}, data);
+  }
 
-  // Broadcast to all connected WebSocket clients
+  // Broadcast to all connected WebSocket clients the merged state
   if (wss) {
-    const message = JSON.stringify(data);
+    const message = JSON.stringify(currentNowPlaying);
     wss.clients.forEach(client => {
       if (client.readyState === 1) { // WebSocket.OPEN
         client.send(message);

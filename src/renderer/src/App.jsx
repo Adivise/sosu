@@ -9,153 +9,188 @@ import SettingsModal from './components/SettingsModal';
 import EQModal from './components/EQModal';
 import LoadingScreen from './components/LoadingScreen';
 import FirstRunScreen from './components/FirstRunScreen';
+import SongDetailsModal from './components/SongDetailsModal';
 import { DEFAULT_EQ_BANDS } from './components/eqConstants';
 import { EQ_PRESETS } from './components/eqPresets';
 import { VERSION } from './version';
 import './App.css';
+import useLocalStorageState from './hooks/useLocalStorageState';
+import { normalizeEqBands, getContrastColor, adjustBrightness } from './utils/colorUtils';
+import useSongs from './hooks/useSongs';
 
-// Normalize saved EQ data to current band layout (supports migration from older 10-band data)
-const normalizeEqBands = (bands) => {
-  if (!Array.isArray(bands)) return DEFAULT_EQ_BANDS;
-  const byFreq = new Map(
-    bands
-      .filter((b) => b && typeof b.freq === 'number')
-      .map((b) => [b.freq, typeof b.gain === 'number' ? b.gain : 0])
-  );
-
-  return DEFAULT_EQ_BANDS.map((band) => {
-    const gain = byFreq.get(band.freq);
-    if (gain === undefined) return { ...band, gain: 0 };
-    const clamped = Math.max(-12, Math.min(12, Number(gain)));
-    return { ...band, gain: clamped };
+// Immediate startup overlay to prevent initial UI flash before React mounts
+if (typeof document !== 'undefined' && !document.getElementById('sosu-startup-overlay')) {
+  const startOverlay = document.createElement('div');
+  startOverlay.id = 'sosu-startup-overlay';
+  Object.assign(startOverlay.style, {
+    position: 'fixed',
+    // set below LoadingScreen z-index (9999) so LoadingScreen is visible
+    zIndex: '9998',
+    pointerEvents: 'none'
   });
-};
-
-// Choose black/white text for best contrast against a given hex color
-const getContrastColor = (hex) => {
-  if (!hex) return '#000';
-  const c = hex.replace('#', '');
-  if (c.length !== 6) return '#000';
-  const r = parseInt(c.slice(0, 2), 16) / 255;
-  const g = parseInt(c.slice(2, 4), 16) / 255;
-  const b = parseInt(c.slice(4, 6), 16) / 255;
-  const luminance = 0.2126 * r + 0.7152 * g + 0.0722 * b;
-  return luminance > 0.55 ? '#000' : '#fff';
-};
-
-// Utility function to adjust color brightness
-const adjustBrightness = (hex, percent) => {
-  // Remove # if present
-  hex = hex.replace('#', '');
-  
-  // Parse hex to RGB
-  const r = parseInt(hex.substring(0, 2), 16);
-  const g = parseInt(hex.substring(2, 4), 16);
-  const b = parseInt(hex.substring(4, 6), 16);
-  
-  // Adjust brightness
-  const adjust = percent / 100;
-  const newR = Math.round(Math.min(255, r * adjust));
-  const newG = Math.round(Math.min(255, g * adjust));
-  const newB = Math.round(Math.min(255, b * adjust));
-  
-  // Convert back to hex
-  return '#' + [newR, newG, newB].map(x => {
-    const hex = x.toString(16);
-    return hex.length === 1 ? '0' + hex : hex;
-  }).join('');
-};
+  document.body.appendChild(startOverlay);
+}
 
 function App() {
-  const [songs, setSongs] = useState([]);
   const [minDurationValue, setMinDurationValue] = useState(60); // Minimum duration in seconds
   const [currentSong, setCurrentSong] = useState(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
-  const [volume, setVolume] = useState(1);
-  const [osuFolderPath, setOsuFolderPath] = useState(null);
-  const [songDurations, setSongDurations] = useState({});
-  const [autoplay, setAutoplay] = useState(false);
-  const [shuffle, setShuffle] = useState(false);
-  const [repeat, setRepeat] = useState(false);
-  const [loadingProgress, setLoadingProgress] = useState({ current: 0, total: 0 });
-  const [loading, setLoading] = useState(false);
+  const [volume, setVolume] = useLocalStorageState('volume', 1, {
+    serializer: (v) => String(v),
+    deserializer: (v) => {
+      if (v === null) return 1;
+      try { const p = JSON.parse(v); return Number(p); } catch { return Number(v); }
+    }
+  });
+  const [autoplay, setAutoplay] = useLocalStorageState('autoplay', false, { serializer: (v) => String(v) });
+  const [shuffle, setShuffle] = useLocalStorageState('shuffle', false, { serializer: (v) => String(v) });
+  const [repeat, setRepeat] = useLocalStorageState('repeat', false, { serializer: (v) => String(v) });
   const [currentView, setCurrentView] = useState('songs');
   const [selectedPlaylistId, setSelectedPlaylistId] = useState(null);
-  const [playlists, setPlaylists] = useState([]);
+  const [playlists, setPlaylists] = useLocalStorageState('playlists', []);
   const [showCreatePlaylistModal, setShowCreatePlaylistModal] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [showEQModal, setShowEQModal] = useState(false);
-  const [songsCache, setSongsCache] = useState({});
   const [discordRpcEnabled, setDiscordRpcEnabled] = useState(false);
   const [widgetServerEnabled, setWidgetServerEnabled] = useState(false);
+  const [vuEnabled, setVuEnabled] = useLocalStorageState('vuEnabled', false);
   const [userDataLoaded, setUserDataLoaded] = useState(false);
-  const [eqBands, setEqBands] = useState(() => {
-    const saved = localStorage.getItem('eqBands');
-    return saved ? normalizeEqBands(JSON.parse(saved)) : DEFAULT_EQ_BANDS;
-  });
-  const [albumArtBlur, setAlbumArtBlur] = useState(() => {
-    const saved = localStorage.getItem('albumArtBlur');
-    return saved ? JSON.parse(saved) : true;
-  });
-  const [blurIntensity, setBlurIntensity] = useState(() => {
-    const saved = localStorage.getItem('blurIntensity');
-    return saved ? parseInt(saved) : 60; // Default 60px blur
-  });
-  const [accentColor, setAccentColor] = useState(() => {
-    const saved = localStorage.getItem('accentColor');
-    return saved || '#1db954'; // Default Spotify green
-  });
-  const [recentlyPlayed, setRecentlyPlayed] = useState(() => {
-    const saved = localStorage.getItem('recentlyPlayed');
-    return saved ? JSON.parse(saved) : [];
-  });
-  const [favorites, setFavorites] = useState(() => {
-    const saved = localStorage.getItem('favorites');
-    return saved ? JSON.parse(saved) : {}; // { songId: true }
-  });
-  const [ratings, setRatings] = useState(() => {
-    const saved = localStorage.getItem('ratings');
-    return saved ? JSON.parse(saved) : {}; // { songId: 1-5 }
-  });
-  const [playCounts, setPlayCounts] = useState(() => {
-    const saved = localStorage.getItem('playCounts');
-    return saved ? JSON.parse(saved) : {}; // { songId: count }
-  });
+  const [eqBands, setEqBands] = useLocalStorageState('eqBands', DEFAULT_EQ_BANDS, { serializer: JSON.stringify, deserializer: (v) => normalizeEqBands(JSON.parse(v)) });
+  const [albumArtBlur, setAlbumArtBlur] = useLocalStorageState('albumArtBlur', true);
+  const [blurIntensity, setBlurIntensity] = useLocalStorageState('blurIntensity', 60);
+  const [accentColor, setAccentColor] = useLocalStorageState('accentColor', '#1db954');
+  const [showSongBadges, setShowSongBadges] = useLocalStorageState('showSongBadges', true);
+  const [favorites, setFavorites] = useLocalStorageState('favorites', {});
   const [durationFilter, setDurationFilter] = useState({ min: 0, max: Infinity });
-  const [itemsPerPage, setItemsPerPage] = useState(() => {
-    const saved = localStorage.getItem('itemsPerPage');
-    return saved ? parseInt(saved) : 50;
-  });
+  const [itemsPerPage, setItemsPerPage] = useLocalStorageState('itemsPerPage', 50);
   const [displayedSongs, setDisplayedSongs] = useState([]);
   const [displayedSongsSourceView, setDisplayedSongsSourceView] = useState(null);
+  const [songDetails, setSongDetails] = useState(null);
+  const [highlightedSongId, setHighlightedSongId] = useState(null); // preview highlight id
+
+  // Highlight song requests from other UI elements (e.g., jump-to-song)
+  useEffect(() => {
+    const handler = (ev) => {
+      try {
+        const songId = ev?.detail?.songId;
+        if (!songId) return;
+        setHighlightedSongId(songId);
+        // Clear highlight after a short duration
+        setTimeout(() => {
+          setHighlightedSongId(null);
+        }, 2500);
+      } catch (e) {}
+    };
+    window.addEventListener('sosu:highlight-song', handler);
+    return () => window.removeEventListener('sosu:highlight-song', handler);
+  }, []);
+
+  // Allow other UI to open Settings via a custom event (used by the "No results" helper)
+  useEffect(() => {
+    const handler = () => setShowSettingsModal(true);
+    window.addEventListener('sosu:open-settings', handler);
+    return () => window.removeEventListener('sosu:open-settings', handler);
+  }, []);
+
+
+
+  // Fallback global event to open the Create Playlist modal when other code dispatches it
+  useEffect(() => {
+    const onCreateEvt = (ev) => {
+      try {
+        console.debug && console.debug('[App] received sosu:create-playlist event, activeElement:', document.activeElement && (document.activeElement.tagName + ' ' + (document.activeElement.id || document.activeElement.className || '')));
+      } catch (e) {}
+
+      // If we recently deleted a playlist, wait a bit longer to avoid focus race with confirm/DOM updates
+      let delay = 30;
+      try {
+        const lastDel = lastPlaylistDeletedAtRef.current || 0;
+        if (Date.now() - lastDel < 800) {
+          delay = 350;
+          console.debug && console.debug('[App] delaying open CreatePlaylistModal due to recent delete', { sinceMs: Date.now() - lastDel });
+        }
+      } catch (e) {}
+
+      // Schedule the modal open on the next tick (or later if needed) to avoid focus/confirm race conditions
+      setTimeout(() => {
+        try {
+          setShowCreatePlaylistModal(true);
+          console.debug && console.debug('[App] scheduled open CreatePlaylistModal');
+        } catch (e) {}
+      }, delay);
+    };
+    window.addEventListener('sosu:create-playlist', onCreateEvt);
+    return () => window.removeEventListener('sosu:create-playlist', onCreateEvt);
+  }, []);
   
   // Advanced filters
-  const [hiddenArtists, setHiddenArtists] = useState(() => {
-    const saved = localStorage.getItem('hiddenArtists');
-    return saved ? JSON.parse(saved) : [];
-  });
-  const [nameFilter, setNameFilter] = useState(() => {
-    const saved = localStorage.getItem('nameFilter');
-    return saved || '';
-  });
-  const [nameFilterMode, setNameFilterMode] = useState(() => {
-    const saved = localStorage.getItem('nameFilterMode');
-    return saved || 'contains'; // 'contains', 'startswith', 'endswith', 'exact'
-  });
-  const [scanAllMaps, setScanAllMaps] = useState(() => {
-    const saved = localStorage.getItem('scanAllMaps');
-    return saved ? JSON.parse(saved) : false; // false = scan only with beatmapId
-  });
-  const [dedupeTitlesEnabled, setDedupeTitlesEnabled] = useState(() => {
-    const saved = localStorage.getItem('dedupeTitlesEnabled');
-    return saved ? JSON.parse(saved) : true; // default ON to match current behavior
+  const [hiddenArtists, setHiddenArtists] = useLocalStorageState('hiddenArtists', ['Unknown Artist']);
+  const [nameFilter, setNameFilter] = useLocalStorageState('nameFilter', '');
+  const [nameFilterMode, setNameFilterMode] = useLocalStorageState('nameFilterMode', 'contains');
+  const [scanAllMaps, setScanAllMaps] = useLocalStorageState('scanAllMaps', false);
+  const [dedupeTitlesEnabled, setDedupeTitlesEnabled] = useLocalStorageState('dedupeTitlesEnabled', true);
+
+  const {
+    songs,
+    setSongs,
+    songsCache,
+    setSongsCache,
+    songDurations,
+    setSongDurations,
+    osuFolderPath,
+    setOsuFolderPath,
+    loading,
+    loadingProgress,
+    loadSongs,
+    clearSongsCache,
+    selectFolder,
+    removeFolder,
+    // playback related
+    playCounts,
+    setPlayCounts,
+    recentlyPlayed,
+    setRecentlyPlayed,
+    notifyPlayback,
+    clearPlayCounts,
+    clearRecentlyPlayed
+  } = useSongs({
+    scanAllMaps,
+    onRestorePendingSong: (restoredSong, playbackState) => {
+      setCurrentSong(restoredSong);
+      setCurrentTime(playbackState?.currentTime || 0);
+      setDuration(playbackState?.duration || 0);
+      setIsPlaying(false);
+    }
   });
 
   // Use ref to prevent duplicate initialization
   const initRef = useRef(false);
   const autoSyncDoneRef = useRef(false); // Track if auto-sync has been done
+  const autoSyncStartedRef = useRef(false); // Track if auto-sync was started (avoids StrictMode race)
+
+  // Track whether we started an initial (startup) auto-sync that must finish before removing overlay
+  const initialAutoSyncRef = useRef(false);
+  const initialAutoSyncDoneRef = useRef(false);
+
+  // When a startup auto-sync was started, wait until loading ends to mark it done
+  useEffect(() => {
+    if (initialAutoSyncRef.current && !loading) {
+      initialAutoSyncDoneRef.current = true;
+    }
+  }, [loading]);
+
+  // Remove startup overlay once app is ready (user data loaded and initial startup sync done / not scanning)
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    const el = document.getElementById('sosu-startup-overlay');
+    if (!el) return;
+    // Only remove if we have loaded user data, not currently loading, and either there was no initial auto-sync OR it has completed
+    if (userDataLoaded && !loading && (!initialAutoSyncRef.current || initialAutoSyncDoneRef.current)) {
+      try { el.parentNode && el.parentNode.removeChild(el); } catch (e) {}
+    }
+  }, [userDataLoaded, loading]);
 
   // Load settings and playlists on mount using Electron cache if available
   useEffect(() => {
@@ -183,7 +218,9 @@ function App() {
           setDiscordRpcEnabled(data.discordRpcEnabled ?? false);
           setWidgetServerEnabled(data.widgetServerEnabled ?? false);
           // Load advanced filters + scan settings
-          if (Array.isArray(data.hiddenArtists)) setHiddenArtists(data.hiddenArtists);
+          if (Array.isArray(data.hiddenArtists)) {
+            setHiddenArtists(data.hiddenArtists.length === 0 ? ['Unknown Artist'] : data.hiddenArtists);
+          }
           if (typeof data.nameFilter === 'string') setNameFilter(data.nameFilter);
           if (typeof data.nameFilterMode === 'string') setNameFilterMode(data.nameFilterMode);
           if (typeof data.scanAllMaps === 'boolean') {
@@ -218,91 +255,111 @@ function App() {
           if (data.eqBands) {
             setEqBands(normalizeEqBands(data.eqBands));
           }
+          if (typeof data.vuEnabled === 'boolean') setVuEnabled(data.vuEnabled);
         }
         
         // Load songs cache
         const cached = await window.electronAPI.getSongsCache();
+        // Determine effective folder path: prefer userData, fall back to localStorage
+        const effectiveFolder = data?.osuFolderPath || (() => { try { return localStorage.getItem('osuFolderPath'); } catch (e) { return null; } })();
+
         if (cached) {
           setSongsCache(cached);
-          // If we have cached songs for the current folder path, load them temporarily
-          if (data?.osuFolderPath && cached[data.osuFolderPath]) {
-            setSongs(cached[data.osuFolderPath].songs);
-            setSongDurations(cached[data.osuFolderPath].durations);
-            
-            // Auto-rescan to sync with actual folder (incremental scan) - only on app startup
-            // This will add new songs and remove deleted ones
-            // Skip if auto-sync was already done (prevents duplicate scans)
-            if (!autoSyncDoneRef.current) {
-              autoSyncDoneRef.current = true;
+
+          // If we have cached songs for the effective folder path, either load them temporarily
+          // or start an auto-sync with full loading UI to avoid flicker on startup.
+          if (effectiveFolder && cached[effectiveFolder]) {
+            const cachedEntry = cached[effectiveFolder];
+            // Ensure OSU folder state is set
+            try { setOsuFolderPath(effectiveFolder); } catch (e) {}
+
+            // If we haven't started an auto-sync yet, start it (show loading on first startup). Use a started flag to avoid StrictMode races.
+            if (!autoSyncStartedRef.current) {
+              autoSyncStartedRef.current = true;
+              // If the user had a last played song, set pending restore so loadSongs can restore it after scanning
+              if (data?.lastPlayedSong) {
+                try { window._pendingSongRestore = { song: data.lastPlayedSong, playbackState: data.lastPlaybackState || {} }; } catch (e) {}
+              }
+
+              // Start auto-sync immediately and show LoadingScreen during the sync
+              console.log('[App] Auto-syncing songs with folder on startup (showing loading)...');
+              // mark that an initial auto-sync is in progress so overlay removal waits for it to finish
+              try { initialAutoSyncRef.current = true; } catch(e) {}
+              try {
+                // AWAIT the load here so we don't set userDataLoaded until scanning has started/completed
+                await loadSongs(effectiveFolder, false, true);
+                // mark done here as well in case loading toggles quickly
+                try { initialAutoSyncDoneRef.current = true; } catch(e) {}
+                // mark overall auto-sync done
+                try { autoSyncDoneRef.current = true; } catch(e) {}
+              } catch (err) {
+                console.error('[App] Auto-sync failed during startup:', err);
+                try { initialAutoSyncDoneRef.current = true; } catch(e) {}
+                try { autoSyncDoneRef.current = true; } catch(e) {}
+              }
+            } else {
+              // Auto-sync has been started previously (or completed) — show cached songs immediately then do a background incremental scan
+              setSongs(cachedEntry.songs);
+              setSongDurations(cachedEntry.durations);
+
+              // Do a background incremental scan without showing the LoadingScreen
               setTimeout(async () => {
-                console.log('[App] Auto-syncing songs with folder on startup...');
-                const result = await window.electronAPI.scanOsuFolder(
-                  data.osuFolderPath,
-                  false,
-                  effectiveScanAllMaps
-                );
-                if (result.success && result.songs) {
-                  setSongs(result.songs);
-                  
-                  // Update durations
-                  const durations = {};
-                  result.songs.forEach(song => {
-                    if (song.duration) {
-                      durations[song.id] = song.duration;
-                    }
-                  });
-                  setSongDurations(durations);
-                  
-                  // Update cache
-                  const newCache = {
-                    ...cached,
-                    [data.osuFolderPath]: {
-                      songs: result.songs,
-                      durations: durations
-                    }
-                  };
-                  setSongsCache(newCache);
-                  if (window.electronAPI?.saveSongsCache) {
-                    window.electronAPI.saveSongsCache(newCache);
-                  }
-                  
-                  // Log stats if available
-                  if (result.stats) {
-                    console.log(`[App] Sync complete - ${result.stats.new} new, ${result.stats.deleted} deleted, ${result.stats.reused} unchanged`);
-                  }
+                await loadSongs(effectiveFolder, false, false);
+              }, 100);
+
+              // Restore last played song if available (when loading from cache)
+              if (data?.lastPlayedSong) {
+                const restoredSong = cachedEntry.songs.find(s => s.id === data.lastPlayedSong.id);
+                if (restoredSong) {
+                  // Restore the song after a short delay to ensure everything is loaded
+                  setTimeout(() => {
+                    setCurrentSong(restoredSong);
+                    setCurrentTime(data.lastPlaybackState?.currentTime || 0);
+                    setDuration(data.lastPlaybackState?.duration || 0);
+                    // Don't auto-play, let user decide
+                    setIsPlaying(false);
+                  }, 100);
                 }
-              }, 500);
-            }
-            
-            // Restore last played song if available (when loading from cache)
-            if (data.lastPlayedSong) {
-              const restoredSong = cached[data.osuFolderPath].songs.find(s => s.id === data.lastPlayedSong.id);
-              if (restoredSong) {
-                // Restore the song after a short delay to ensure everything is loaded
-                setTimeout(() => {
-                  setCurrentSong(restoredSong);
-                  setCurrentTime(data.lastPlaybackState?.currentTime || 0);
-                  setDuration(data.lastPlaybackState?.duration || 0);
-                  // Don't auto-play, let user decide
-                  setIsPlaying(false);
-                }, 100);
               }
             }
           }
         }
+
+        // If we don't have cache but have an effective folder from localStorage/userData, kick off a scan to populate songs
+        if ((!cached || (cached && !(effectiveFolder && cached[effectiveFolder]))) && effectiveFolder) {
+          try {
+            // Mark folder state and start a full load to populate songs
+            try { setOsuFolderPath(effectiveFolder); } catch (e) {}
+            if (!autoSyncStartedRef.current) {
+              autoSyncStartedRef.current = true;
+              try { initialAutoSyncRef.current = true; } catch (e) {}
+              // run scan and show loading UI
+              await loadSongs(effectiveFolder, false, true);
+              try { initialAutoSyncDoneRef.current = true; } catch (e) {}
+              try { autoSyncDoneRef.current = true; } catch (e) {}
+            } else {
+              // background load
+              setTimeout(async () => { await loadSongs(effectiveFolder, false, false); }, 100);
+            }
+          } catch (e) {
+            console.error('[App] initial loadSongs failed for effectiveFolder:', effectiveFolder, e);
+            try { initialAutoSyncDoneRef.current = true; } catch (e) {}
+          }
+        }
+
       }
       setUserDataLoaded(true);
     })();
   }, []);
 
   // Check if this is first run (no folder selected)
-  const isFirstRun = userDataLoaded && !osuFolderPath;
+  const isFirstRun = userDataLoaded && !osuFolderPath && !loading;
+  const [firstRunError, setFirstRunError] = useState(null);
 
   // Update CSS variable when accentColor changes
   useEffect(() => {
     if (accentColor) {
       document.documentElement.style.setProperty('--accent-color', accentColor);
-      localStorage.setItem('accentColor', accentColor);
       
       // Calculate and set accent color variants
       const accentHover = adjustBrightness(accentColor, 120);
@@ -313,97 +370,299 @@ function App() {
       // Set readable text color for accent backgrounds
       const accentContrast = getContrastColor(accentColor);
       document.documentElement.style.setProperty('--accent-contrast', accentContrast);
+
+      const hex = accentColor.replace('#', '').trim();
+      let r = 29, g = 185, b = 84; // fallback (previous default)
+      if (hex.length === 6) {
+        r = parseInt(hex.slice(0,2), 16);
+        g = parseInt(hex.slice(2,4), 16);
+        b = parseInt(hex.slice(4,6), 16);
+      }
+      document.documentElement.style.setProperty('--accent-color-rgb', `${r}, ${g}, ${b}`);
     }
   }, [accentColor]);
 
-  // Save EQ bands to localStorage
-  useEffect(() => {
-    if (eqBands) {
-      localStorage.setItem('eqBands', JSON.stringify(eqBands));
-    }
-  }, [eqBands]);
+  // EQ bands persisted by useLocalStorageState
 
 
-  // Save ALL user data changes to cache anytime critical changes occur
+
+  // Debounced save of user data to avoid frequent disk writes (currentTime excluded from main effect)
+  const saveTimerRef = useRef(null);
+  const pendingSaveRef = useRef(null);
+
+  const scheduleSave = (partialData, delay = 2000, immediate = false) => {
+    try {
+      pendingSaveRef.current = { ...(pendingSaveRef.current || {}), ...partialData };
+      if (immediate) {
+        if (saveTimerRef.current) { clearTimeout(saveTimerRef.current); saveTimerRef.current = null; }
+        if (window.electronAPI && pendingSaveRef.current) {
+          try { window.electronAPI.saveUserData(pendingSaveRef.current); } catch (e) {}
+          pendingSaveRef.current = null;
+        }
+        return;
+      }
+
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+      saveTimerRef.current = setTimeout(() => {
+        try {
+          if (window.electronAPI && pendingSaveRef.current) {
+            window.electronAPI.saveUserData(pendingSaveRef.current);
+          }
+        } catch (e) {}
+        pendingSaveRef.current = null;
+        saveTimerRef.current = null;
+      }, delay);
+    } catch (e) {}
+  };
+
+  // Save general user settings (exclude high-frequency currentTime updates)
   useEffect(() => {
     if (!userDataLoaded) return;
-    if (window.electronAPI) {
-      const userData = {
-        volume, 
-        autoplay, 
-        shuffle, 
-        repeat, 
-        playlists, 
-        osuFolderPath, 
-        discordRpcEnabled, 
-        widgetServerEnabled,
-        // Persisted UI + filters
-        minDurationValue,
-        itemsPerPage,
-        albumArtBlur,
-        blurIntensity,
-        accentColor,
-        hiddenArtists,
-        nameFilter,
-        nameFilterMode,
-        scanAllMaps,
-        dedupeTitlesEnabled,
-        lastPlayedSong: currentSong ? {
-          id: currentSong.id,
-          title: currentSong.title,
-          artist: currentSong.artist,
-          audioFile: currentSong.audioFile,
-          folderPath: currentSong.folderPath
-        } : null,
-        lastPlaybackState: {
-          isPlaying: isPlaying,
-          currentTime: currentTime,
-          duration: duration
-        },
-        eqBands: eqBands
-      };
-      window.electronAPI.saveUserData(userData);
-    }
-  }, [userDataLoaded, volume, autoplay, shuffle, repeat, playlists, osuFolderPath, discordRpcEnabled, widgetServerEnabled, minDurationValue, itemsPerPage, albumArtBlur, blurIntensity, accentColor, hiddenArtists, nameFilter, nameFilterMode, scanAllMaps, dedupeTitlesEnabled, currentSong, isPlaying, currentTime, duration, eqBands]);
+    const userData = {
+      volume,
+      autoplay,
+      shuffle,
+      repeat,
+      playlists,
+      osuFolderPath,
+      discordRpcEnabled,
+      widgetServerEnabled,
+      vuEnabled,
+      minDurationValue,
+      itemsPerPage,
+      albumArtBlur,
+      blurIntensity,
+      accentColor,
+      showSongBadges,
+      hiddenArtists,
+      nameFilter,
+      nameFilterMode,
+      scanAllMaps,
+      dedupeTitlesEnabled,
+      // lastPlayedSong intentionally included but lastPlaybackState excludes currentTime here
+      lastPlayedSong: currentSong ? {
+        id: currentSong.id,
+        title: currentSong.title,
+        artist: currentSong.artist,
+        audioFile: currentSong.audioFile,
+        folderPath: currentSong.folderPath
+      } : null,
+      lastPlaybackState: {
+        isPlaying: isPlaying,
+        duration: duration
+      },
+      eqBands: eqBands,
+      recentlyPlayed: recentlyPlayed,
+      playCounts: playCounts
+    };
 
-  // When song/state changes: update Discord Rich Presence if enabled
+    scheduleSave(userData);
+
+    // Cleanup on unmount: flush pending
+    return () => {
+      if (saveTimerRef.current) {
+        clearTimeout(saveTimerRef.current);
+        saveTimerRef.current = null;
+      }
+      if (pendingSaveRef.current && window.electronAPI) {
+        try { window.electronAPI.saveUserData(pendingSaveRef.current); } catch (e) {}
+        pendingSaveRef.current = null;
+      }
+    };
+  }, [userDataLoaded, volume, autoplay, shuffle, repeat, playlists, osuFolderPath, discordRpcEnabled, widgetServerEnabled, minDurationValue, itemsPerPage, albumArtBlur, blurIntensity, accentColor, showSongBadges, hiddenArtists, nameFilter, nameFilterMode, scanAllMaps, dedupeTitlesEnabled, currentSong, duration, eqBands, recentlyPlayed, playCounts]);
+
+  // Ensure data is flushed when the window is being closed or hidden (force save on exit)
   useEffect(() => {
-    if (!window.electronAPI) return;
-    if (discordRpcEnabled && currentSong) {
-      const songTitle = currentSong.title || 'Unknown Song';
-      const songArtist = currentSong.artist || 'Unknown Artist';
-      
-      window.electronAPI.setDiscordRichPresence(true, {
-        title: songTitle,
-        artist: songArtist,
-        album: currentSong.album || '',
-        duration: currentSong.duration ?? duration,
-        startTime: isPlaying ? Date.now() - Math.floor(currentTime * 1000) : undefined,
-        imageFile: currentSong.imageFile || null,
-        beatmapSetId: currentSong.beatmapSetId || null,
-        beatmapId: currentSong.beatmapId || null
-      });
+    const flush = () => {
+      try {
+        if (!userDataLoaded) return;
+        const payload = {
+          volume,
+          autoplay,
+          shuffle,
+          repeat,
+          playlists,
+          osuFolderPath,
+          discordRpcEnabled,
+          widgetServerEnabled,
+          vuEnabled,
+          minDurationValue,
+          itemsPerPage,
+          albumArtBlur,
+          blurIntensity,
+          accentColor,
+          showSongBadges,
+          hiddenArtists,
+          nameFilter,
+          nameFilterMode,
+          scanAllMaps,
+          dedupeTitlesEnabled,
+          lastPlayedSong: currentSong ? {
+            id: currentSong.id,
+            title: currentSong.title,
+            artist: currentSong.artist,
+            audioFile: currentSong.audioFile,
+            folderPath: currentSong.folderPath
+          } : null,
+          lastPlaybackState: {
+            isPlaying: isPlaying,
+            currentTime: currentTime,
+            duration: duration
+          },
+          eqBands,
+          recentlyPlayed,
+          playCounts
+        };
+
+        // Force immediate save via scheduleSave (immediate=true) so pending data is written
+        scheduleSave(payload, 0, true);
+        console.debug && console.debug('[App] forced save on close/visibilitychange');
+      } catch (e) {
+        console.warn('[App] forced save failed', e);
+      }
+    };
+
+    const onBeforeUnload = (e) => { flush(); };
+    const onPageHide = (e) => { flush(); };
+    const onVisibilityChange = () => { if (document.visibilityState === 'hidden') flush(); };
+
+    window.addEventListener('beforeunload', onBeforeUnload);
+    window.addEventListener('pagehide', onPageHide);
+    document.addEventListener('visibilitychange', onVisibilityChange);
+
+    return () => {
+      window.removeEventListener('beforeunload', onBeforeUnload);
+      window.removeEventListener('pagehide', onPageHide);
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+    };
+  }, [userDataLoaded, volume, autoplay, shuffle, repeat, playlists, osuFolderPath, discordRpcEnabled, widgetServerEnabled, minDurationValue, itemsPerPage, albumArtBlur, blurIntensity, accentColor, showSongBadges, hiddenArtists, nameFilter, nameFilterMode, scanAllMaps, dedupeTitlesEnabled, currentSong, currentTime, duration, eqBands, recentlyPlayed, playCounts]);
+
+  // Handle frequent updates to playback state (throttled, immediate on song change or pause)
+  const prevSongIdRef = useRef(null);
+  useEffect(() => {
+    if (!userDataLoaded) return;
+    const songChanged = prevSongIdRef.current !== (currentSong ? currentSong.id : null);
+    prevSongIdRef.current = currentSong ? currentSong.id : null;
+
+    const playbackPartial = {
+      lastPlayedSong: currentSong ? {
+        id: currentSong.id,
+        title: currentSong.title,
+        artist: currentSong.artist,
+        audioFile: currentSong.audioFile,
+        folderPath: currentSong.folderPath
+      } : null,
+      lastPlaybackState: {
+        isPlaying: isPlaying,
+        currentTime: currentTime,
+        duration: duration
+      }
+    };
+
+    // If song changed or paused, save immediately; otherwise throttle frequent currentTime updates
+    if (songChanged || !isPlaying) {
+      scheduleSave(playbackPartial, 0, true);
     } else {
-      window.electronAPI.setDiscordRichPresence(false);
+      scheduleSave(playbackPartial, 5000, false);
     }
-  }, [discordRpcEnabled, currentSong, isPlaying, currentTime, duration]);
+  }, [currentSong?.id, isPlaying, currentTime, duration, userDataLoaded]);
 
-  // Update widget with now playing info
-  useEffect(() => {
+  // Throttled Discord Rich Presence and Widget updates to avoid spamming IPC on every timeupdate
+  const DISPATCH_THROTTLE = 1000; // ms
+  const lastDiscordSentRef = useRef(0);
+  const pendingDiscordTimerRef = useRef(null);
+  const pendingDiscordPayloadRef = useRef(null);
+  const lastWidgetSentRef = useRef(0);
+  const pendingWidgetTimerRef = useRef(null);
+  const pendingWidgetPayloadRef = useRef(null);
+  const prevDiscordSongIdRef = useRef(null);
+  const prevIsPlayingRef = useRef(null);
+
+  const dispatchDiscord = (payload, immediate = false) => {
+    if (!window.electronAPI || !window.electronAPI.setDiscordRichPresence) return;
+    const now = Date.now();
+
+    if (immediate || now - lastDiscordSentRef.current >= DISPATCH_THROTTLE) {
+      if (payload) {
+        window.electronAPI.setDiscordRichPresence(true, payload);
+      } else {
+        window.electronAPI.setDiscordRichPresence(false);
+      }
+      lastDiscordSentRef.current = now;
+      if (pendingDiscordTimerRef.current) { clearTimeout(pendingDiscordTimerRef.current); pendingDiscordTimerRef.current = null; }
+      pendingDiscordPayloadRef.current = null;
+      return;
+    }
+
+    // schedule for later
+    pendingDiscordPayloadRef.current = payload;
+    const wait = DISPATCH_THROTTLE - (now - lastDiscordSentRef.current);
+    if (pendingDiscordTimerRef.current) clearTimeout(pendingDiscordTimerRef.current);
+    pendingDiscordTimerRef.current = setTimeout(() => {
+      const p = pendingDiscordPayloadRef.current;
+      if (!window.electronAPI || !window.electronAPI.setDiscordRichPresence) return;
+      if (p) window.electronAPI.setDiscordRichPresence(true, p);
+      else window.electronAPI.setDiscordRichPresence(false);
+      lastDiscordSentRef.current = Date.now();
+      pendingDiscordPayloadRef.current = null;
+      pendingDiscordTimerRef.current = null;
+    }, wait);
+  };
+
+  const dispatchWidget = (payload, immediate = false) => {
     if (!window.electronAPI || !window.electronAPI.widgetUpdateNowPlaying) return;
-    
-    if (currentSong && isPlaying) {
-      window.electronAPI.widgetUpdateNowPlaying({
+    const now = Date.now();
+
+    if (immediate || now - lastWidgetSentRef.current >= DISPATCH_THROTTLE) {
+      try {
+        window.electronAPI.widgetUpdateNowPlaying(payload);
+      } catch (e) {}
+      lastWidgetSentRef.current = now;
+      if (pendingWidgetTimerRef.current) { clearTimeout(pendingWidgetTimerRef.current); pendingWidgetTimerRef.current = null; }
+      pendingWidgetPayloadRef.current = null;
+      return;
+    }
+
+    pendingWidgetPayloadRef.current = payload;
+    const wait = DISPATCH_THROTTLE - (now - lastWidgetSentRef.current);
+    if (pendingWidgetTimerRef.current) clearTimeout(pendingWidgetTimerRef.current);
+    pendingWidgetTimerRef.current = setTimeout(() => {
+      const p = pendingWidgetPayloadRef.current;
+      try { window.electronAPI.widgetUpdateNowPlaying(p); } catch (e) {}
+      lastWidgetSentRef.current = Date.now();
+      pendingWidgetPayloadRef.current = null;
+      pendingWidgetTimerRef.current = null;
+    }, wait);
+  };
+
+  useEffect(() => {
+    // Determine whether this is a song change or play/pause toggle which should be immediate
+    const songChanged = prevDiscordSongIdRef.current !== (currentSong ? currentSong.id : null);
+    const isPlayingChanged = prevIsPlayingRef.current !== isPlaying;
+    prevDiscordSongIdRef.current = currentSong ? currentSong.id : null;
+    prevIsPlayingRef.current = isPlaying;
+
+    const discordPayload = currentSong ? {
+      title: currentSong.title || 'Unknown Song',
+      artist: currentSong.artist || 'Unknown Artist',
+      album: currentSong.album || '',
+      duration: currentSong.duration ?? duration,
+      startTime: isPlaying ? Date.now() - Math.floor(currentTime * 1000) : undefined,
+      imageFile: currentSong.imageFile || null,
+      beatmapSetId: currentSong.beatmapSetId || null,
+      beatmapId: currentSong.beatmapId || null
+    } : null;
+
+    const widgetPayload = currentSong ? (
+      isPlaying ? {
         title: currentSong.title || 'Unknown Song',
         artist: currentSong.artist || 'Unknown Artist',
         album: currentSong.album || '',
         currentTime: currentTime,
         duration: duration,
+        paused: false,
         imageFile: currentSong.imageFile || null
-      });
-    } else if (currentSong && !isPlaying) {
-      // Send paused state with current time
-      window.electronAPI.widgetUpdateNowPlaying({
+      } : {
         title: currentSong.title || 'Unknown Song',
         artist: currentSong.artist || 'Unknown Artist',
         album: currentSong.album || '',
@@ -411,158 +670,62 @@ function App() {
         duration: duration,
         paused: true,
         imageFile: currentSong.imageFile || null
-      });
-    } else {
-      // No song playing
-      window.electronAPI.widgetUpdateNowPlaying(null);
-    }
-  }, [currentSong, isPlaying, currentTime, duration]);
-
-  // Load settings and playlists on mount (fallback to localStorage if Electron data not loaded)
-  useEffect(() => {
-    // Only use localStorage if Electron API hasn't loaded data yet
-    // The Electron API loading happens in the other useEffect above
-    // This is just a fallback for when Electron isn't available
-    if (!window.electronAPI) {
-      const savedVolume = localStorage.getItem('volume');
-      const savedAutoplay = localStorage.getItem('autoplay');
-      const savedShuffle = localStorage.getItem('shuffle');
-      const savedRepeat = localStorage.getItem('repeat');
-      
-      if (savedVolume !== null) setVolume(parseFloat(savedVolume));
-      if (savedAutoplay !== null) setAutoplay(savedAutoplay === 'true');
-      if (savedShuffle !== null) setShuffle(savedShuffle === 'true');
-      if (savedRepeat !== null) setRepeat(savedRepeat === 'true');
-    }
-
-    // Load playlists (no longer loaded from Electron, only localStorage)
-    const savedPlaylists = localStorage.getItem('playlists');
-    if (savedPlaylists) {
-      try {
-        setPlaylists(JSON.parse(savedPlaylists));
-      } catch (e) {
-        console.error('Error loading playlists:', e);
       }
+    ) : null;
+
+    // Dispatch with immediate=true for song change / pause / resume events
+    const immediate = songChanged || isPlayingChanged || !isPlaying;
+
+    if (discordRpcEnabled) dispatchDiscord(discordPayload, immediate);
+    else dispatchDiscord(null, true);
+
+    // Send metadata updates as before
+    dispatchWidget(widgetPayload, immediate);
+
+    // If playing and widget server enabled, start a fast interval to send currentTime-only updates
+    // This enables near-realtime currentTime updates without spamming metadata updates
+    let intervalId = null;
+    if (widgetServerEnabled && isPlaying && currentSong) {
+      intervalId = setInterval(() => {
+        if (!window.electronAPI || !window.electronAPI.widgetUpdateNowPlaying) return;
+        // Send lightweight payload with currentTime and paused=false so server doesn't retain stale paused state
+        try { window.electronAPI.widgetUpdateNowPlaying({ currentTime: currentTimeRef.current, paused: false }); } catch (e) {}
+      }, 250); // 250ms updates for smoother progress
     }
 
-    // Note: Removed loadSongs call here to prevent duplicate scanning
-    // Songs are loaded and auto-synced in the first useEffect with initRef guard
-  }, []);
+    // Cleanup scheduled timers on unmount / when dependencies change
+    return () => {
+      if (pendingDiscordTimerRef.current) { clearTimeout(pendingDiscordTimerRef.current); pendingDiscordTimerRef.current = null; }
+      if (pendingWidgetTimerRef.current) { clearTimeout(pendingWidgetTimerRef.current); pendingWidgetTimerRef.current = null; }
+      if (intervalId) clearInterval(intervalId);
+    };
+  }, [discordRpcEnabled, currentSong, isPlaying, currentTime, duration, widgetServerEnabled]);
 
-  // Save settings when they change
-  useEffect(() => {
-    localStorage.setItem('volume', volume.toString());
-  }, [volume]);
 
-  useEffect(() => {
-    localStorage.setItem('autoplay', autoplay.toString());
-  }, [autoplay]);
 
-  useEffect(() => {
-    localStorage.setItem('shuffle', shuffle.toString());
-  }, [shuffle]);
+
+
+
 
   useEffect(() => {
-    localStorage.setItem('repeat', repeat.toString());
-  }, [repeat]);
-
-  // Persist album art blur setting
-  useEffect(() => {
-    localStorage.setItem('albumArtBlur', JSON.stringify(albumArtBlur));
-  }, [albumArtBlur]);
-
-  // Persist blur intensity setting
-  useEffect(() => {
-    localStorage.setItem('blurIntensity', blurIntensity.toString());
-  }, [blurIntensity]);
-
-  // Save playlists when they change
-  useEffect(() => {
-    localStorage.setItem('playlists', JSON.stringify(playlists));
-  }, [playlists]);
-
-  // Track recently played songs
-  useEffect(() => {
-    if (currentSong && isPlaying) {
-      const existingIndex = recentlyPlayed.findIndex(item => item.id === currentSong.id);
-      let newRecentlyPlayed;
-      
-      if (existingIndex !== -1) {
-        // Move to top if already exists
-        newRecentlyPlayed = [
-          { ...currentSong, playedAt: Date.now() },
-          ...recentlyPlayed.filter(item => item.id !== currentSong.id)
-        ];
+    // Also apply a global class to immediately hide/show badges even if some components didn't re-render yet
+    try {
+      if (showSongBadges) {
+        document.documentElement.classList.remove('hide-song-badges');
       } else {
-        // Add to top
-        newRecentlyPlayed = [
-          { ...currentSong, playedAt: Date.now() },
-          ...recentlyPlayed
-        ].slice(0, 50); // Keep last 50 songs
+        document.documentElement.classList.add('hide-song-badges');
       }
-      
-      setRecentlyPlayed(newRecentlyPlayed);
-      localStorage.setItem('recentlyPlayed', JSON.stringify(newRecentlyPlayed));
+    } catch (e) {
+      // ignore in non-browser environments
     }
-  }, [currentSong, isPlaying]);
+  }, [showSongBadges]);
 
-  // Persist favorites
+  // Forward playback progress to songs hook for play count & recently played tracking
   useEffect(() => {
-    localStorage.setItem('favorites', JSON.stringify(favorites));
-  }, [favorites]);
-
-  // Persist ratings
-  useEffect(() => {
-    localStorage.setItem('ratings', JSON.stringify(ratings));
-  }, [ratings]);
-
-  // Track play counts when song finishes or plays for > 30 seconds
-  const playCountTrackedRef = useRef(new Set());
-  useEffect(() => {
-    if (currentSong && isPlaying && duration > 30) {
-      // Track after 30 seconds or when song ends
-      const threshold = Math.min(30, duration * 0.5); // 30s or 50% of song
-      if (currentTime > threshold && !playCountTrackedRef.current.has(currentSong.id)) {
-        playCountTrackedRef.current.add(currentSong.id);
-        setPlayCounts(prev => {
-          const newCounts = { ...prev };
-          newCounts[currentSong.id] = (newCounts[currentSong.id] || 0) + 1;
-          localStorage.setItem('playCounts', JSON.stringify(newCounts));
-          return newCounts;
-        });
-      }
+    if (notifyPlayback) {
+      notifyPlayback({ currentSong, isPlaying, currentTime, duration });
     }
-    // Reset tracking when song changes
-    if (currentSong && currentTime < 5) {
-      playCountTrackedRef.current.delete(currentSong.id);
-    }
-  }, [currentSong, isPlaying, currentTime, duration]);
-
-  // Persist itemsPerPage to localStorage
-  useEffect(() => {
-    localStorage.setItem('itemsPerPage', itemsPerPage.toString());
-  }, [itemsPerPage]);
-
-  // Persist filters to localStorage
-  useEffect(() => {
-    localStorage.setItem('hiddenArtists', JSON.stringify(hiddenArtists));
-  }, [hiddenArtists]);
-
-  useEffect(() => {
-    localStorage.setItem('nameFilter', nameFilter);
-  }, [nameFilter]);
-
-  useEffect(() => {
-    localStorage.setItem('nameFilterMode', nameFilterMode);
-  }, [nameFilterMode]);
-
-  useEffect(() => {
-    localStorage.setItem('scanAllMaps', JSON.stringify(scanAllMaps));
-  }, [scanAllMaps]);
-
-  useEffect(() => {
-    localStorage.setItem('dedupeTitlesEnabled', JSON.stringify(dedupeTitlesEnabled));
-  }, [dedupeTitlesEnabled]);
+  }, [currentSong, isPlaying, currentTime, duration, notifyPlayback]);
 
   // Get all unique artists from songs
   const getAllArtists = () => {
@@ -681,67 +844,17 @@ function App() {
     }
   }, [songs, currentSong]);
 
-  // If the currently playing song is no longer in the currently displayed list
-  // (e.g. due to filters hiding it), stop playback and clear it as well
+  // Previously we would stop playback when filters/search hid the current song.
+  // That behavior was surprising — keep playback running even if the song isn't visible in the list.
+  // Note: we still stop playback when the song is actually removed from the library (see other effect above).
   useEffect(() => {
-    if (!currentSong) return;
-    if (currentView !== 'songs') return;
-    if (displayedSongsSourceView !== 'songs') return;
-    if (!displayedSongs || displayedSongs.length === 0) return;
-    const visible = displayedSongs.some(song => song.id === currentSong.id);
-    if (!visible) {
-      setIsPlaying(false);
-      setCurrentSong(null);
-      setCurrentTime(0);
-      setDuration(0);
-    }
+    // No-op: do not clear playback when a song is filtered out by search or filters.
+    // This preserves playback while the user types in the SearchBar or adjusts filters.
   }, [displayedSongs, currentSong, currentView, displayedSongsSourceView]);
 
-  // Handler to clear songs cache
-  const clearSongsCache = async (overrideScanAllMaps = null) => {
-    if (!osuFolderPath) return;
-    const scanFlag = overrideScanAllMaps === null ? scanAllMaps : overrideScanAllMaps;
-  
-    console.log('[Cache] Clearing songs cache...');
-    setLoading(true);
-    setSongs([]);
-    setSongsCache({});
-    setSongDurations({});
-    setLoadingProgress({ current: 0, total: 0 });
+  // Cache clearing and scanning handled by `useSongs` hook (clearSongsCache)
 
-    // Remove old listener first to prevent duplicates
-    if (window.electronAPI.removeScanProgressListener) {
-      window.electronAPI.removeScanProgressListener();
-    }
 
-    // ✅ Reattach listener
-    if (window.electronAPI.onScanProgress) {
-      window.electronAPI.onScanProgress((progress) => {
-        setLoadingProgress(progress);
-      });
-    }
-  
-    try {
-      // ✅ clear cache file
-      if (window.electronAPI?.saveSongsCache) {
-        await window.electronAPI.saveSongsCache({});
-      }
-  
-      // small delay so UI updates before rescanning
-      await new Promise(res => setTimeout(res, 200));
-      const result = await window.electronAPI.scanOsuFolder(osuFolderPath, true, scanFlag);
-  
-      if (result?.success) {
-        setSongs(result.songs);
-      } else {
-        console.error('[Cache] Rescan failed:', result?.error);
-      }
-    } catch (err) {
-      console.error('[Cache] Error while clearing/rescanning:', err);
-    } finally {
-      setLoading(false);
-    }
-  };   
 
   // Reset the app to factory defaults (like first run)
   const resetAppToDefaults = async () => {
@@ -756,8 +869,8 @@ function App() {
 
       // Clear relevant localStorage keys
       const keysToClear = [
-        'eqBands','albumArtBlur','blurIntensity','accentColor','recentlyPlayed','favorites','ratings','playCounts','itemsPerPage','sortBy','sortDuration','searchHistory',
-        'hiddenArtists','nameFilter','nameFilterMode','scanAllMaps','dedupeTitlesEnabled'
+        'eqBands','albumArtBlur','blurIntensity','accentColor','showSongBadges','recentlyPlayed','favorites','playCounts','itemsPerPage','sortBy','sortDuration','searchHistory',
+        'hiddenArtists','nameFilter','nameFilterMode','scanAllMaps','dedupeTitlesEnabled','vuEnabled'
       ];
       keysToClear.forEach(k => localStorage.removeItem(k));
 
@@ -774,14 +887,16 @@ function App() {
       setAlbumArtBlur(true);
       setBlurIntensity(60);
       setAccentColor('#1db954');
-      setRecentlyPlayed([]);
+      // Reset VU visualizer to disabled by default
+      setVuEnabled(false);
+      // Clear playback stats managed by songs hook
+      clearRecentlyPlayed();
       setFavorites({});
-      setRatings({});
-      setPlayCounts({});
+      clearPlayCounts();
       setDurationFilter({ min: 0, max: Infinity });
       setMinDurationValue(60);
       setItemsPerPage(50);
-      setHiddenArtists([]);
+      setHiddenArtists(['Unknown Artist']);
       setNameFilter('');
       setNameFilterMode('contains');
       setScanAllMaps(false);
@@ -818,11 +933,13 @@ function App() {
           albumArtBlur: true,
           blurIntensity: 60,
           accentColor: '#1db954',
-          hiddenArtists: [],
+          showSongBadges: false,
+          hiddenArtists: ['Unknown Artist'],
           nameFilter: '',
           nameFilterMode: 'contains',
           scanAllMaps: false,
           dedupeTitlesEnabled: true,
+          vuEnabled: false,
           lastPlayedSong: null,
           lastPlaybackState: { isPlaying: false, currentTime: 0, duration: 0 },
           eqBands: DEFAULT_EQ_BANDS
@@ -833,200 +950,44 @@ function App() {
     }
   };
 
-  const loadSongs = async (folderPath, forceScan = false) => {
-    if (!window.electronAPI) return;
-    
-    // Check cache from backend (more reliable than state)
-    const cacheKey = folderPath;
-    let hasValidCache = false;
-    
-    // Skip cache check if forceScan is true (e.g., from first run)
-    if (!forceScan) {
-      // Check both in-memory cache and backend cache
-      if (songsCache[cacheKey] && songsCache[cacheKey].songs && songsCache[cacheKey].songs.length > 0) {
-        hasValidCache = true;
-      } else {
-        // Try to load from backend cache
-        const backendCache = await window.electronAPI.getSongsCache();
-        if (backendCache && backendCache[cacheKey] && backendCache[cacheKey].songs && backendCache[cacheKey].songs.length > 0) {
-          hasValidCache = true;
-          // Update in-memory cache
-          setSongsCache(backendCache);
-          setSongs(backendCache[cacheKey].songs);
-          setSongDurations(backendCache[cacheKey].durations || {});
-          setOsuFolderPath(folderPath);
-          // Still do an incremental scan in background to sync changes
-          // But don't show loading screen
-        }
-      }
-      
-      // If we have valid cache, do incremental scan in background
-      if (hasValidCache && songsCache[cacheKey]) {
-        setOsuFolderPath(folderPath);
-        // Do incremental scan in background (no loading screen)
-        setTimeout(async () => {
-          const result = await window.electronAPI.scanOsuFolder(folderPath, false, scanAllMaps);
-          if (result.success && result.songs) {
-            setSongs(result.songs);
-            const durations = {};
-            result.songs.forEach(song => {
-              if (song.duration) {
-                durations[song.id] = song.duration;
-              }
-            });
-            setSongDurations(durations);
-            // Update cache
-            setSongsCache(prev => ({
-              ...prev,
-              [cacheKey]: {
-                songs: result.songs,
-                durations: durations
-              }
-            }));
-          }
-        }, 100);
-        return;
-      }
-    }
-    
-    // Only set loading if not already set (to avoid flickering)
-    if (!loading) {
-      setLoading(true);
-    }
-    setLoadingProgress({ current: 0, total: 0 });
-    
-    // Remove old listener first to prevent duplicates
-    if (window.electronAPI.removeScanProgressListener) {
-      window.electronAPI.removeScanProgressListener();
-    }
-    
-    // Set up progress listener
-    if (window.electronAPI.onScanProgress) {
-      window.electronAPI.onScanProgress((progress) => {
-        setLoadingProgress(progress);
-      });
-    }
-    
-    try {
-      const result = await window.electronAPI.scanOsuFolder(folderPath, false, scanAllMaps);
-      if (result.success && result.songs) {
-        setSongs(result.songs);
-        setOsuFolderPath(folderPath);
-        localStorage.setItem('osuFolderPath', folderPath);
-        
-        // Initialize song durations from metadata if available
-        const durations = {};
-        result.songs.forEach(song => {
-          if (song.duration) {
-            durations[song.id] = song.duration;
-          }
-        });
-        setSongDurations(durations);
-        
-        // Restore last played song if we have a pending restore
-        if (window._pendingSongRestore) {
-          const pending = window._pendingSongRestore;
-          const restoredSong = result.songs.find(s => s.id === pending.song.id);
-          if (restoredSong) {
-            // Restore the song after a short delay to ensure everything is loaded
-            setTimeout(() => {
-              setCurrentSong(restoredSong);
-              setCurrentTime(pending.playbackState.currentTime || 0);
-              setDuration(pending.playbackState.duration || 0);
-              // Don't auto-play, let user decide
-              setIsPlaying(false);
-              // Clear pending restore
-              delete window._pendingSongRestore;
-            }, 100);
-          } else {
-            delete window._pendingSongRestore;
-          }
-        }
-        
-        // Only save cache if we actually scanned (not from cache)
-        if (!result.fromCache) {
-          // Cache the results
-          setSongsCache(prev => {
-            const newCache = {
-              ...prev,
-              [cacheKey]: {
-                songs: result.songs,
-                durations: durations
-              }
-            };
-            // Save cache to disk
-            if (window.electronAPI?.saveSongsCache) {
-              window.electronAPI.saveSongsCache(newCache).catch(err => {
-                console.error('Error saving songs cache:', err);
-              });
-            }
-            return newCache;
-          });
-        } else {
-          // If from cache, just update the in-memory cache without saving
-          setSongsCache(prev => ({
-            ...prev,
-            [cacheKey]: {
-              songs: result.songs,
-              durations: durations
-            }
-          }));
-        }
-      }
-    } finally {
-      setLoading(false);
-      setLoadingProgress({ current: 0, total: 0 });
-      // Clean up listener
-      if (window.electronAPI.removeScanProgressListener) {
-        window.electronAPI.removeScanProgressListener();
-      }
-    }
-  };
+  // Song loading and scanning logic moved to `useSongs` hook. See `hooks/useSongs.js` for implementation.
 
-  const selectFolder = async () => {
-    if (!window.electronAPI) {
-      alert('Electron API not available. Please run this app in Electron.');
-      return;
-    }
-  
-    setLoading(true);
-    const folderPath = await window.electronAPI.selectOsuFolder();
-  
-    // ✅ If user canceled folder dialog, stop
-    if (!folderPath) {
-      setLoading(false);
-      return;
-    }
-  
-    // ✅ If folder is same as previous, don't rescan
-    if (folderPath === osuFolderPath) {
-      console.log(`[Songs] Skipping rescan — same folder selected: ${folderPath}`);
-      setLoading(false);
-      return;
-    }
-  
-    // ✅ Only rescan if it's a different path
-    await loadSongs(folderPath);
-  };  
-
-  const removeFolder = () => {
-    setOsuFolderPath(null);
-    setSongs([]);
-    setSongDurations({});
-    localStorage.removeItem('osuFolderPath');
-    // Clear cache for this folder
-    if (osuFolderPath) {
-      setSongsCache(prev => {
-        const newCache = { ...prev };
-        delete newCache[osuFolderPath];
-        return newCache;
-      });
-    }
-  };
 
   const handlePlayPause = () => {
     setIsPlaying(!isPlaying);
   };
+
+  // Global spacebar handler: toggle play/pause when appropriate
+  useEffect(() => {
+    const onKeyDown = (e) => {
+      // Detect spacebar (support older key values too)
+      const isSpace = e.code === 'Space' || e.key === ' ' || e.key === 'Spacebar';
+      if (!isSpace) return;
+
+      // If any modifier is held, ignore
+      if (e.altKey || e.ctrlKey || e.metaKey) return;
+
+      const active = document.activeElement;
+      if (active) {
+        const tag = (active.tagName || '').toUpperCase();
+        const isEditable = active.isContentEditable;
+        // Ignore when focused on input fields, textareas, buttons, selects or contenteditable elements
+        if (['INPUT', 'TEXTAREA', 'BUTTON', 'SELECT'].includes(tag) || isEditable) return;
+        // Also ignore if an element with role="textbox" is focused
+        const role = active.getAttribute && active.getAttribute('role');
+        if (role === 'textbox') return;
+      }
+
+      // Prevent default scrolling
+      try { e.preventDefault(); } catch (err) {}
+
+      // Toggle play/pause
+      handlePlayPause();
+    };
+
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [handlePlayPause]);
 
   const handleSongSelect = (song) => {
     // If clicking the same song that's playing, just toggle play/pause
@@ -1102,7 +1063,7 @@ function App() {
   const handleNext = () => {
     const currentList = displayedSongs.length > 0 ? displayedSongs : getCurrentSongs();
     if (currentSong && currentList.length > 0) {
-      if (shuffle && !repeat && shuffleOrder.length > 0) {
+      if (shuffle && shuffleOrder.length > 0) {
         const currentIndex = shuffleOrder.indexOf(currentSong.id);
         if (currentIndex !== -1 && currentIndex < shuffleOrder.length - 1) {
           const nextId = shuffleOrder[currentIndex + 1];
@@ -1122,7 +1083,8 @@ function App() {
         const randomSong = currentList[Math.floor(Math.random() * currentList.length)];
         handleSongSelect(randomSong);
         return;
-      } else if (!repeat) {
+      } else {
+        // Always advance to next track when user presses Next (even if repeat is enabled)
         const currentIndex = currentList.findIndex(s => s.id === currentSong.id);
         const nextIndex = (currentIndex + 1) % currentList.length;
         handleSongSelect(currentList[nextIndex]);
@@ -1162,16 +1124,43 @@ function App() {
   };
 
   const addSongToPlaylist = (playlistId, song) => {
-    setPlaylists(playlists.map(playlist => {
-      if (playlist.id === playlistId) {
-        // Check if song already exists
-        if (!playlist.songs.find(s => s.id === song.id)) {
-          return { ...playlist, songs: [...playlist.songs, song] };
+    console.debug && console.debug('[App] addSongToPlaylist called', playlistId, song && song.title);
+    const pid = String(playlistId);
+    setPlaylists(prev => {
+      const next = prev.map(playlist => {
+        if (String(playlist.id) === pid) {
+          // Check if song already exists (compare as strings)
+          if (!playlist.songs.find(s => String(s.id) === String(song.id))) {
+            const updated = { ...playlist, songs: [...playlist.songs, song] };
+            console.debug && console.debug('[App] updated playlist', pid, updated);
+            return updated;
+          } else {
+            console.debug && console.debug('[App] song already in playlist', pid, song.id);
+          }
         }
-      }
-      return playlist;
-    }));
+        return playlist;
+      });
+      console.debug && console.debug('[App] playlists after add', next);
+
+      // Dispatch an event so callers can observe the change immediately (useful for tests/debug/UI feedback)
+      try {
+        window.dispatchEvent(new CustomEvent('sosu:playlist-updated', { detail: { playlistId: pid, song, playlists: next } }));
+      } catch (e) { console.error('dispatch playlist-updated failed', e); }
+
+      return next;
+    });
+
+    // Expose for quick console debugging and fallback calls
+    try { window.__sosu_addSongToPlaylist = addSongToPlaylist; } catch (e) {}
   };
+
+  // Ensure a global helper is available immediately for other components to call directly
+  try {
+    window.__sosu_addSongToPlaylist = (playlistId, song) => {
+      console.debug && console.debug('[window helper] __sosu_addSongToPlaylist called', playlistId, song && song.title);
+      addSongToPlaylist(playlistId, song);
+    };
+  } catch (e) {}
 
   const removeSongFromPlaylist = (playlistId, songId) => {
     setPlaylists(playlists.map(playlist => {
@@ -1182,23 +1171,40 @@ function App() {
     }));
   };
 
+  const lastPlaylistDeletedAtRef = React.useRef(0);
+
+  const [confirmDelete, setConfirmDelete] = useState(null); // { id, name }
+
   const deletePlaylist = (playlistId) => {
-    // Using window.confirm as it's supported in Electron
-    if (window.confirm && window.confirm('Are you sure you want to delete this playlist?')) {
-      setPlaylists(playlists.filter(p => p.id !== playlistId));
-      if (selectedPlaylistId === playlistId) {
-        setSelectedPlaylistId(null);
-        setCurrentView('songs');
-      }
-    }
+    try { console.debug && console.debug('[App] deletePlaylist invoked, activeElement before confirm (modal):', document.activeElement && (document.activeElement.tagName + ' ' + (document.activeElement.id || document.activeElement.className || ''))); } catch (e) {}
+    const target = playlists.find(p => p.id === playlistId);
+    setConfirmDelete({ id: playlistId, name: target?.name || '' });
   };
+
+  const confirmDeleteNow = (playlistId) => {
+    try { console.debug && console.debug('[App] confirmDeleteNow', playlistId); } catch (e) {}
+    setPlaylists(playlists.filter(p => p.id !== playlistId));
+    // record deletion timestamp to avoid open race
+    try { lastPlaylistDeletedAtRef.current = Date.now(); } catch (e) {}
+    // blur any active element on next tick
+    try {
+      setTimeout(() => { try { if (document && document.activeElement) { document.activeElement.blur(); console.debug && console.debug('[App] blurred activeElement after confirmDeleteNow'); } } catch (e) {} }, 0);
+    } catch (e) {}
+
+    if (selectedPlaylistId === playlistId) {
+      setSelectedPlaylistId(null);
+      setCurrentView('songs');
+    }
+    setConfirmDelete(null);
+  };
+
+  const cancelConfirmDelete = () => setConfirmDelete(null);
 
   // Export all user data as JSON
   const handleExportData = () => {
     const exportData = {
       playlists,
       favorites,
-      ratings,
       playCounts,
       recentlyPlayed,
       settings: {
@@ -1250,7 +1256,6 @@ function App() {
         // Import data with validation
         if (importData.playlists) setPlaylists(importData.playlists);
         if (importData.favorites) setFavorites(importData.favorites);
-        if (importData.ratings) setRatings(importData.ratings);
         if (importData.playCounts) setPlayCounts(importData.playCounts);
         if (importData.recentlyPlayed) setRecentlyPlayed(importData.recentlyPlayed);
         
@@ -1280,10 +1285,14 @@ function App() {
           if (s.albumArtBlur !== undefined) setAlbumArtBlur(s.albumArtBlur);
           if (s.blurIntensity !== undefined) setBlurIntensity(s.blurIntensity);
           if (s.accentColor !== undefined) setAccentColor(s.accentColor);
+          if (s.vuEnabled !== undefined) setVuEnabled(s.vuEnabled);
           if (s.minDurationValue !== undefined) setMinDurationValue(s.minDurationValue);
           if (s.itemsPerPage !== undefined) setItemsPerPage(s.itemsPerPage);
           if (s.eqBands !== undefined) setEqBands(normalizeEqBands(s.eqBands));
-          if (Array.isArray(s.hiddenArtists)) setHiddenArtists(s.hiddenArtists);
+          if (Array.isArray(s.hiddenArtists)) {
+            // If imported array is empty, default to ['Unknown Artist']
+            setHiddenArtists(s.hiddenArtists.length === 0 ? ['Unknown Artist'] : s.hiddenArtists);
+          }
           if (typeof s.nameFilter === 'string') setNameFilter(s.nameFilter);
           if (typeof s.nameFilterMode === 'string') {
             // Migration: we removed 'exact' from UI; treat as 'contains'
@@ -1333,10 +1342,9 @@ function App() {
     } else {
       songsToReturn = playlists.find(p => p.id === selectedPlaylistId)?.songs ?? [];
     }
-    
-    const seenTitles = new Set();
-  
-    return songsToReturn.filter(song => {
+
+    // First apply per-song filters (duration, hidden artists, nameFilter)
+    const filtered = songsToReturn.filter(song => {
       const duration = songDurations?.[song.id] ?? song.duration;
 
       // ✅ Use user-defined minDurationValue instead of hardcoded 10
@@ -1351,7 +1359,6 @@ function App() {
       }
 
       // Title Filter (hide): supports "mode::term" entries, comma-separated.
-      // Back-compat: "term" uses current selected mode.
       if (nameFilter) {
         const songTitle = (song.title || '').toLowerCase();
         const raw = nameFilter
@@ -1383,14 +1390,57 @@ function App() {
         }
       }
 
-      if (dedupeTitlesEnabled) {
-        const normalizedTitle = (song.title || '').toLowerCase().trim();
-        if (normalizedTitle && seenTitles.has(normalizedTitle)) return false;
-        if (normalizedTitle) seenTitles.add(normalizedTitle);
-      }
-
       return true;
     });
+
+    // If dedupe by title is disabled, return the filtered list as-is
+    if (!dedupeTitlesEnabled) return filtered;
+
+    // Group by normalized title (empty titles are treated as unique by id)
+    const groups = new Map();
+
+    for (const s of filtered) {
+      const normalized = (s.title || '').toLowerCase().trim();
+      const key = normalized || `__id__${s.id}`;
+      const arr = groups.get(key) || [];
+      arr.push(s);
+      groups.set(key, arr);
+    }
+
+    // Build resulting list preserving first-occurrence order but replacing groups with a single canonical item
+    const processed = new Set();
+    const result = [];
+
+    for (const s of filtered) {
+      const normalized = (s.title || '').toLowerCase().trim();
+      const key = normalized || `__id__${s.id}`;
+      if (processed.has(key)) continue;
+
+      const group = groups.get(key) || [s];
+      if (group.length === 1) {
+        result.push(s);
+      } else {
+        // Score songs by completeness: image, beatmapSetId, artist quality, duration
+        const scored = group.map(song => {
+          let score = 0;
+          if (song.imageFile) score += 30;
+          if (song.beatmapSetId) score += 25;
+          if (song.artist && song.artist !== 'Unknown Artist') score += 10;
+          if (song.title) score += 5;
+          if (song.duration) score += Math.min(10, Math.round(song.duration / 30));
+          return { song, score };
+        }).sort((a, b) => b.score - a.score);
+
+        const canonical = { ...scored[0].song };
+        canonical.duplicates = group.filter(x => x.id !== canonical.id);
+        canonical.duplicatesCount = canonical.duplicates.length;
+        result.push(canonical);
+      }
+
+      processed.add(key);
+    }
+
+    return result;
   };  
   
 
@@ -1401,55 +1451,57 @@ function App() {
       return <LoadingScreen loadingProgress={loadingProgress} />;
     }
     return (
-      <FirstRunScreen 
+      <FirstRunScreen
         onSelectFolder={async () => {
           if (!window.electronAPI) {
             alert('Electron API not available. Please run this app in Electron.');
             return;
           }
-          
-          setLoading(true);
-          setLoadingProgress({ current: 0, total: 0 });
-          
-          // Set up progress listener
-          if (window.electronAPI.removeScanProgressListener) {
-            window.electronAPI.removeScanProgressListener();
-          }
-          if (window.electronAPI.onScanProgress) {
-            window.electronAPI.onScanProgress((progress) => {
-              setLoadingProgress(progress);
-            });
-          }
-          
+
           const folderPath = await window.electronAPI.selectOsuFolder();
-          
-          if (!folderPath) {
-            setLoading(false);
+          if (!folderPath) return;
+
+          // Clear previous error and initiate a forced scan showing the LoadingScreen
+          setFirstRunError(null);
+          const result = await loadSongs(folderPath, true, true); // Force scan and show loading
+
+          // If scan found no songs, keep FirstRunScreen and show an error
+          if (!result || !Array.isArray(result.songs) || result.songs.length === 0) {
+            setFirstRunError('No songs were found in the selected folder. Please select your osu! Songs folder that contains beatmap folders.');
             return;
           }
-          
-          await loadSongs(folderPath, true); // Force scan on first run
+
+          // Success: clear any error
+          setFirstRunError(null);
         }}
+        errorMessage={firstRunError}
       />
+    );
+  }
+
+  if (!userDataLoaded || loading) {
+    return (
+      <Router>
+        <LoadingScreen loadingProgress={loadingProgress} />
+      </Router>
     );
   }
 
   return (
     <Router>
-      {(!userDataLoaded || loading) && <LoadingScreen loadingProgress={loadingProgress} />}
-      <div className="app" style={{ opacity: userDataLoaded && !loading ? 1 : 0, transition: 'opacity 0.5s ease-in' }}>
+      <div className="app" style={{ opacity: 1, transition: 'opacity 0.5s ease-in' }}>
         {/* Blurred Album Art Background - covers entire viewport */}
         {albumArtBlur && currentSong?.imageFile && (
-          <div 
-            key={currentSong.id}
+          <img 
+            alt={currentSong.id}
+            src={`osu://${encodeURIComponent(currentSong.imageFile)}`}
             className="app-blur-background"
             style={{
-              backgroundImage: `url(osu://${encodeURIComponent(currentSong.imageFile)})`,
               filter: `blur(${blurIntensity}px) saturate(130%)`
             }}
           />
         )}
-        <TitleBar />
+        <TitleBar currentSong={currentSong} />
         <div className="app-content">
           <Sidebar 
             onSelectFolder={() => setShowSettingsModal(true)} 
@@ -1478,6 +1530,8 @@ function App() {
             accentColor={accentColor}
             onSetAccentColor={setAccentColor}
             onClearCache={clearSongsCache}
+            vuEnabled={vuEnabled}
+            onSetVuEnabled={setVuEnabled}
             minDurationValue={minDurationValue}
             setMinDurationValue={setMinDurationValue}
             itemsPerPage={itemsPerPage}
@@ -1497,6 +1551,8 @@ function App() {
             setScanAllMaps={setScanAllMaps}
             dedupeTitlesEnabled={dedupeTitlesEnabled}
             setDedupeTitlesEnabled={setDedupeTitlesEnabled}
+            showSongBadges={showSongBadges}
+            onSetShowSongBadges={setShowSongBadges}
             totalScanned={songs.length}
           />
           <EQModal
@@ -1517,6 +1573,29 @@ function App() {
             onClose={() => setShowCreatePlaylistModal(false)}
             onCreate={createPlaylist}
           />
+
+          {/* Non-blocking confirm dialog for playlist deletion (replaces window.confirm to avoid focus races) */}
+          {confirmDelete && (
+            <div className="modal-overlay" onClick={cancelConfirmDelete}>
+              <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+                <div className="modal-header">
+                  <h2 className="modal-title">Delete Playlist</h2>
+                  <button className="modal-close" onClick={cancelConfirmDelete}>
+                    <span style={{opacity:0.8}}>✕</span>
+                  </button>
+                </div>
+                <div style={{ padding: 24 }}>
+                  <p>Are you sure you want to delete <strong>{confirmDelete.name || 'this playlist'}</strong>?</p>
+                  <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end', marginTop: 16 }}>
+                    <button className="modal-button cancel" onClick={cancelConfirmDelete}>Cancel</button>
+                    <button className="modal-button create" onClick={() => confirmDeleteNow(confirmDelete.id)}>Delete</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Fallback: open create playlist modal when other code dispatches the custom event */}
           <MainContent
             songs={getCurrentSongs()}
             onSongSelect={handleSongSelect}
@@ -1541,6 +1620,7 @@ function App() {
               setDisplayedSongs(list);
               setDisplayedSongsSourceView(currentView);
             }}
+            onCreatePlaylist={() => setShowCreatePlaylistModal(true)}
             onToggleFavorite={(songId) => {
               setFavorites(prev => {
                 const newFav = { ...prev };
@@ -1552,7 +1632,36 @@ function App() {
                 return newFav;
               });
             }}
+            onAddArtistToFilter={(artist) => {
+              if (!artist) return;
+              setHiddenArtists(prev => {
+                const normalized = artist.trim();
+                if (!normalized) return prev;
+                if (prev.some(a => a.toLowerCase().trim() === normalized.toLowerCase())) return prev;
+                const next = [...prev, normalized];
+                return next;
+              });
+            }}
+            onOpenSongDetails={(song) => setSongDetails(song)}
+            onPreviewSelect={(song) => {
+              // Preview-select: only set UI highlight, do NOT change playback
+              setHighlightedSongId(song ? song.id : null);
+            }}
+            onClearPreview={() => setHighlightedSongId(null)}
+            highlightedSongId={highlightedSongId}
+            showSongBadges={showSongBadges}
+            playCounts={playCounts}
+            nameFilter={nameFilter}
           />
+
+          {/* Song details modal (opened from context menu) */}
+          {songDetails && (
+            <SongDetailsModal
+              isOpen={!!songDetails}
+              song={songDetails}
+              onClose={() => { setSongDetails(null); setHighlightedSongId(null); }}
+            />
+          )}
         </div>
         <PlayerBar
           currentSong={currentSong}
@@ -1586,6 +1695,7 @@ function App() {
           onEqBandsChange={setEqBands}
           showEQModal={showEQModal}
           onOpenEQModal={() => setShowEQModal(true)}
+          vuEnabled={vuEnabled}
         />
       </div>
     </Router>
@@ -1593,4 +1703,3 @@ function App() {
 }
 
 export default App;
-

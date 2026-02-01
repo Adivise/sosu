@@ -1,37 +1,51 @@
 .song-item {
   display: grid;
-  grid-template-columns: 50px 2.5fr 1.8fr 50px 100px;
+  grid-template-columns: 40px 2fr 1.8fr 80px; /* default: number / title / artist / duration (favorite lives inside duration cell) */
   gap: 12px;
   padding: 10px 16px;
   border-radius: 4px;
   cursor: pointer;
-  transition: background-color 0.22s cubic-bezier(.68,-0.55,.27,1.55), color 0.25s, box-shadow 0.22s;
+  /* Keep background/box-shadow instantaneous to avoid flicker; speed up color transition for snappier hover */
+  transition: color 80ms; /* faster hover response */
   align-items: center;
   overflow: visible;
   animation: rowAppear 0.28s cubic-bezier(.68,-0.55,.27,1.55);
+  position: relative; /* allow pseudo-element accents without changing layout */
 }
+
+/* Helper class while animating (keeps will-change hints) */
+.song-item.entering { will-change: transform, opacity; }
 
 @keyframes rowAppear {
-  from {
-    opacity: 0;
-    transform: translateY(10px) scale(0.98);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
+  from { opacity: 0; transform: translateY(8px) scale(.995); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
+.song-item.has-plays {
+  grid-template-columns: 40px 2fr 1.5fr 64px 80px; /* when plays column is present */
+}
+.song-item-plays {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  color: #b3b3b3;
+}
+
+.plays-badge {
+  display: inline-block;
+  padding: 6px 8px;
+  border-radius: 999px;
+  background: rgba(var(--accent-color-rgb), 0.12);
+  color: var(--accent-color);
+  font-weight: 600;
+  font-size: 13px;
+  line-height: 1;
+  min-width: 36px;
+  text-align: center;
+}
 .song-item:focus-visible {
   outline: 2px solid var(--accent-color);
-}
-
-.song-item:hover, .song-item.selected, .song-item.playing {
-  box-shadow: 0 2px 16px 0 rgba(0,0,0,0.12);
-}
-
-.song-item:hover {
-  background-color: #1a1a1a;
 }
 
 .song-item.playing {
@@ -39,13 +53,69 @@
   color: var(--accent-color);
 }
 
+/* remove box-shadow on hover/selected/playing to avoid extra repaints */
+
+
 .song-item.selected {
   background-color: #1a1a1a;
-  border-left: 3px solid var(--accent-color);
-  padding-left: 13px;
+  /* visual selected accent handled by pseudo-element to avoid reflow */
 }
 
 .song-item.selected .song-item-name {
+  color: var(--accent-color);
+}
+
+/* Remove ALL visual emphasis when context menu is open */
+.song-item.context-active,
+.song-item.context-active.selected {
+  /* keep background transparent so right-click does not change appearance */
+  background-color: transparent !important;
+  box-shadow: none !important;
+}
+
+/* Ensure the left accent bar does not change when context menu is open */
+.song-item.context-active::before,
+.song-item.context-active.selected::before {
+  background: transparent !important;
+}
+
+/* Keep text styles unchanged when context menu is open */
+.song-item.context-active .song-item-name,
+.song-item.context-active .song-item-artist {
+  color: inherit !important;
+  font-weight: 400 !important;
+}
+
+/* Ensure selected rows keep their selected appearance regardless of hover/context menu */
+.song-item.selected,
+.song-item.selected:hover,
+.song-item.selected.context-active,
+.song-item.selected.context-active:hover {
+  background-color: #1a1a1a !important;
+  color: inherit !important;
+}
+
+.song-item.selected::before,
+.song-item.selected:hover::before,
+.song-item.selected.context-active::before {
+  background: var(--accent-color) !important;
+  width: 6px !important;
+  box-shadow: none !important;
+}
+
+.song-item.selected .song-item-name,
+.song-item.selected:hover .song-item-name,
+.song-item.selected.context-active .song-item-name {
+  color: var(--accent-color) !important;
+  font-weight: 600 !important;
+}
+
+/* Highlight state for right-click selection (preview) */
+.song-item.highlighted {
+  background-color: rgba(var(--accent-color-rgb), 0.04);
+  /* remove border-left/padding changes to avoid flicker */
+}
+.song-item.highlighted .song-item-name {
   color: var(--accent-color);
 }
 
@@ -55,10 +125,60 @@
   justify-content: center;
   color: #b3b3b3;
   font-size: 14px;
+  width: 36px; /* fixed width to avoid layout shift when icon appears */
+  min-width: 36px;
 }
 
+/* Left accent bar rendered as pseudo-element (no layout shift) */
+.song-item::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: transparent;
+  /* No transition to avoid repaint flicker on hover */
+  transition: none;
+  pointer-events: none;
+}
+.song-item.selected::before {
+  background: var(--accent-color);
+}
+.song-item.context-active::before {
+  background: rgba(var(--accent-color-rgb), 0.18);
+}
+.song-item.highlighted::before {
+  background: rgba(var(--accent-color-rgb), 0.08);
+}
+
+/* Hover should feel more prominent: wider accent bar, stronger tint, and bolder title */
+.song-item:hover::before {
+  width: 6px;
+  background: rgba(var(--accent-color-rgb), 0.18);
+  /* subtle glow to increase perceived emphasis without layout shift */
+  box-shadow: 1px 0 10px rgba(var(--accent-color-rgb), 0.08);
+}
+.song-item:hover {
+  background-color: rgba(var(--accent-color-rgb), 0.06);
+}
+.song-item:hover .song-item-name {
+  color: var(--accent-color);
+  font-weight: 600;
+  transition: color 120ms;
+}
+.song-item:hover .song-item-artist {
+  color: #f2f2f2;
+  transition: color 120ms;
+}
 .song-item.playing .song-item-number {
   color: var(--accent-color);
+}
+
+.song-item-number .number-text {
+  display: inline-block;
+  width: 100%;
+  text-align: center;
 }
 
 .song-item-title {
@@ -108,17 +228,16 @@
   font-weight: 400;
   color: #ffffff;
   white-space: nowrap;
-  overflow: hidden;
+  overflow: hidden; 
   text-overflow: ellipsis;
   max-width: 100%;
   display: block;
-  transition: color 0.2s;
+  transition: color 120ms; /* faster */
 }
 
-.song-item-name:hover {
-  color: var(--accent-color);
-  text-decoration: underline;
-}
+/* Title hover effects removed to prevent flicker / layout shifts */
+.song-item-name:hover { text-decoration: none; color: inherit; }
+
 
 .song-item-artist,
 .song-item-album {
@@ -127,13 +246,12 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  transition: color 0.2s;
+  transition: color 120ms; /* faster */
 }
 
-.song-item-artist:hover {
-  color: #ffffff;
-  text-decoration: underline;
-}
+/* Artist hover effects removed to prevent flicker */
+.song-item-artist:hover { text-decoration: none; color: inherit; }
+
 
 .song-item-duration {
   font-size: 14px;
@@ -161,13 +279,8 @@
   align-items: center;
   justify-content: center;
   border-radius: 4px;
-  transition: all 0.2s;
-  opacity: 0;
-}
-
-.song-item:hover .add-to-playlist-button,
-.song-item:hover .remove-from-playlist-button {
-  opacity: 1;
+  transition: all 0.12s;
+  opacity: 1; /* always visible */
 }
 
 .add-to-playlist-button:hover {
@@ -206,3 +319,183 @@
 .favorite-btn.active {
   color: #ff4444;
 }
+
+/* Small flags showing song completeness */
+.song-flag {
+  font-size: 12px;
+  color: #d1d1d1;
+  opacity: 0.95;
+  margin-left: 6px;
+}
+
+/* Duplicate count badge shown on canonical items */
+.duplicate-badge {
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.04);
+  padding: 2px 6px;
+  border-radius: 10px;
+  font-size: 12px;
+  color: #d1d1d1;
+  margin-left: 6px;
+}
+.duplicate-badge:hover {
+  background: rgba(255,255,255,0.08);
+  color: #fff;
+}
+
+/* Global helper to hide song badges (used by settings toggle) */
+.hide-song-badges .song-flag,
+.hide-song-badges .duplicate-badge {
+  display: none !important;
+}
+
+/* Context menu styles */
+.context-menu {
+  position: fixed;
+  background: #0f0f0f;
+  border: 1px solid rgba(255,255,255,0.04);
+  padding: 6px 6px;
+  border-radius: 6px;
+  box-shadow: 0 6px 24px rgba(0,0,0,0.6);
+  z-index: 2000;
+  min-width: 200px;
+}
+.context-menu-item {
+  display: block;
+  width: 100%;
+  background: none;
+  border: none;
+  color: #d1d1d1;
+  text-align: left;
+  padding: 8px 10px;
+  cursor: pointer;
+  font-size: 13px;
+  border-radius: 4px;
+}
+.context-menu-item:hover {
+  background: rgba(255,255,255,0.03);
+  color: #fff;
+}
+.context-menu-item[disabled] {
+  opacity: 0.45;
+  cursor: default;
+}
+
+/* Playlist submenu */
+.context-submenu {
+  min-width: 180px;
+  background: #0f0f0f;
+  border: 1px solid rgba(255,255,255,0.04);
+  padding: 6px;
+  border-radius: 6px;
+  box-shadow: 0 6px 24px rgba(0,0,0,0.6);
+  z-index: 2200;
+  transition: opacity 120ms ease, transform 140ms ease;
+  transform-origin: left top;
+}
+.context-submenu.measuring { transform: translateX(-4px) scale(0.995); opacity: 0; visibility: hidden; pointer-events: none; }
+.context-submenu.ready { transform: translateX(0) scale(1); opacity: 1; visibility: visible; pointer-events: auto; }
+
+.context-submenu-item {
+  display: block;
+  width: 100%;
+  background: none;
+  border: none;
+  color: #d1d1d1;
+  text-align: left;
+  padding: 8px 10px;
+  cursor: pointer;
+  font-size: 13px;
+  border-radius: 4px;
+}
+.context-submenu-item:hover {
+  background: rgba(255,255,255,0.03);
+  color: #fff;
+}
+.context-submenu-item[disabled] {
+  opacity: 0.6;
+}
+
+/* special create playlist styling */
+.context-submenu-item.create-playlist-item {
+  font-weight: 600;
+  color: #e6e6e6;
+}
+.context-submenu-item.create-playlist-item .menu-icon { opacity: 0.9; }
+
+/* Enhanced context menu visuals */
+.context-menu {
+  min-width: 220px;
+  background: linear-gradient(180deg, rgba(18,18,18,0.85), rgba(12,12,12,0.86));
+  border: 1px solid rgba(255,255,255,0.04);
+  padding: 8px;
+  border-radius: 10px;
+  box-shadow: 0 10px 40px rgba(0,0,0,0.6), 0 2px 8px rgba(0,0,0,0.5);
+  backdrop-filter: blur(6px) saturate(120%);
+  animation: menuEnter 160ms cubic-bezier(.2,.9,.2,1) both;
+  z-index: 2100;
+}
+
+@keyframes menuEnter {
+  from { opacity: 0; transform: translateY(6px) scale(.995); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.context-menu-header {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  padding: 8px 6px;
+}
+.context-menu-thumb {
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  border-radius: 6px;
+  overflow: hidden;
+  background: #121212;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.context-menu-thumb img { width: 100%; height: 100%; object-fit: cover; }
+.thumb-placeholder { color: #9b9b9b; }
+
+.context-menu-meta { overflow: hidden; }
+.context-menu-title { font-weight: 700; font-size: 14px; color: #ffffff; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
+.context-menu-subtitle { font-size: 12px; color: #bdbdbd; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.context-menu-sep { height: 1px; background: rgba(255,255,255,0.03); margin: 6px 0; border-radius: 1px; }
+
+.context-menu-items { display: flex; flex-direction: column; gap: 6px; }
+.context-menu-item {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  width: 100%;
+  background: transparent;
+  border: none;
+  color: #d1d1d1;
+  text-align: left;
+  padding: 8px 10px;
+  cursor: pointer;
+  font-size: 13px;
+  border-radius: 6px;
+}
+.context-menu-item .menu-icon { opacity: 0.85; color: #d1d1d1; }
+.context-menu-item:hover { background: rgba(255,255,255,0.03); color: #fff; box-shadow: inset 3px 0 0 0 var(--accent-color); }
+.context-menu-item[disabled] { opacity: 0.45; cursor: default; }
+
+/* caret for submenu */
+.context-menu-item.has-submenu { position: relative; }
+.context-menu-item .submenu-caret { margin-left: auto; opacity: 0.6; display: inline-flex; align-items: center; }
+.context-menu-item.has-submenu.open .submenu-caret { transform: translateX(2px); opacity: 1; transition: transform 120ms ease, opacity 120ms ease; }
+
+/* Slightly stronger look for submenu to match main menu */
+.context-submenu { min-width: 200px; }
+.context-submenu-item { padding-left: 14px; }
+
+/* fine tune for dark theme */
+.context-menu .menu-icon { display:inline-flex; vertical-align:middle; }
+
+

@@ -1,0 +1,15 @@
+.vupanel{
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: var(--vu-height, 36px);
+  z-index: 110;
+  pointer-events: none;
+  display: flex;
+  align-items: flex-start; /* align canvas to the top edge */
+  padding: 0; /* full-bleed */
+  width: 100%;
+  box-sizing: border-box;
+  transition: opacity 220ms ease, transform 220ms ease;
+}
