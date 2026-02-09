@@ -158,6 +158,7 @@ function App() {
   } = useSongs({
     scanAllMaps,
     onRestorePendingSong: (restoredSong, playbackState) => {
+      restoredSong.mode = restoredSong.mode ?? 0;
       setCurrentSong(restoredSong);
       setCurrentTime(playbackState?.currentTime || 0);
       setDuration(playbackState?.duration || 0);
@@ -311,6 +312,7 @@ function App() {
               if (data?.lastPlayedSong) {
                 const restoredSong = cachedEntry.songs.find(s => s.id === data.lastPlayedSong.id);
                 if (restoredSong) {
+                  restoredSong.mode = data.lastPlayedSong.mode ?? restoredSong.mode ?? 0;
                   // Restore the song after a short delay to ensure everything is loaded
                   setTimeout(() => {
                     setCurrentSong(restoredSong);
@@ -502,7 +504,8 @@ function App() {
             title: currentSong.title,
             artist: currentSong.artist,
             audioFile: currentSong.audioFile,
-            folderPath: currentSong.folderPath
+            folderPath: currentSong.folderPath,
+            mode: currentSong.mode
           } : null,
           lastPlaybackState: {
             isPlaying: isPlaying,
@@ -647,7 +650,6 @@ function App() {
       artist: currentSong.artist || 'Unknown Artist',
       album: currentSong.album || '',
       duration: currentSong.duration ?? duration,
-      startTime: isPlaying ? Date.now() - Math.floor(currentTime * 1000) : undefined,
       imageFile: currentSong.imageFile || null,
       beatmapSetId: currentSong.beatmapSetId || null,
       beatmapId: currentSong.beatmapId || null
@@ -656,7 +658,17 @@ function App() {
     const widgetPayload = currentSong ? (
       isPlaying ? {
         title: currentSong.title || 'Unknown Song',
+        titleUnicode: currentSong.titleUnicode || null,
         artist: currentSong.artist || 'Unknown Artist',
+        artistUnicode: currentSong.artistUnicode || null,
+        creator: currentSong.creator || null,
+        audioFilename: currentSong.audioFilename || null,
+        bpm: currentSong.bpm || null,
+        difficulty: currentSong.difficulty || null,
+        version: currentSong.version || null,
+        mode: (typeof currentSong.mode === 'number') ? currentSong.mode : null,
+        beatmapSetId: currentSong.beatmapSetId || null,
+        beatmapId: currentSong.beatmapId || null,
         album: currentSong.album || '',
         currentTime: currentTime,
         duration: duration,
@@ -664,7 +676,17 @@ function App() {
         imageFile: currentSong.imageFile || null
       } : {
         title: currentSong.title || 'Unknown Song',
+        titleUnicode: currentSong.titleUnicode || null,
         artist: currentSong.artist || 'Unknown Artist',
+        artistUnicode: currentSong.artistUnicode || null,
+        creator: currentSong.creator || null,
+        audioFilename: currentSong.audioFilename || null,
+        bpm: currentSong.bpm || null,
+        difficulty: currentSong.difficulty || null,
+        version: currentSong.version || null,
+        mode: (typeof currentSong.mode === 'number') ? currentSong.mode : null,
+        beatmapSetId: currentSong.beatmapSetId || null,
+        beatmapId: currentSong.beatmapId || null,
         album: currentSong.album || '',
         currentTime: currentTime,
         duration: duration,

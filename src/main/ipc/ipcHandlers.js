@@ -141,6 +141,7 @@ export async function init({ mainWindow, userDataPath }) {
     ipcMain.handle('window-close', () => mainWindow?.close());
 
     ipcMain.handle('get-user-data', async () => {
+        console.log('[UserData] User data file path:', userDataFile);
         try {
             if (fsSync.existsSync(userDataFile)) {
                 const str = await fs.readFile(userDataFile, 'utf-8');
@@ -149,20 +150,24 @@ export async function init({ mainWindow, userDataPath }) {
                     console.log('User data file is empty, returning null');
                     return null;
                 }
-                return JSON.parse(str);
+                const data = JSON.parse(str);
+                console.log('[UserData] Loaded user data keys:', Object.keys(data));
+                return data;
             }
         } catch (e) {
             console.error('Error reading userdata:', e);
-            // Return null for malformed JSON or other errors
         }
+        console.log('[UserData] No user data file found');
         return null;
     });
 
     ipcMain.handle('save-user-data', async (e, data) => {
         try {
             await fs.writeFile(userDataFile, JSON.stringify(data, null, 2), 'utf-8');
+            console.log('[UserData] Saved user data keys:', Object.keys(data));
             return { success: true };
         } catch (err) {
+            console.error('[UserData] Error saving user data:', err);
             return { success: false, error: err.message };
         }
     });

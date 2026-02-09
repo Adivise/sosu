@@ -30,7 +30,7 @@ async function processSongFolder(entry, folderPath, cacheMap, cacheFolderMtimes,
             
             // If mtime hasn't changed, we can safely reuse cache without checking audio file
             if (cachedMtime && currentMtime === cachedMtime) {
-                const updatedSong = { ...cachedSong, _folderMtime: currentMtime };
+                const updatedSong = { ...cachedSong, mode: cachedSong.mode ?? 0, _folderMtime: currentMtime };
                 return { song: updatedSong, reused: true };
             }
             
@@ -39,7 +39,7 @@ async function processSongFolder(entry, folderPath, cacheMap, cacheFolderMtimes,
             
             if (audioFileExists) {
                 // Reuse cached song data but update mtime
-                const updatedSong = { ...cachedSong, _folderMtime: currentMtime };
+                const updatedSong = { ...cachedSong, mode: cachedSong.mode ?? 0, _folderMtime: currentMtime };
                 return { song: updatedSong, reused: true };
             } else {
                 console.log('[Scan] Audio file missing for', entry.name, '- rescanning');
@@ -191,8 +191,9 @@ async function processMetadata(metadataTask) {
             'Unknown Artist',
         artistUnicode: osuMetadata.artistUnicode || null,
         creator: osuMetadata.creator || audioMetadata?.common?.composer || null,
+        audioFilename: osuMetadata.audioFilename || null,
         version: osuMetadata.version || osuMetadata.difficulty || null,
-        mode: (typeof osuMetadata.mode === 'number') ? osuMetadata.mode : null,
+        mode: (typeof osuMetadata.mode === 'number') ? osuMetadata.mode : 0,
         album: audioMetadata?.common?.album || null,
         audioFile: audioFilePath,
         audioFileName,

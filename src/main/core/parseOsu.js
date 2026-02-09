@@ -9,7 +9,7 @@ export default function parseOsuFile(content) {
         bpm: null,
         difficulty: null,
         version: null,
-        mode: null,
+        mode: 0, // Default to osu! standard mode
         beatmapSetId: null,
         beatmapId: null
     };
@@ -47,7 +47,7 @@ export default function parseOsuFile(content) {
         // Parse game mode if present (Mode: 0,1,2,3)
         if (trimmed.startsWith('Mode:')) {
             const m = parseInt(trimmed.split(':')[1]?.trim());
-            metadata.mode = isNaN(m) ? null : m;
+            metadata.mode = isNaN(m) ? 0 : m; // Default to 0 if invalid
         }
 
         if (trimmed.startsWith('[') && trimmed !== '[Metadata]' && trimmed !== '[TimingPoints]') {

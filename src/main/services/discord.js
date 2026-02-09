@@ -48,12 +48,11 @@ export async function setRichPresence(enabled, presenceData) {
                 state: `Artist: ${songArtist}`,
                 largeImageKey: 'osu_icon',
                 largeImageText: albumText || songTitle,
-                startTimestamp: presenceData.startTime ? Math.floor(presenceData.startTime / 1000) : undefined,
                 instance: false,
             };
 
-            // Update small image for playback state
-            if (presenceData.startTime) {
+            // Update small image for playback state (use paused flag instead of startTime)
+            if (presenceData.paused === false) {
                 lastRichPresence.smallImageKey = 'play';
                 lastRichPresence.smallImageText = `⌛: ${durationText}` || 'Playing';
             } else {
