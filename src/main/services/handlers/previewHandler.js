@@ -120,7 +120,12 @@ async function inlineThemeAssets(html, rawBase) {
 
     // Inline CSS if present
     try {
-      const cssText = await fetchText(rawBase + '/style.css');
+      let cssText = await fetchText(rawBase + '/style.css');
+      // Rewrite relative URLs in CSS to absolute GitHub URLs
+      cssText = cssText.replace(/url\(['"]?(?!data:)(?!https?:\/\/)(?!\/)([^'"()]+)['"]?\)/g, (match, urlPath) => {
+        // Convert relative URL to absolute GitHub raw URL
+        return `url('${rawBase}/${urlPath}')`;
+      });
       html = html.replace(/<link[^>]+href=["'][^"']*style\.css["'][^>]*>/i, `<style>${cssText}</style>`);
     } catch (e) { 
       // Ignore missing CSS

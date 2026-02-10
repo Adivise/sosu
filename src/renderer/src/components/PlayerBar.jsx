@@ -154,7 +154,10 @@ const PlayerBar = ({
     eqBands: eqBandsProp,
     onSetup: (filters, ctxInfo) => {
       // Expose context and source to analyser setup via event - PlayerBar will listen
-      try { window.dispatchEvent(new CustomEvent('sosu:audio-eq-setup', { detail: ctxInfo })); } catch (e) {}
+      try {
+        window.__sosu_lastAudioCtxInfo = ctxInfo;
+        window.dispatchEvent(new CustomEvent('sosu:audio-eq-setup', { detail: ctxInfo }));
+      } catch (e) {}
     }
   });
 
@@ -496,6 +499,17 @@ const PlayerBar = ({
       try { if (analyserRefs.current.right) analyserRefs.current.right.disconnect(); } catch (e) {}
       try { if (analyserRefs.current.splitter) analyserRefs.current.splitter.disconnect(); } catch (e) {}
     };
+  }, [vuEnabled]);
+
+  // If VU gets enabled after audio setup, re-emit the last setup event
+  useEffect(() => {
+    if (!vuEnabled) return;
+    try {
+      const ctxInfo = window.__sosu_lastAudioCtxInfo;
+      if (ctxInfo && ctxInfo.context && ctxInfo.source) {
+        window.dispatchEvent(new CustomEvent('sosu:audio-eq-setup', { detail: ctxInfo }));
+      }
+    } catch (e) {}
   }, [vuEnabled]);
 
   const handleSeek = (e) => {

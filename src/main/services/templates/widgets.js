@@ -43,10 +43,10 @@ export function getWidgetsTemplate(installedCards, base, installedThemes, dateNo
 
     <div id="tab-available" class="tab-content">
       <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:8px;">
-        <div style="color:#8b95a8;font-size:14px;">Click the <strong>Preview</strong> button to load a theme preview (manual)</div>
-        <div><button class="btn" onclick="loadAvailableThemes()">🔄 Refresh</button></div>
+        <div id="refresh-status" style="color:#8b95a8;font-size:14px;"></div>
+        <div><button id="refresh-btn" class="btn" onclick="refreshThemes()">🔄 Refresh</button></div>
       </div>
-      <div id="available-themes" class="loading">Loading available themes from GitHub...</div>
+      <div id="available-themes" class="loading"></div>
     </div>
 
   </div>

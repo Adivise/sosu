@@ -85,11 +85,30 @@ export function serveThemeAsset(url, res) {
     }
 
     const contentType = getContentType(assetPath);
+    let content = fs.readFileSync(assetPath);
+    
+    // Rewrite relative URLs in CSS files to absolute paths
+    if (contentType === 'text/css') {
+      let cssContent = content.toString('utf-8');
+      
+      // Get the directory of the CSS file relative to theme root
+      const cssDir = path.dirname(path.join(...fileParts));
+      
+      // Rewrite url() references in CSS
+      cssContent = cssContent.replace(/url\(['"]?(?!data:)(?!https?:\/\/)(?!\/)([^'"()]+)['"]?\)/g, (match, urlPath) => {
+        // Resolve the path relative to the CSS file location
+        const resolvedPath = path.posix.join(cssDir, urlPath).replace(/\\/g, '/');
+        return `url('/theme/${themeName}/${resolvedPath}')`;
+      });
+      
+      content = Buffer.from(cssContent, 'utf-8');
+    }
+    
     res.writeHead(200, { 
       'Content-Type': contentType, 
       'Cache-Control': 'public, max-age=3600' 
     });
-    res.end(fs.readFileSync(assetPath));
+    res.end(content);
   } catch (err) {
     console.error('[Widget] Theme asset error', err);
     res.writeHead(500);

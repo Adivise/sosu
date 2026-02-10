@@ -55,7 +55,7 @@ function App() {
   const [showEQModal, setShowEQModal] = useState(false);
   const [discordRpcEnabled, setDiscordRpcEnabled] = useState(false);
   const [widgetServerEnabled, setWidgetServerEnabled] = useState(false);
-  const [vuEnabled, setVuEnabled] = useLocalStorageState('vuEnabled', false);
+  const [vuEnabled, setVuEnabled] = useLocalStorageState('vuEnabled', true);
   const [userDataLoaded, setUserDataLoaded] = useState(false);
   const [eqBands, setEqBands] = useLocalStorageState('eqBands', DEFAULT_EQ_BANDS, { serializer: JSON.stringify, deserializer: (v) => normalizeEqBands(JSON.parse(v)) });
   const [albumArtBlur, setAlbumArtBlur] = useLocalStorageState('albumArtBlur', true);
@@ -909,8 +909,8 @@ function App() {
       setAlbumArtBlur(true);
       setBlurIntensity(60);
       setAccentColor('#1db954');
-      // Reset VU visualizer to disabled by default
-      setVuEnabled(false);
+      // Reset VU visualizer to default enabled
+      setVuEnabled(true);
       // Clear playback stats managed by songs hook
       clearRecentlyPlayed();
       setFavorites({});
@@ -961,7 +961,7 @@ function App() {
           nameFilterMode: 'contains',
           scanAllMaps: false,
           dedupeTitlesEnabled: true,
-          vuEnabled: false,
+          vuEnabled: true,
           lastPlayedSong: null,
           lastPlaybackState: { isPlaying: false, currentTime: 0, duration: 0 },
           eqBands: DEFAULT_EQ_BANDS

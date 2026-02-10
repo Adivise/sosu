@@ -4,7 +4,47 @@
  */
 
 export function getWidgetsScript() {
-  return `function showToast(msg){ 
+  return `// Cooldown management
+    const cooldowns = new Map();
+    const COOLDOWN_TIME = 60000; // 60 seconds
+
+    function setCooldown(buttonId, duration = COOLDOWN_TIME) {
+      const btn = document.getElementById(buttonId);
+      if (!btn) return;
+      
+      const endTime = Date.now() + duration;
+      cooldowns.set(buttonId, endTime);
+      btn.disabled = true;
+      
+      const updateCooldown = () => {
+        const remaining = Math.ceil((cooldowns.get(buttonId) - Date.now()) / 1000);
+        if (remaining <= 0) {
+          cooldowns.delete(buttonId);
+          btn.disabled = false;
+          btn.textContent = btn.dataset.originalText || btn.textContent;
+          return;
+        }
+        const originalText = btn.dataset.originalText || btn.textContent;
+        if (!btn.dataset.originalText) {
+          btn.dataset.originalText = btn.textContent;
+        }
+        btn.textContent = \`\${originalText} (\${remaining}s)\`;
+        setTimeout(updateCooldown, 1000);
+      };
+      updateCooldown();
+    }
+
+    function isOnCooldown(buttonId) {
+      const endTime = cooldowns.get(buttonId);
+      if (!endTime) return false;
+      if (Date.now() >= endTime) {
+        cooldowns.delete(buttonId);
+        return false;
+      }
+      return true;
+    }
+
+    function showToast(msg){ 
       const t=document.getElementById('toast'); 
       if(!t) return;
       t.textContent=msg; 
@@ -22,7 +62,7 @@ export function getWidgetsScript() {
       if (content) content.classList.add('active');
 
       if (tab === 'available' && !window.availableThemesLoaded) {
-        loadAvailableThemes();
+        loadAvailableThemes(false);
       }
     }
 
@@ -64,7 +104,7 @@ export function getWidgetsScript() {
       }
       showToast(\`⏳ \${action} \${name}...\`);
       
-      const r = await fetch('/widgets?action=download&name=' + encodeURIComponent(name)); 
+      const r = await fetch('/widgets?action=download&name=' + encodeURIComponent(name) + '&t=' + Date.now()); 
       const j = await r.json(); 
       
       if(btn) {
@@ -95,10 +135,17 @@ export function getWidgetsScript() {
       if(j.success) setTimeout(()=>location.reload(), 800); 
     }
 
-    async function checkThemeUpdates() {
+    async function checkThemeUpdates(forceCheck = false) {
       const btn = document.getElementById('check-updates-btn');
       const statusEl = document.getElementById('check-updates-status');
-      if (btn && btn.disabled) return;
+      
+      // Check cooldown
+      if (!forceCheck && btn && isOnCooldown('check-updates-btn')) {
+        showToast('⏳ Please wait before checking again');
+        return;
+      }
+      
+      if (btn && btn.disabled && !forceCheck) return;
 
       if (btn) {
         btn.disabled = true;
@@ -107,10 +154,10 @@ export function getWidgetsScript() {
         btn.setAttribute('aria-busy', 'true');
       }
       if (statusEl) statusEl.textContent = 'Checking for updates...';
-      showToast('🔄 Checking for updates...');
+      if (!forceCheck) showToast('🔄 Checking for updates...');
       
       try {
-        const r = await fetch('/widgets?api=github');
+        const r = await fetch('/widgets?api=github&t=' + Date.now());
         const data = await r.json();
         if(data.success && data.themes) {
           const installedCards = document.querySelectorAll('.card.installed');
@@ -130,28 +177,32 @@ export function getWidgetsScript() {
           });
           if(updatesFound > 0) {
             if (statusEl) statusEl.textContent = \`✨ \${updatesFound} update\${updatesFound > 1 ? 's' : ''} available\`;
-            showToast(\`✨ Found \${updatesFound} update\${updatesFound > 1 ? 's' : ''} available!\`);
+            if (!forceCheck) showToast(\`✨ Found \${updatesFound} update\${updatesFound > 1 ? 's' : ''} available!\`);
           } else {
             if (statusEl) statusEl.textContent = '✓ All themes are up to date';
-            showToast('✓ All themes are up to date');
+            if (!forceCheck) showToast('✓ All themes are up to date');
           }
         } else {
           const errMsg = data.error || 'Unknown error';
           if (statusEl) statusEl.textContent = '✗ Failed: ' + errMsg;
-          showToast('✗ Failed: ' + errMsg);
+          if (!forceCheck) showToast('✗ Failed: ' + errMsg);
         }
       } catch(err) {
         console.error('Failed to check theme updates:', err);
         if (statusEl) statusEl.textContent = '✗ Failed to check updates';
-        showToast('✗ Failed to check updates');
+        if (!forceCheck) showToast('✗ Failed to check updates');
       } finally {
         if (btn) {
-          btn.disabled = false;
           btn.textContent = btn.dataset.oldText || '🔄 Check for Update';
           btn.removeAttribute('aria-busy');
           delete btn.dataset.oldText;
+          if (!forceCheck) {
+            setCooldown('check-updates-btn');
+          } else {
+            btn.disabled = false;
+          }
         }
-        setTimeout(() => { if (statusEl) statusEl.textContent = ''; }, 5000);
+        // Don't clear status - keep it visible for users to see
       }
     }
 
@@ -190,11 +241,14 @@ export function getWidgetsScript() {
       return card;
     }
 
-    async function loadAvailableThemes() {
+    async function loadAvailableThemes(clearCache = false) {
       const container = document.getElementById('available-themes');
-      container.innerHTML = '<div class="loading">Loading available themes from GitHub...</div>';
+      if (!container.querySelector('.grid')) {
+        container.innerHTML = '';
+      }
       try {
-        const r = await fetch('/widgets?api=github');
+        const cacheParam = clearCache ? '&cache=clear&t=' + Date.now() : '&t=' + Date.now();
+        const r = await fetch('/widgets?api=github' + cacheParam);
         const data = await r.json();
         if (!data.success) {
           showErrorMessage(container, data.error || 'Unknown error');
@@ -253,31 +307,50 @@ export function getWidgetsScript() {
       }
     }
 
-    try { checkThemeUpdates(); } catch(e) { /* ignore */ }
-
     async function refreshThemes() {
       const btn = document.getElementById('refresh-btn');
+      const statusEl = document.getElementById('refresh-status');
       if (!btn) return;
+      
+      // Check cooldown
+      if (isOnCooldown('refresh-btn')) {
+        showToast('⏳ Please wait before refreshing again');
+        return;
+      }
+      
       const originalText = btn.textContent;
       btn.disabled = true;
-      btn.textContent = ' Refreshing...';
+      btn.textContent = '🔄 Refreshing...';
+      if (statusEl) statusEl.textContent = 'Fetching latest themes from GitHub...';
+      
       try {
-        const response = await fetch('/api/refresh');
-        const data = await response.json();
-        if (data.success) {
-          showToast(' ✓ Cache cleared! Reloading themes...', 'success');
-          await loadAvailableThemes();
-          showToast(' ✓ Themes updated successfully!', 'success');
-        } else {
-          throw new Error(data.error || 'Failed to refresh');
-        }
+        showToast('🔄 Clearing cache and fetching fresh data...');
+        
+        // Clear cache and reload available themes
+        window.availableThemesLoaded = false;
+        await loadAvailableThemes(true);
+        
+        if (statusEl) statusEl.textContent = '✓ Successfully refreshed with latest data';
+        showToast('✓ Successfully refreshed with latest data!');
       } catch (err) {
-        showToast(' ✗ Failed to refresh: ' + err.message, 'error');
-      } finally {
+        console.error('Failed to refresh themes:', err);
+        if (statusEl) statusEl.textContent = '✗ Failed to refresh: ' + (err.message || 'Unknown error');
+        showToast('✗ Failed to refresh: ' + (err.message || 'Unknown error'));
         btn.disabled = false;
         btn.textContent = originalText;
+      } finally {
+          btn.textContent = originalText;
+        setCooldown('refresh-btn');
       }
     }
 
-    window.refreshThemes = refreshThemes;`;
+    window.refreshThemes = refreshThemes;
+    
+    // Auto-check for updates every 5 minutes in realtime
+    try { 
+      checkThemeUpdates(true); // Initial check (no toast/cooldown)
+      setInterval(() => checkThemeUpdates(true), 300000); // Check every 5 minutes
+    } catch(e) { 
+      console.error('Auto-update check error:', e);
+    }`;
 }
