@@ -5,6 +5,7 @@ import { widgetThemesPath } from '../config/paths.js';
 import { ensureDefaultTheme, listThemes, getThemeMetadata, fetchGitHubThemes, downloadThemeFromGitHub } from './widgets/index.js';
 import { getRateLimitInfo } from './widgets/githubClient.js';
 import { renderInstalledCard } from './helpers/cardRenderer.js';
+import { getWidgetsTemplate } from './templates/widgets.js';
 
 export async function handleWidgets(req, res, url, currentPort) {
   const action = url.searchParams.get('action');
@@ -86,17 +87,9 @@ export async function handleWidgets(req, res, url, currentPort) {
       })
       .join('\n');
 
-    const tplPath = path.join(process.cwd(), 'src', 'main', 'services', 'templates', 'widgets.html');
-    if (!fs.existsSync(tplPath)) { res.writeHead(500, { 'Content-Type': 'text/plain' }); res.end('Widgets template not found'); return; }
-
-    let tpl = fs.readFileSync(tplPath, 'utf8');
-    tpl = tpl.replace('{{INSTALLED_CARDS}}', installedCards)
-             .replace('{{BASE}}', base)
-             .replace('{{INSTALLED_THEMES_JSON}}', JSON.stringify(themes))
-             .replace('{{DATE_NOW}}', String(Date.now()));
-
+    const html = getWidgetsTemplate(installedCards, base, themes, Date.now());
     res.writeHead(200, { 'Content-Type': 'text/html' });
-    res.end(tpl);
+    res.end(html);
     return;
   } catch (err) {
     res.writeHead(500, { 'Content-Type': 'text/plain' });

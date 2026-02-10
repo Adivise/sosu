@@ -43,40 +43,8 @@ export function setCachedPreview(key, value, ttl = DEFAULT_TTL) {
 }
 
 /**
- * Clear a specific cached preview
- * @param {string} key - Cache key or themeName
- */
-export function clearCachedPreview(key) {
-  previewCache.delete(key);
-}
-
-/**
  * Clear all cached previews
  */
 export function clearAllPreviews() {
   previewCache.clear();
-}
-
-/**
- * Get cache statistics
- * @returns {object} - Cache stats
- */
-export function getCacheStats() {
-  const now = Date.now();
-  let validCount = 0;
-  let expiredCount = 0;
-
-  for (const [key, entry] of previewCache.entries()) {
-    if (now <= entry.expiresAt) {
-      validCount++;
-    } else {
-      expiredCount++;
-    }
-  }
-
-  return {
-    totalEntries: previewCache.size,
-    validEntries: validCount,
-    expiredEntries: expiredCount,
-  };
 }

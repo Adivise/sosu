@@ -1,4 +1,9 @@
-* { margin: 0; padding: 0; box-sizing: border-box; }
+/**
+ * Widget themes CSS stylesheet
+ * Exported as a string for dynamic loading
+ */
+
+export const widgetsCSS = `* { margin: 0; padding: 0; box-sizing: border-box; }
 body { 
   margin: 0; 
   background: linear-gradient(135deg, #0a0e17 0%, #1a1f2e 100%);
@@ -90,12 +95,6 @@ body {
   color: #8bb3ff;
   margin-left: 8px;
 }
-/* .loading {
-  text-align: center;
-  padding: 40px;
-  color: #8b95a8;
-  font-size: 15px;
-} */
 .grid { 
   display: grid; 
   grid-template-columns: 1fr; 
@@ -192,9 +191,9 @@ body {
 }
 .preview iframe { 
   width: 100%;
-  max-width: none;      /* allow wider previews */
-  min-width: 750px;     /* ensure reasonable minimum width */
-  height: 350px;        /* taller preview */
+  max-width: none;
+  min-width: 750px;
+  height: 350px;
   background: transparent;
   border-radius: 8px;
   box-shadow: 0 8px 24px rgba(0,0,0,0.4);
@@ -211,7 +210,7 @@ body {
   color: #8b95a8;
   font-size: 15px;
   text-align: center;
-  position: relative; /* allow absolute overlay */
+  position: relative;
 }
 .preview-placeholder .preview-overlay {
   position: absolute;
@@ -219,7 +218,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  pointer-events: none; /* allow clicks only on inner button */
+  pointer-events: none;
 }
 .preview-placeholder .preview-overlay .btn {
   pointer-events: auto;
@@ -396,12 +395,4 @@ body {
   transform: translateY(-1px);
   box-shadow: 0 4px 16px rgba(102, 126, 234, 0.3), 0 2px 8px rgba(0,0,0,0.3);
 }
-
-/* When iframe is loaded in placeholder */
-/* .preview-placeholder iframe {
-  width: 100%;
-  height: 100%;
-  border: none;
-  border-radius: 10px;
-  box-shadow: 0 4px 16px rgba(0,0,0,0.3);
-} */
+`;

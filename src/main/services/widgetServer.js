@@ -4,7 +4,7 @@ import { shell } from 'electron';
 import { handleWidgets } from './widgetsHandler.js';
 import { ensureDefaultTheme, loadTheme } from './widgets/index.js';
 import { handlePreview } from './handlers/previewHandler.js';
-import { serveWidgetsJS, serveWidgetsCSS, serveDocsCSS, serveThemeAsset, serveImage, serveFavicon } from './handlers/staticHandler.js';
+import { serveWidgetsCSS, serveDocsCSS, serveThemeAsset, serveImage, serveFavicon } from './handlers/staticHandler.js';
 import { handleJSON, handleStatus, handleDocs } from './handlers/apiHandler.js';
 import { clearThemeCache } from './widgets/fetchGitHubThemes.js';
 import { clearAllPreviews } from './helpers/previewCache.js';
@@ -49,11 +49,6 @@ export function startServer(port = 3737) {
         const themeParam = url.searchParams.get('theme');
         await handlePreview(themeParam, req, res, currentPort);
 
-      }
-      // Serve widgets client JS
-      else if (url.pathname === '/widgets.js') {
-        serveWidgetsJS(res);
-        return;
       }
       // Serve widgets CSS
       else if (url.pathname === '/widgets.css') {

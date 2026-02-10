@@ -1,6 +1,9 @@
 import fs from 'fs';
 import path from 'path';
+import { app } from 'electron';
 import { widgetThemesPath } from '../../config/paths.js';
+import { widgetsCSS } from '../templates/widgetsCSS.js';
+import { docsCSS } from '../templates/docsCSS.js';
 
 /**
  * Serve static files (JS, CSS, theme assets)
@@ -11,7 +14,7 @@ import { widgetThemesPath } from '../../config/paths.js';
  * @param {object} res - HTTP response object
  */
 export function serveFavicon(res) {
-  const iconPath = path.join(process.cwd(), 'resources', 'icon.ico');
+  const iconPath = path.join(app.getAppPath(), 'resources', 'icon.ico');
   if (!fs.existsSync(iconPath)) {
     res.writeHead(404);
     res.end('Not found');
@@ -25,39 +28,15 @@ export function serveFavicon(res) {
 }
 
 /**
- * Serve widgets client-side JavaScript
- * @param {object} res - HTTP response object
- */
-export function serveWidgetsJS(res) {
-  const scriptPath = path.join(process.cwd(), 'src', 'main', 'services', 'widgets.js');
-  if (!fs.existsSync(scriptPath)) {
-    res.writeHead(404);
-    res.end('Not found');
-    return;
-  }
-  res.writeHead(200, { 
-    'Content-Type': 'application/javascript', 
-    'Cache-Control': 'public, max-age=3600' 
-  });
-  res.end(fs.readFileSync(scriptPath, 'utf-8'));
-}
-
-/**
  * Serve widgets CSS stylesheet
  * @param {object} res - HTTP response object
  */
 export function serveWidgetsCSS(res) {
-  const cssPath = path.join(process.cwd(), 'src', 'main', 'services', 'templates', 'widgets.css');
-  if (!fs.existsSync(cssPath)) {
-    res.writeHead(404);
-    res.end('Not found');
-    return;
-  }
   res.writeHead(200, { 
     'Content-Type': 'text/css', 
     'Cache-Control': 'public, max-age=3600' 
   });
-  res.end(fs.readFileSync(cssPath, 'utf8'));
+  res.end(widgetsCSS);
 }
 
 /**
@@ -65,17 +44,11 @@ export function serveWidgetsCSS(res) {
  * @param {object} res - HTTP response object
  */
 export function serveDocsCSS(res) {
-  const cssPath = path.join(process.cwd(), 'src', 'main', 'services', 'templates', 'docs.css');
-  if (!fs.existsSync(cssPath)) {
-    res.writeHead(404);
-    res.end('Not found');
-    return;
-  }
   res.writeHead(200, { 
     'Content-Type': 'text/css', 
     'Cache-Control': 'public, max-age=3600' 
   });
-  res.end(fs.readFileSync(cssPath, 'utf8'));
+  res.end(docsCSS);
 }
 
 /**

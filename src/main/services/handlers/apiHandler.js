@@ -1,5 +1,4 @@
-import fs from 'fs';
-import path from 'path';
+import { getDocsTemplate } from '../templates/docs.js';
 
 /**
  * API route handlers for /json, /status, and /docs
@@ -91,17 +90,7 @@ export function handleStatus(appVersion, currentPort, wss, currentNowPlaying, re
  * @param {object} res - HTTP response object
  */
 export function handleDocs(currentPort, res) {
-  const docsPath = path.join(process.cwd(), 'src', 'main', 'services', 'templates', 'docs.html');
-  
-  if (!fs.existsSync(docsPath)) {
-    res.writeHead(500, { 'Content-Type': 'text/plain' });
-    res.end('Documentation template not found');
-    return;
-  }
-
-  let html = fs.readFileSync(docsPath, 'utf8');
-  html = html.replace(/\{\{PORT\}\}/g, currentPort);
-  
+  const html = getDocsTemplate(currentPort);
   res.writeHead(200, { 'Content-Type': 'text/html' });
   res.end(html);
 }

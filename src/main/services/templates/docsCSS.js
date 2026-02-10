@@ -1,4 +1,9 @@
-* { margin: 0; padding: 0; box-sizing: border-box; }
+/**
+ * Widget API documentation CSS stylesheet
+ * Exported as a string for dynamic loading
+ */
+
+export const docsCSS = `* { margin: 0; padding: 0; box-sizing: border-box; }
 :root {
   --bg: #0a0e14;
   --card: #151a21;
@@ -176,3 +181,4 @@ a:hover {
   color: var(--accent-hover);
   text-decoration: underline;
 }
+`;

@@ -1,4 +1,20 @@
-<!DOCTYPE html>
+/**
+ * Widget API documentation template
+ * Exported as a function that returns HTML with substituted variables
+ */
+
+export function getDocsTemplate(port) {
+  const exampleJson = JSON.stringify({
+    title: "Song Title",
+    artist: "Artist Name",
+    album: "Album Name",
+    duration: 180.0,
+    currentTime: 45.5,
+    imageFile: "/path/to/image.jpg",
+    paused: false
+  }, null, 2);
+
+  return `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -18,11 +34,11 @@
     <div class="section">
       <h2 class="section-title"><span class="icon">🚀</span> Quick Start</h2>
       <p style="color: var(--muted); margin-bottom: 16px;">
-        Add a Browser Source to OBS with one of these URLs. Server must be running (port {{PORT}}).
+        Add a Browser Source to OBS with one of these URLs. Server must be running (port ${port}).
       </p>
       <div class="code-block">
-        <button class="copy-btn" onclick="copy('http://localhost:{{PORT}}/widget?theme=default', this)">Copy</button>
-        http://localhost:{{PORT}}/widget?theme=default
+        <button class="copy-btn" onclick="copy('http://localhost:${port}/widget?theme=default', this)">Copy</button>
+        http://localhost:${port}/widget?theme=default
       </div>
       <p style="color: var(--muted); margin-top: 12px; font-size: 14px;">
         Browse and download more themes at <a href="/widgets">/widgets</a>
@@ -39,8 +55,8 @@
         </div>
         <p class="endpoint-desc">Get current song data as JSON</p>
         <div class="code-block">
-          <button class="copy-btn" onclick="copy('http://localhost:{{PORT}}/json', this)">Copy</button>
-          http://localhost:{{PORT}}/json
+          <button class="copy-btn" onclick="copy('http://localhost:${port}/json', this)">Copy</button>
+          http://localhost:${port}/json
         </div>
       </div>
 
@@ -52,8 +68,8 @@
         </div>
         <p class="endpoint-desc">Display widget overlay for OBS (specify theme parameter)</p>
         <div class="code-block">
-          <button class="copy-btn" onclick="copy('http://localhost:{{PORT}}/widget?theme=minimal', this)">Copy</button>
-          http://localhost:{{PORT}}/widget?theme=minimal
+          <button class="copy-btn" onclick="copy('http://localhost:${port}/widget?theme=minimal', this)">Copy</button>
+          http://localhost:${port}/widget?theme=minimal
         </div>
       </div>
 
@@ -64,8 +80,8 @@
         </div>
         <p class="endpoint-desc">Get current song's album art image</p>
         <div class="code-block">
-          <button class="copy-btn" onclick="copy('http://localhost:{{PORT}}/image', this)">Copy</button>
-          http://localhost:{{PORT}}/image
+          <button class="copy-btn" onclick="copy('http://localhost:${port}/image', this)">Copy</button>
+          http://localhost:${port}/image
         </div>
       </div>
 
@@ -76,8 +92,8 @@
         </div>
         <p class="endpoint-desc">Browse, preview, and download widget themes</p>
         <div class="code-block">
-          <button class="copy-btn" onclick="copy('http://localhost:{{PORT}}/widgets', this)">Copy</button>
-          http://localhost:{{PORT}}/widgets
+          <button class="copy-btn" onclick="copy('http://localhost:${port}/widgets', this)">Copy</button>
+          http://localhost:${port}/widgets
         </div>
       </div>
 
@@ -88,8 +104,8 @@
         </div>
         <p class="endpoint-desc">Check server status and uptime</p>
         <div class="code-block">
-          <button class="copy-btn" onclick="copy('http://localhost:{{PORT}}/status', this)">Copy</button>
-          http://localhost:{{PORT}}/status
+          <button class="copy-btn" onclick="copy('http://localhost:${port}/status', this)">Copy</button>
+          http://localhost:${port}/status
         </div>
       </div>
     </div>
@@ -103,7 +119,7 @@
       <div class="ws-info">
         <div class="info-card">
           <div class="info-label">WebSocket URL</div>
-          <div class="info-value">ws://localhost:{{PORT}}</div>
+          <div class="info-value">ws://localhost:${port}</div>
         </div>
         <div class="info-card">
           <div class="info-label">Protocol</div>
@@ -118,15 +134,7 @@
       <p style="color: var(--muted); margin: 16px 0 12px; font-weight: 600;">Example Message:</p>
       <div class="code-block" style="padding-right: 60px;">
         <button class="copy-btn" onclick="copy(exampleJson, this)">Copy</button>
-        <pre style="margin:0; white-space: pre-wrap;">{
-  "title": "Song Title",
-  "artist": "Artist Name",
-  "album": "Album Name",
-  "duration": 180.0,
-  "currentTime": 45.5,
-  "imageFile": "/path/to/image.jpg",
-  "paused": false
-}</pre>
+        <pre style="margin:0; white-space: pre-wrap;">${exampleJson}<\/pre>
       </div>
     </div>
 
@@ -143,15 +151,7 @@
   </div>
 
   <script>
-    const exampleJson = `{
-  "title": "Song Title",
-  "artist": "Artist Name",
-  "album": "Album Name",
-  "duration": 180.0,
-  "currentTime": 45.5,
-  "imageFile": "/path/to/image.jpg",
-  "paused": false
-}`;
+    const exampleJson = \`${exampleJson}\`;
 
     function copy(text, btn) {
       navigator.clipboard.writeText(text).then(() => {
@@ -169,6 +169,7 @@
         }, 2000);
       });
     }
-  </script>
+  <\/script>
 </body>
-</html>
+</html>`;
+}

@@ -14,8 +14,3 @@ export {
   downloadThemeFromGitHub
 };
 
-// Client helper: copyText used by widgets page (inlined script depends on this)
-export function clientHelpers() {
-  // No-op sentinel for import side effects
-}
-

@@ -1,10 +1,20 @@
-﻿<!doctype html>
+/**
+ * Widget themes management template
+ * Exported as a function that returns HTML with substituted variables
+ * Script is imported from widgetsScript.js and inlined into HTML
+ */
+
+import { getWidgetsScript } from './widgetsScript.js';
+
+export function getWidgetsTemplate(installedCards, base, installedThemes, dateNow) {
+  const widgetsScript = getWidgetsScript();
+  return `<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>sosu - widget themes</title>
-  <link rel="stylesheet" href="/widgets.css?v={{DATE_NOW}}" />
+  <link rel="stylesheet" href="/widgets.css?v=${dateNow}" />
 </head>
 <body>
   <div class="wrap">
@@ -28,7 +38,7 @@
         <div id="check-updates-status" style="color:#8b95a8;font-size:14px;"></div>
         <div><button id="check-updates-btn" class="btn" onclick="checkThemeUpdates()">🔄 Check for Update</button></div>
       </div>
-      <div class="grid" id="installed-themes">{{INSTALLED_CARDS}}</div>
+      <div class="grid" id="installed-themes">${installedCards}</div>
     </div>
 
     <div id="tab-available" class="tab-content">
@@ -44,10 +54,11 @@
   <div id="toast" class="toast">Copied!</div>
 
   <script>
-    const base = '{{BASE}}';
-    const installedThemes = '{{INSTALLED_THEMES_JSON}}';
-  </script>
+    const base = '${base}';
+    const installedThemes = ${JSON.stringify(installedThemes)};
 
-  <script src="/widgets.js?v={{DATE_NOW}}"></script>
+    ${widgetsScript}
+  </script>
 </body>
-</html>
+</html>`;
+}
