@@ -50,7 +50,15 @@ function createTray() {
     ? path.join(process.resourcesPath, 'icon.png')
     : path.join(__dirname, '../../resources/icon.png');
   
-  tray = new Tray(iconPath);
+  console.log('[Main] Tray icon path:', iconPath);
+  
+  try {
+    tray = new Tray(iconPath);
+    console.log('[Main] Tray created successfully');
+  } catch (err) {
+    console.error('[Main] Error creating tray:', err);
+    return;
+  }
   
   const contextMenu = Menu.buildFromTemplate([
     {
@@ -71,29 +79,33 @@ function createTray() {
     }
   ]);
   
-  tray.setToolTip('Sosu Music Player');
-  tray.setContextMenu(contextMenu);
-  
-  tray.on('click', () => {
-    if (mainWindow) {
-      if (mainWindow.isVisible()) {
-        mainWindow.hide();
-      } else {
+  if (tray) {
+    tray.setToolTip('Sosu Music Player');
+    tray.setContextMenu(contextMenu);
+    
+    tray.on('click', () => {
+      if (mainWindow) {
+        if (mainWindow.isVisible()) {
+          mainWindow.hide();
+        } else {
+          mainWindow.show();
+          mainWindow.focus();
+        }
+      }
+    });
+    
+    tray.on('double-click', () => {
+      if (mainWindow) {
         mainWindow.show();
         mainWindow.focus();
       }
-    }
-  });
-  
-  tray.on('double-click', () => {
-    if (mainWindow) {
-      mainWindow.show();
-      mainWindow.focus();
-    }
-  });
+    });
+  }
 }
 
 app.whenReady().then(async () => {
+  console.log('[Main] App is ready');
+  
   // Register custom protocols
   protocols.registerAppProtocol();
   protocols.registerOsuProtocol();
@@ -103,7 +115,10 @@ app.whenReady().then(async () => {
 
   // Create main window
   mainWindow = createWindow();
-  await ipcHandlers.init({ mainWindow, userDataPath });
+  console.log('[Main] Main window created, visible:', mainWindow.isVisible());
+  
+  const setIsQuitting = () => { isQuitting = true; };
+  await ipcHandlers.init({ mainWindow, userDataPath, setIsQuitting });
 
   // Handle close event (minimize to tray if enabled)
   mainWindow.on('close', (event) => {
@@ -131,6 +146,7 @@ app.on('window-all-closed', () => {
 });
 
 app.on('before-quit', () => {
+  isQuitting = true;
   try {
     destroyDiscord();
   } catch (e) {

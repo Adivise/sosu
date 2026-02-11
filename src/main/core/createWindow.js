@@ -26,12 +26,22 @@ export default function createWindow() {
 
     if (is.dev) {
         // Development: Load Vite dev server or fallback localhost
-        win.loadURL(process.env['ELECTRON_RENDERER_URL'] || 'http://localhost:5173/');
+        const url = process.env['ELECTRON_RENDERER_URL'] || 'http://localhost:5173/';
+        console.log('[createWindow] Loading URL:', url);
+        win.loadURL(url).catch(err => {
+            console.error('[createWindow] Error loading URL:', err);
+        });
         win.webContents.openDevTools(); // optional
     } else {
         // Production: Load built renderer index.html
-        win.loadFile(path.join(__dirname, '../../out/renderer/index.html'));
+        const filePath = path.join(__dirname, '../../out/renderer/index.html');
+        console.log('[createWindow] Loading file:', filePath);
+        win.loadFile(filePath).catch(err => {
+            console.error('[createWindow] Error loading file:', err);
+        });
     }
+
+    console.log('[createWindow] Window created, position:', win.getPosition(), 'size:', win.getSize());
 
     return win;
 }

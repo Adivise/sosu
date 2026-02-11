@@ -7,7 +7,7 @@ import * as discord from '../services/discord.js';
 import * as widgetServer from '../services/widgetServer.js';
 import { userDataFile, songsCacheFile, profilesPath } from '../config/paths.js';
 
-export async function init({ mainWindow, userDataPath }) {
+export async function init({ mainWindow, userDataPath, setIsQuitting }) {
     ipcMain.handle('scan-osu-folder', async (event, folderPath, forceRescan = false, scanAllMaps = false) => {
         try {
             // Quick validation: check if folder exists and is accessible
@@ -149,6 +149,8 @@ export async function init({ mainWindow, userDataPath }) {
 
     ipcMain.handle('app-quit', () => {
         const { app } = require('electron');
+        setIsQuitting();
+        console.log('[IPC] app-quit handler: setting isQuitting and calling app.quit()');
         app.quit();
         return { success: true };
     });
