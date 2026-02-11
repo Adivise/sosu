@@ -67,31 +67,31 @@ SOSU comes packed with **28+ features** organized into 5 main categories:
 # 🚀 Installation
 
 ### Windows Users
-- Click [here](https://github.com/Adivise/sosu/releases/latest/download/sosu-2.4.0.exe) to download the recommended Windows installer
+- Click [here](https://github.com/Adivise/sosu/releases/latest/download/sosu-2.5.0.exe) to download the recommended Windows installer
 - Alternative downloads from the [latest release](https://github.com/Adivise/sosu/releases/latest):
   - **Portable (.exe)**
-    - `sosu-2.4.0-portable.exe` (no installation required)
+    - `sosu-2.5.0-portable.exe` (no installation required)
   - **MSI Installer (.msi)**
-    - `sosu-2.4.0.msi` (alternative for enterprise environments)
+    - `sosu-2.5.0.msi` (alternative for enterprise environments)
   > *Note: The portable version doesn't save settings between sessions. The installer saves all configuration. Choose the format that best fits your needs.*
 
 ### macOS Users
 > **Note:** The macOS build is currently in **beta test**. There may be bugs or missing features. Please report any issues you encounter.
-- Click [here](https://github.com/Adivise/sosu/releases/latest/download/sosu-2.4.0.dmg) to download the recommended macOS installer
+- Click [here](https://github.com/Adivise/sosu/releases/latest/download/sosu-2.5.0.dmg) to download the recommended macOS installer
 - Alternative downloads from the [latest release](https://github.com/Adivise/sosu/releases/latest):
   - **PKG Installer (.pkg)**
-    - `sosu-2.4.0.pkg` (for Apple Silicon Macs)
+    - `sosu-2.5.0.pkg` (for Apple Silicon Macs)
   > *On first launch, you may need to right-click and choose "Open" to bypass security warnings if the app is not notarized.*
 
 ### Linux Users
 > **Note:** The Linux build is currently in **beta test**. There may be bugs or missing features. Please report any issues you encounter.
-- Click [here](https://github.com/Adivise/sosu/releases/latest/download/sosu-2.4.0.AppImage) to download the recommended Linux AppImage
+- Click [here](https://github.com/Adivise/sosu/releases/latest/download/sosu-2.5.0.AppImage) to download the recommended Linux AppImage
 - Alternative downloads from the [latest release](https://github.com/Adivise/sosu/releases/latest):
   - **Debian Package (.deb)**
-    - `sosu_2.4.0.deb`
+    - `sosu_2.5.0.deb`
   - **RPM Package (.rpm)**
-    - `sosu-2.4.0.rpm`
-  > *You may need to make the AppImage executable: `chmod +x ./sosu-2.4.0.AppImage` and then run it.*
+    - `sosu-2.5.0.rpm`
+  > *You may need to make the AppImage executable: `chmod +x ./sosu-2.5.0.AppImage` and then run it.*
 
 > **Note:** `.yml` and `.blockmap` files are for auto-update and can be ignored by most users. Download the installer or portable/archive for your platform.
 
