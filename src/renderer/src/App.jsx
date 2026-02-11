@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { BrowserRouter as Router } from 'react-router-dom';
 import Sidebar from './components/Sidebar';
 import MainContent from './components/MainContent';
@@ -10,12 +10,76 @@ import EQModal from './components/EQModal';
 import LoadingScreen from './components/LoadingScreen';
 import FirstRunScreen from './components/FirstRunScreen';
 import SongDetailsModal from './components/SongDetailsModal';
+import CloseConfirmDialog from './components/CloseConfirmDialog';
 import { DEFAULT_EQ_BANDS } from './components/eqConstants';
 import { EQ_PRESETS } from './components/eqPresets';
 import { VERSION } from './version';
 import './App.css';
 import useLocalStorageState from './hooks/useLocalStorageState';
 import { normalizeEqBands, getContrastColor, adjustBrightness } from './utils/colorUtils';
+import { getCurrentSongs as getCurrentSongsHelper, getFilterStats as getFilterStatsHelper } from './utils/songFilters';
+import { getAllArtists as getAllArtistsHelper } from './utils/songHelpers';
+import {
+  buildShuffleOrder as buildShuffleOrderHelper,
+  updateShuffleHistory as updateShuffleHistoryHelper,
+  updatePlaybackHistory as updatePlaybackHistoryHelper
+} from './utils/playbackHelpers';
+import { scheduleSave as scheduleSaveHelper } from './utils/userDataSave';
+import { resetAppToDefaults as resetAppToDefaultsHelper } from './handlers/resetAppToDefaults';
+import {
+  handlePlayPause as handlePlayPauseHelper,
+  handleSongSelect as handleSongSelectHelper,
+  handleNext as handleNextHelper,
+  handlePrevious as handlePreviousHelper
+} from './handlers/playbackHandlers';
+import {
+  createPlaylist as createPlaylistHelper,
+  addSongToPlaylist as addSongToPlaylistHelper,
+  removeSongFromPlaylist as removeSongFromPlaylistHelper,
+  requestDeletePlaylist as requestDeletePlaylistHelper,
+  confirmDeletePlaylist as confirmDeletePlaylistHelper,
+  cancelDeletePlaylist as cancelDeletePlaylistHelper,
+  ensurePlaylistGlobalHelper as ensurePlaylistGlobalHelperHelper
+} from './handlers/playlistHandlers';
+import {
+  getSettingsSnapshot as getSettingsSnapshotHelper,
+  applySettingsFromData as applySettingsFromDataHelper,
+  handleExportData as handleExportDataHelper,
+  handleImportData as handleImportDataHelper,
+  getProfileData as getProfileDataHelper,
+  handleSaveProfile as handleSaveProfileHelper,
+  handleLoadProfile as handleLoadProfileHelper,
+  handleDeleteProfile as handleDeleteProfileHelper,
+  handleListProfiles as handleListProfilesHelper,
+  handleExportProfile as handleExportProfileHelper
+} from './handlers/profileHandlers';
+import {
+  createCloseRequestHandler as createCloseRequestHandlerHelper,
+  handleCloseConfirmMinimize as handleCloseConfirmMinimizeHelper,
+  handleCloseConfirmQuit as handleCloseConfirmQuitHelper,
+  handleCloseConfirmCancel as handleCloseConfirmCancelHelper
+} from './handlers/windowHandlers';
+import {
+  registerHighlightSongEvent as registerHighlightSongEventHelper,
+  registerOpenSettingsEvent as registerOpenSettingsEventHelper,
+  registerCreatePlaylistEvent as registerCreatePlaylistEventHelper
+} from './handlers/eventHandlers';
+import {
+  handleViewChange as handleViewChangeHelper,
+  handleSelectPlaylist as handleSelectPlaylistHelper
+} from './handlers/viewHandlers';
+import {
+  buildUserDataPayload as buildUserDataPayloadHelper,
+  flushUserData as flushUserDataHelper
+} from './handlers/saveHandlers';
+import {
+  buildDiscordPayload as buildDiscordPayloadHelper,
+  buildWidgetPayload as buildWidgetPayloadHelper,
+  dispatchDiscord as dispatchDiscordHelper,
+  dispatchWidget as dispatchWidgetHelper,
+  startWidgetTimeInterval as startWidgetTimeIntervalHelper,
+  clearDispatchTimers as clearDispatchTimersHelper
+} from './handlers/discordWidgetHandlers';
 import useSongs from './hooks/useSongs';
 
 // Immediate startup overlay to prevent initial UI flash before React mounts
@@ -69,61 +133,72 @@ function App() {
   const [displayedSongsSourceView, setDisplayedSongsSourceView] = useState(null);
   const [songDetails, setSongDetails] = useState(null);
   const [highlightedSongId, setHighlightedSongId] = useState(null); // preview highlight id
+  
+  // Close to tray settings
+  const [closeToTray, setCloseToTray] = useLocalStorageState('closeToTray', true);
+  const [askBeforeClose, setAskBeforeClose] = useLocalStorageState('askBeforeClose', true);
+  const [showCloseConfirmDialog, setShowCloseConfirmDialog] = useState(false);
+  const [hardwareAcceleration, setHardwareAcceleration] = useLocalStorageState('hardwareAcceleration', true);
 
   // Highlight song requests from other UI elements (e.g., jump-to-song)
   useEffect(() => {
-    const handler = (ev) => {
-      try {
-        const songId = ev?.detail?.songId;
-        if (!songId) return;
-        setHighlightedSongId(songId);
-        // Clear highlight after a short duration
-        setTimeout(() => {
-          setHighlightedSongId(null);
-        }, 2500);
-      } catch (e) {}
-    };
-    window.addEventListener('sosu:highlight-song', handler);
-    return () => window.removeEventListener('sosu:highlight-song', handler);
+    return registerHighlightSongEventHelper({ setHighlightedSongId });
   }, []);
 
   // Allow other UI to open Settings via a custom event (used by the "No results" helper)
   useEffect(() => {
-    const handler = () => setShowSettingsModal(true);
-    window.addEventListener('sosu:open-settings', handler);
-    return () => window.removeEventListener('sosu:open-settings', handler);
+    return registerOpenSettingsEventHelper({ setShowSettingsModal });
   }, []);
-
-
 
   // Fallback global event to open the Create Playlist modal when other code dispatches it
   useEffect(() => {
-    const onCreateEvt = (ev) => {
-      try {
-        console.debug && console.debug('[App] received sosu:create-playlist event, activeElement:', document.activeElement && (document.activeElement.tagName + ' ' + (document.activeElement.id || document.activeElement.className || '')));
-      } catch (e) {}
-
-      // If we recently deleted a playlist, wait a bit longer to avoid focus race with confirm/DOM updates
-      let delay = 30;
-      try {
-        const lastDel = lastPlaylistDeletedAtRef.current || 0;
-        if (Date.now() - lastDel < 800) {
-          delay = 350;
-          console.debug && console.debug('[App] delaying open CreatePlaylistModal due to recent delete', { sinceMs: Date.now() - lastDel });
-        }
-      } catch (e) {}
-
-      // Schedule the modal open on the next tick (or later if needed) to avoid focus/confirm race conditions
-      setTimeout(() => {
-        try {
-          setShowCreatePlaylistModal(true);
-          console.debug && console.debug('[App] scheduled open CreatePlaylistModal');
-        } catch (e) {}
-      }, delay);
-    };
-    window.addEventListener('sosu:create-playlist', onCreateEvt);
-    return () => window.removeEventListener('sosu:create-playlist', onCreateEvt);
+    return registerCreatePlaylistEventHelper({
+      setShowCreatePlaylistModal,
+      lastPlaylistDeletedAtRef
+    });
   }, []);
+
+  // Handle app close request from main process
+  useEffect(() => {
+    if (!window.electronAPI) return;
+
+    const handleCloseRequest = createCloseRequestHandlerHelper({
+      askBeforeClose,
+      closeToTray,
+      setShowCloseConfirmDialog,
+      electronAPI: window.electronAPI
+    });
+
+    window.electronAPI.onAppCloseRequested(handleCloseRequest);
+
+    return () => {
+      window.electronAPI.removeAppCloseRequestedListener();
+    };
+  }, [askBeforeClose, closeToTray]);
+
+  const handleCloseConfirmMinimize = (dontAskAgain) => {
+    handleCloseConfirmMinimizeHelper({
+      dontAskAgain,
+      setAskBeforeClose,
+      setCloseToTray,
+      setShowCloseConfirmDialog,
+      electronAPI: window.electronAPI
+    });
+  };
+
+  const handleCloseConfirmQuit = (dontAskAgain) => {
+    handleCloseConfirmQuitHelper({
+      dontAskAgain,
+      setAskBeforeClose,
+      setCloseToTray,
+      setShowCloseConfirmDialog,
+      electronAPI: window.electronAPI
+    });
+  };
+
+  const handleCloseConfirmCancel = () => {
+    handleCloseConfirmCancelHelper({ setShowCloseConfirmDialog });
+  };
   
   // Advanced filters
   const [hiddenArtists, setHiddenArtists] = useLocalStorageState('hiddenArtists', ['Unknown Artist']);
@@ -393,34 +468,21 @@ function App() {
   const pendingSaveRef = useRef(null);
 
   const scheduleSave = (partialData, delay = 2000, immediate = false) => {
-    try {
-      pendingSaveRef.current = { ...(pendingSaveRef.current || {}), ...partialData };
-      if (immediate) {
-        if (saveTimerRef.current) { clearTimeout(saveTimerRef.current); saveTimerRef.current = null; }
-        if (window.electronAPI && pendingSaveRef.current) {
-          try { window.electronAPI.saveUserData(pendingSaveRef.current); } catch (e) {}
-          pendingSaveRef.current = null;
+    scheduleSaveHelper({
+      pendingSaveRef,
+      saveTimerRef,
+      saveUserData: (data) => {
+        if (window.electronAPI && data) {
+          try { window.electronAPI.saveUserData(data); } catch (e) {}
         }
-        return;
       }
-
-      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
-      saveTimerRef.current = setTimeout(() => {
-        try {
-          if (window.electronAPI && pendingSaveRef.current) {
-            window.electronAPI.saveUserData(pendingSaveRef.current);
-          }
-        } catch (e) {}
-        pendingSaveRef.current = null;
-        saveTimerRef.current = null;
-      }, delay);
-    } catch (e) {}
+    }, partialData, delay, immediate);
   };
 
   // Save general user settings (exclude high-frequency currentTime updates)
   useEffect(() => {
     if (!userDataLoaded) return;
-    const userData = {
+    const userData = buildUserDataPayloadHelper({
       volume,
       autoplay,
       shuffle,
@@ -441,22 +503,14 @@ function App() {
       nameFilterMode,
       scanAllMaps,
       dedupeTitlesEnabled,
-      // lastPlayedSong intentionally included but lastPlaybackState excludes currentTime here
-      lastPlayedSong: currentSong ? {
-        id: currentSong.id,
-        title: currentSong.title,
-        artist: currentSong.artist,
-        audioFile: currentSong.audioFile,
-        folderPath: currentSong.folderPath
-      } : null,
-      lastPlaybackState: {
-        isPlaying: isPlaying,
-        duration: duration
-      },
-      eqBands: eqBands,
-      recentlyPlayed: recentlyPlayed,
-      playCounts: playCounts
-    };
+      currentSong,
+      isPlaying,
+      currentTime,
+      duration,
+      eqBands,
+      recentlyPlayed,
+      playCounts
+    });
 
     scheduleSave(userData);
 
@@ -477,49 +531,42 @@ function App() {
   useEffect(() => {
     const flush = () => {
       try {
-        if (!userDataLoaded) return;
-        const payload = {
-          volume,
-          autoplay,
-          shuffle,
-          repeat,
-          playlists,
-          osuFolderPath,
-          discordRpcEnabled,
-          widgetServerEnabled,
-          vuEnabled,
-          minDurationValue,
-          itemsPerPage,
-          albumArtBlur,
-          blurIntensity,
-          accentColor,
-          showSongBadges,
-          hiddenArtists,
-          nameFilter,
-          nameFilterMode,
-          scanAllMaps,
-          dedupeTitlesEnabled,
-          lastPlayedSong: currentSong ? {
-            id: currentSong.id,
-            title: currentSong.title,
-            artist: currentSong.artist,
-            audioFile: currentSong.audioFile,
-            folderPath: currentSong.folderPath,
-            mode: currentSong.mode
-          } : null,
-          lastPlaybackState: {
-            isPlaying: isPlaying,
-            currentTime: currentTime,
-            duration: duration
+        flushUserDataHelper({
+          userDataLoaded,
+          scheduleSave,
+          payloadArgs: {
+            volume,
+            autoplay,
+            shuffle,
+            repeat,
+            playlists,
+            osuFolderPath,
+            discordRpcEnabled,
+            widgetServerEnabled,
+            vuEnabled,
+            minDurationValue,
+            itemsPerPage,
+            albumArtBlur,
+            blurIntensity,
+            accentColor,
+            showSongBadges,
+            hiddenArtists,
+            nameFilter,
+            nameFilterMode,
+            scanAllMaps,
+            dedupeTitlesEnabled,
+            currentSong,
+            isPlaying,
+            currentTime,
+            duration,
+            eqBands,
+            recentlyPlayed,
+            playCounts
           },
-          eqBands,
-          recentlyPlayed,
-          playCounts
-        };
-
-        // Force immediate save via scheduleSave (immediate=true) so pending data is written
-        scheduleSave(payload, 0, true);
-        console.debug && console.debug('[App] forced save on close/visibilitychange');
+          includeCurrentTime: true,
+          includeMode: true,
+          logLabel: '[App] forced save on close/visibilitychange'
+        });
       } catch (e) {
         console.warn('[App] forced save failed', e);
       }
@@ -580,63 +627,11 @@ function App() {
   const pendingWidgetPayloadRef = useRef(null);
   const prevDiscordSongIdRef = useRef(null);
   const prevIsPlayingRef = useRef(null);
+  const currentTimeRef = useRef(0);
 
-  const dispatchDiscord = (payload, immediate = false) => {
-    if (!window.electronAPI || !window.electronAPI.setDiscordRichPresence) return;
-    const now = Date.now();
-
-    if (immediate || now - lastDiscordSentRef.current >= DISPATCH_THROTTLE) {
-      if (payload) {
-        window.electronAPI.setDiscordRichPresence(true, payload);
-      } else {
-        window.electronAPI.setDiscordRichPresence(false);
-      }
-      lastDiscordSentRef.current = now;
-      if (pendingDiscordTimerRef.current) { clearTimeout(pendingDiscordTimerRef.current); pendingDiscordTimerRef.current = null; }
-      pendingDiscordPayloadRef.current = null;
-      return;
-    }
-
-    // schedule for later
-    pendingDiscordPayloadRef.current = payload;
-    const wait = DISPATCH_THROTTLE - (now - lastDiscordSentRef.current);
-    if (pendingDiscordTimerRef.current) clearTimeout(pendingDiscordTimerRef.current);
-    pendingDiscordTimerRef.current = setTimeout(() => {
-      const p = pendingDiscordPayloadRef.current;
-      if (!window.electronAPI || !window.electronAPI.setDiscordRichPresence) return;
-      if (p) window.electronAPI.setDiscordRichPresence(true, p);
-      else window.electronAPI.setDiscordRichPresence(false);
-      lastDiscordSentRef.current = Date.now();
-      pendingDiscordPayloadRef.current = null;
-      pendingDiscordTimerRef.current = null;
-    }, wait);
-  };
-
-  const dispatchWidget = (payload, immediate = false) => {
-    if (!window.electronAPI || !window.electronAPI.widgetUpdateNowPlaying) return;
-    const now = Date.now();
-
-    if (immediate || now - lastWidgetSentRef.current >= DISPATCH_THROTTLE) {
-      try {
-        window.electronAPI.widgetUpdateNowPlaying(payload);
-      } catch (e) {}
-      lastWidgetSentRef.current = now;
-      if (pendingWidgetTimerRef.current) { clearTimeout(pendingWidgetTimerRef.current); pendingWidgetTimerRef.current = null; }
-      pendingWidgetPayloadRef.current = null;
-      return;
-    }
-
-    pendingWidgetPayloadRef.current = payload;
-    const wait = DISPATCH_THROTTLE - (now - lastWidgetSentRef.current);
-    if (pendingWidgetTimerRef.current) clearTimeout(pendingWidgetTimerRef.current);
-    pendingWidgetTimerRef.current = setTimeout(() => {
-      const p = pendingWidgetPayloadRef.current;
-      try { window.electronAPI.widgetUpdateNowPlaying(p); } catch (e) {}
-      lastWidgetSentRef.current = Date.now();
-      pendingWidgetPayloadRef.current = null;
-      pendingWidgetTimerRef.current = null;
-    }, wait);
-  };
+  useEffect(() => {
+    currentTimeRef.current = currentTime;
+  }, [currentTime]);
 
   useEffect(() => {
     // Determine whether this is a song change or play/pause toggle which should be immediate
@@ -645,89 +640,61 @@ function App() {
     prevDiscordSongIdRef.current = currentSong ? currentSong.id : null;
     prevIsPlayingRef.current = isPlaying;
 
-    const discordPayload = currentSong ? {
-      title: currentSong.title || 'Unknown Song',
-      artist: currentSong.artist || 'Unknown Artist',
-      album: currentSong.album || '',
-      duration: currentSong.duration ?? duration,
-      imageFile: currentSong.imageFile || null,
-      beatmapSetId: currentSong.beatmapSetId || null,
-      beatmapId: currentSong.beatmapId || null
-    } : null;
-
-    const widgetPayload = currentSong ? (
-      isPlaying ? {
-        title: currentSong.title || 'Unknown Song',
-        titleUnicode: currentSong.titleUnicode || null,
-        artist: currentSong.artist || 'Unknown Artist',
-        artistUnicode: currentSong.artistUnicode || null,
-        creator: currentSong.creator || null,
-        audioFilename: currentSong.audioFilename || null,
-        bpm: currentSong.bpm || null,
-        difficulty: currentSong.difficulty || null,
-        version: currentSong.version || null,
-        mode: (typeof currentSong.mode === 'number') ? currentSong.mode : null,
-        beatmapSetId: currentSong.beatmapSetId || null,
-        beatmapId: currentSong.beatmapId || null,
-        album: currentSong.album || '',
-        currentTime: currentTime,
-        duration: duration,
-        paused: false,
-        imageFile: currentSong.imageFile || null
-      } : {
-        title: currentSong.title || 'Unknown Song',
-        titleUnicode: currentSong.titleUnicode || null,
-        artist: currentSong.artist || 'Unknown Artist',
-        artistUnicode: currentSong.artistUnicode || null,
-        creator: currentSong.creator || null,
-        audioFilename: currentSong.audioFilename || null,
-        bpm: currentSong.bpm || null,
-        difficulty: currentSong.difficulty || null,
-        version: currentSong.version || null,
-        mode: (typeof currentSong.mode === 'number') ? currentSong.mode : null,
-        beatmapSetId: currentSong.beatmapSetId || null,
-        beatmapId: currentSong.beatmapId || null,
-        album: currentSong.album || '',
-        currentTime: currentTime,
-        duration: duration,
-        paused: true,
-        imageFile: currentSong.imageFile || null
-      }
-    ) : null;
+    const discordPayload = buildDiscordPayloadHelper({ currentSong, duration });
+    const widgetPayload = buildWidgetPayloadHelper({ currentSong, isPlaying, currentTime, duration });
 
     // Dispatch with immediate=true for song change / pause / resume events
     const immediate = songChanged || isPlayingChanged || !isPlaying;
 
-    if (discordRpcEnabled) dispatchDiscord(discordPayload, immediate);
-    else dispatchDiscord(null, true);
+    if (discordRpcEnabled) {
+      dispatchDiscordHelper({
+        electronAPI: window.electronAPI,
+        payload: discordPayload,
+        immediate,
+        throttleMs: DISPATCH_THROTTLE,
+        lastSentRef: lastDiscordSentRef,
+        pendingTimerRef: pendingDiscordTimerRef,
+        pendingPayloadRef: pendingDiscordPayloadRef
+      });
+    } else {
+      dispatchDiscordHelper({
+        electronAPI: window.electronAPI,
+        payload: null,
+        immediate: true,
+        throttleMs: DISPATCH_THROTTLE,
+        lastSentRef: lastDiscordSentRef,
+        pendingTimerRef: pendingDiscordTimerRef,
+        pendingPayloadRef: pendingDiscordPayloadRef
+      });
+    }
 
     // Send metadata updates as before
-    dispatchWidget(widgetPayload, immediate);
+    dispatchWidgetHelper({
+      electronAPI: window.electronAPI,
+      payload: widgetPayload,
+      immediate,
+      throttleMs: DISPATCH_THROTTLE,
+      lastSentRef: lastWidgetSentRef,
+      pendingTimerRef: pendingWidgetTimerRef,
+      pendingPayloadRef: pendingWidgetPayloadRef
+    });
 
     // If playing and widget server enabled, start a fast interval to send currentTime-only updates
     // This enables near-realtime currentTime updates without spamming metadata updates
-    let intervalId = null;
-    if (widgetServerEnabled && isPlaying && currentSong) {
-      intervalId = setInterval(() => {
-        if (!window.electronAPI || !window.electronAPI.widgetUpdateNowPlaying) return;
-        // Send lightweight payload with currentTime and paused=false so server doesn't retain stale paused state
-        try { window.electronAPI.widgetUpdateNowPlaying({ currentTime: currentTimeRef.current, paused: false }); } catch (e) {}
-      }, 250); // 250ms updates for smoother progress
-    }
+    const intervalId = startWidgetTimeIntervalHelper({
+      electronAPI: window.electronAPI,
+      widgetServerEnabled,
+      isPlaying,
+      currentSong,
+      currentTimeRef
+    });
 
     // Cleanup scheduled timers on unmount / when dependencies change
     return () => {
-      if (pendingDiscordTimerRef.current) { clearTimeout(pendingDiscordTimerRef.current); pendingDiscordTimerRef.current = null; }
-      if (pendingWidgetTimerRef.current) { clearTimeout(pendingWidgetTimerRef.current); pendingWidgetTimerRef.current = null; }
+      clearDispatchTimersHelper({ pendingDiscordTimerRef, pendingWidgetTimerRef });
       if (intervalId) clearInterval(intervalId);
     };
   }, [discordRpcEnabled, currentSong, isPlaying, currentTime, duration, widgetServerEnabled]);
-
-
-
-
-
-
 
   useEffect(() => {
     // Also apply a global class to immediately hide/show badges even if some components didn't re-render yet
@@ -749,109 +716,18 @@ function App() {
     }
   }, [currentSong, isPlaying, currentTime, duration, notifyPlayback]);
 
-  // Get all unique artists from songs
-  const getAllArtists = () => {
-    const artistsSet = new Set();
-    songs.forEach(song => {
-      if (song.artist) {
-        artistsSet.add(song.artist);
-      }
-    });
-    return Array.from(artistsSet).sort();
-  };
+  const getAllArtists = () => getAllArtistsHelper(songs);
 
   // Calculate filtered stats
-  const getFilterStats = () => {
-    const totalSongs = songs.length;
-    let hiddenCount = 0; // hidden by duration/artist/title filters (before duplicate removal)
-    let hiddenByDuration = 0;
-    let hiddenByArtist = 0;
-    let hiddenByTitle = 0;
-    let duplicateCount = 0; // would be removed by title dedupe after other filters
-    const seenTitles = new Set();
-    
-    songs.forEach(song => {
-      const duration = songDurations?.[song.id] ?? song.duration;
-      if (duration && duration < minDurationValue) {
-        hiddenCount++;
-        hiddenByDuration++;
-        return;
-      }
-      
-      if (hiddenArtists.length > 0 && song.artist) {
-        const artistLower = song.artist.toLowerCase().trim();
-        if (hiddenArtists.some(hidden => hidden.toLowerCase().trim() === artistLower)) {
-          hiddenCount++;
-          hiddenByArtist++;
-          return;
-        }
-      }
-      
-      if (nameFilter) {
-        const songTitle = (song.title || '').toLowerCase();
-        const raw = nameFilter
-          .split(',')
-          .map(s => s.trim())
-          .filter(Boolean);
-
-        for (const item of raw) {
-          const idx = item.indexOf('::');
-          const mode = (idx > 0 ? item.slice(0, idx) : nameFilterMode).toLowerCase();
-          const term = (idx > 0 ? item.slice(idx + 2) : item).toLowerCase().trim();
-          if (!term) continue;
-
-          let hit = false;
-          switch (mode) {
-            case 'startswith':
-              hit = songTitle.startsWith(term);
-              break;
-            case 'endswith':
-              hit = songTitle.endsWith(term);
-              break;
-            case 'contains':
-            default:
-              hit = songTitle.includes(term);
-              break;
-          }
-
-          if (hit) {
-            hiddenCount++;
-            hiddenByTitle++;
-            return;
-          }
-        }
-      }
-
-      // passed filters -> count duplicates by title (case-insensitive)
-      const normalizedTitle = (song.title || '').toLowerCase().trim();
-      if (normalizedTitle) {
-        if (seenTitles.has(normalizedTitle)) {
-          duplicateCount++;
-        } else {
-          seenTitles.add(normalizedTitle);
-        }
-      }
-    });
-    
-    const visibleBeforeDedupe = totalSongs - hiddenCount;
-    const visibleAfterDedupe = dedupeTitlesEnabled
-      ? Math.max(0, visibleBeforeDedupe - duplicateCount)
-      : visibleBeforeDedupe;
-    const hiddenTotal = totalSongs - visibleAfterDedupe;
-
-    return {
-      total: totalSongs,
-      hidden: hiddenTotal,
-      hiddenBy: {
-        duration: hiddenByDuration,
-        artist: hiddenByArtist,
-        title: hiddenByTitle
-      },
-      visible: visibleAfterDedupe,
-      // Show duplicates that are actually hidden right now; if dedupe is off, this is 0
-      duplicate: dedupeTitlesEnabled ? duplicateCount : 0
-    };
-  };
+  const filterStats = getFilterStatsHelper({
+    songs,
+    songDurations,
+    minDurationValue,
+    hiddenArtists,
+    nameFilter,
+    nameFilterMode,
+    dedupeTitlesEnabled
+  });
 
   // If the currently playing song is no longer in the global songs list
   // (e.g. after reset or rescan removed it), stop playback and clear it
@@ -878,105 +754,54 @@ function App() {
 
 
 
-  // Reset the app to factory defaults (like first run)
-  const resetAppToDefaults = async () => {
-    try {
-      // Stop widget server if running
-      if (window.electronAPI?.widgetIsRunning) {
-        const running = await window.electronAPI.widgetIsRunning();
-        if (running && window.electronAPI.widgetStopServer) {
-          await window.electronAPI.widgetStopServer();
-        }
-      }
-
-      // Clear relevant localStorage keys
-      const keysToClear = [
-        'eqBands','albumArtBlur','blurIntensity','accentColor','showSongBadges','recentlyPlayed','favorites','playCounts','itemsPerPage','sortBy','sortDuration','searchHistory',
-        'hiddenArtists','nameFilter','nameFilterMode','scanAllMaps','dedupeTitlesEnabled','vuEnabled'
-      ];
-      keysToClear.forEach(k => localStorage.removeItem(k));
-
-      // Reset React state to initial defaults
-      setVolume(0.5);
-      setAutoplay(false);
-      setShuffle(false);
-      setRepeat(false);
-      setPlaylists([]);
-      setOsuFolderPath(null);
-      setDiscordRpcEnabled(false);
-      setWidgetServerEnabled(false);
-      setEqBands(DEFAULT_EQ_BANDS);
-      setAlbumArtBlur(true);
-      setBlurIntensity(60);
-      setAccentColor('#1db954');
-      // Reset VU visualizer to default enabled
-      setVuEnabled(true);
-      // Clear playback stats managed by songs hook
-      clearRecentlyPlayed();
-      setFavorites({});
-      clearPlayCounts();
-      setDurationFilter({ min: 0, max: Infinity });
-      setMinDurationValue(60);
-      setItemsPerPage(50);
-      setHiddenArtists(['Unknown Artist']);
-      setNameFilter('');
-      setNameFilterMode('contains');
-      setScanAllMaps(false);
-      setDedupeTitlesEnabled(true);
-      setDisplayedSongs([]);
-      setCurrentSong(null);
-      setIsPlaying(false);
-      setCurrentTime(0);
-      setDuration(0);
-      setSelectedPlaylistId(null);
-      setCurrentView('songs');
-
-      // Clear songs cache
-      setSongs([]);
-      setSongsCache({});
-      setSongDurations({});
-      if (window.electronAPI?.saveSongsCache) {
-        await window.electronAPI.saveSongsCache({});
-      }
-
-      // Save blank user data
-      if (window.electronAPI?.saveUserData) {
-        await window.electronAPI.saveUserData({
-          volume: 1,
-          autoplay: false,
-          shuffle: false,
-          repeat: false,
-          playlists: [],
-          osuFolderPath: null,
-          discordRpcEnabled: false,
-          widgetServerEnabled: false,
-          minDurationValue: 60,
-          itemsPerPage: 50,
-          albumArtBlur: true,
-          blurIntensity: 60,
-          accentColor: '#1db954',
-          showSongBadges: false,
-          hiddenArtists: ['Unknown Artist'],
-          nameFilter: '',
-          nameFilterMode: 'contains',
-          scanAllMaps: false,
-          dedupeTitlesEnabled: true,
-          vuEnabled: true,
-          lastPlayedSong: null,
-          lastPlaybackState: { isPlaying: false, currentTime: 0, duration: 0 },
-          eqBands: DEFAULT_EQ_BANDS
-        });
-      }
-    } catch (err) {
-      console.error('[Reset] Failed to reset app to defaults:', err);
-    }
+  const handleResetApp = async () => {
+    await resetAppToDefaultsHelper({
+      electronAPI: window.electronAPI,
+      DEFAULT_EQ_BANDS,
+      setVolume,
+      setAutoplay,
+      setShuffle,
+      setRepeat,
+      setPlaylists,
+      setOsuFolderPath,
+      setDiscordRpcEnabled,
+      setWidgetServerEnabled,
+      setEqBands,
+      setAlbumArtBlur,
+      setBlurIntensity,
+      setAccentColor,
+      setVuEnabled,
+      clearRecentlyPlayed,
+      setFavorites,
+      clearPlayCounts,
+      setDurationFilter,
+      setMinDurationValue,
+      setItemsPerPage,
+      setHiddenArtists,
+      setNameFilter,
+      setNameFilterMode,
+      setScanAllMaps,
+      setDedupeTitlesEnabled,
+      setDisplayedSongs,
+      setCurrentSong,
+      setIsPlaying,
+      setCurrentTime,
+      setDuration,
+      setSelectedPlaylistId,
+      setCurrentView,
+      setSongs,
+      setSongsCache,
+      setSongDurations,
+      setCloseToTray,
+      setAskBeforeClose
+    });
   };
 
   // Song loading and scanning logic moved to `useSongs` hook. See `hooks/useSongs.js` for implementation.
 
 
   const handlePlayPause = () => {
-    setIsPlaying(!isPlaying);
+    handlePlayPauseHelper({ isPlaying, setIsPlaying });
   };
 
   // Global spacebar handler: toggle play/pause when appropriate
@@ -1012,21 +837,14 @@ function App() {
   }, [handlePlayPause]);
 
   const handleSongSelect = (song) => {
-    // If clicking the same song that's playing, just toggle play/pause
-    if (currentSong?.id === song.id && isPlaying) {
-      setIsPlaying(false);
-      return;
-    }
-    // If clicking the same song that's paused, resume
-    if (currentSong?.id === song.id && !isPlaying) {
-      setIsPlaying(true);
-      return;
-    }
-    // Otherwise, select new song
-    setCurrentSong(song);
-    setCurrentTime(0);
-    // Set isPlaying to true - PlayerBar will wait for audio to load before actually playing
-    setIsPlaying(true);
+    handleSongSelectHelper({
+      song,
+      currentSong,
+      isPlaying,
+      setIsPlaying,
+      setCurrentSong,
+      setCurrentTime
+    });
   };
 
   // Track shuffle order for proper shuffle navigation
@@ -1038,13 +856,7 @@ function App() {
   // Generate shuffle order when shuffle is enabled
   useEffect(() => {
     if (shuffle && songs.length > 0) {
-      // Create shuffled array excluding current song
-      const currentId = currentSong?.id;
-      const availableSongs = songs.filter(s => s.id !== currentId);
-      const shuffled = [...availableSongs].sort(() => Math.random() - 0.5);
-      
-      // Add current song at the start if it exists
-      const order = currentId ? [currentId, ...shuffled.map(s => s.id)] : shuffled.map(s => s.id);
+      const order = buildShuffleOrderHelper({ songs, currentSongId: currentSong?.id });
       setShuffleOrder(order);
       shuffleHistoryRef.current = [];
     } else {
@@ -1055,415 +867,218 @@ function App() {
 
   // Add current song to shuffle history when it changes
   useEffect(() => {
-    if (shuffle && currentSong) {
-      const history = shuffleHistoryRef.current;
-      if (!history.includes(currentSong.id)) {
-        history.push(currentSong.id);
-        // Keep history reasonable size
-        if (history.length > songs.length * 2) {
-          history.shift();
-        }
-      }
-    }
+    updateShuffleHistoryHelper({
+      shuffle,
+      currentSong,
+      songsLength: songs.length,
+      shuffleHistoryRef
+    });
   }, [currentSong, shuffle, songs.length]);
 
   // Add current song to playback history (for previous button, works regardless of shuffle)
   useEffect(() => {
-    if (currentSong) {
-      const history = playbackHistoryRef.current;
-      // Only add if it's different from the last song in history
-      if (history.length === 0 || history[history.length - 1] !== currentSong.id) {
-        history.push(currentSong.id);
-        // Keep history reasonable size (enough for going back through playlist)
-        if (history.length > songs.length * 3) {
-          history.shift();
-        }
-      }
-    }
+    updatePlaybackHistoryHelper({
+      currentSong,
+      songsLength: songs.length,
+      playbackHistoryRef
+    });
   }, [currentSong, songs.length]);
 
+  const currentSongsArgs = {
+    currentView,
+    songs,
+    recentlyPlayed,
+    favorites,
+    playCounts,
+    playlists,
+    selectedPlaylistId,
+    songDurations,
+    minDurationValue,
+    hiddenArtists,
+    nameFilter,
+    nameFilterMode,
+    dedupeTitlesEnabled
+  };
+
+  const getCurrentSongs = () => getCurrentSongsHelper(currentSongsArgs);
+
   const handleNext = () => {
-    const currentList = displayedSongs.length > 0 ? displayedSongs : getCurrentSongs();
-    if (currentSong && currentList.length > 0) {
-      if (shuffle && shuffleOrder.length > 0) {
-        const currentIndex = shuffleOrder.indexOf(currentSong.id);
-        if (currentIndex !== -1 && currentIndex < shuffleOrder.length - 1) {
-          const nextId = shuffleOrder[currentIndex + 1];
-          const nextSong = currentList.find(s => s.id === nextId);
-          if (nextSong) {
-            handleSongSelect(nextSong);
-            return;
-          }
-        }
-        const availableSongs = currentList.filter(s => !shuffleHistoryRef.current.includes(s.id));
-        if (availableSongs.length > 0) {
-          const nextSong = availableSongs[Math.floor(Math.random() * availableSongs.length)];
-          handleSongSelect(nextSong);
-          return;
-        }
-        shuffleHistoryRef.current = [];
-        const randomSong = currentList[Math.floor(Math.random() * currentList.length)];
-        handleSongSelect(randomSong);
-        return;
-      } else {
-        // Always advance to next track when user presses Next (even if repeat is enabled)
-        const currentIndex = currentList.findIndex(s => s.id === currentSong.id);
-        const nextIndex = (currentIndex + 1) % currentList.length;
-        handleSongSelect(currentList[nextIndex]);
-      }
-    }
+    handleNextHelper({
+      displayedSongs,
+      getCurrentSongs,
+      currentSong,
+      shuffle,
+      shuffleOrder,
+      shuffleHistoryRef,
+      handleSongSelect
+    });
   };  
 
   const handlePrevious = () => {
-    const currentList = displayedSongs.length > 0 ? displayedSongs : getCurrentSongs();
-    if (currentSong && currentList.length > 0) {
-      if (repeat) return;
-      const history = playbackHistoryRef.current;
-      if (history.length > 1) {
-        history.pop();
-        const prevId = history[history.length - 1];
-        const prevSong = currentList.find(s => s.id === prevId);
-        if (prevSong) {
-          handleSongSelect(prevSong);
-          return;
-        }
-      }
-      const currentIndex = currentList.findIndex(s => s.id === currentSong.id);
-      const prevIndex = currentIndex === 0 ? currentList.length - 1 : currentIndex - 1;
-      handleSongSelect(currentList[prevIndex]);
-    }
+    handlePreviousHelper({
+      displayedSongs,
+      getCurrentSongs,
+      currentSong,
+      repeat,
+      playbackHistoryRef,
+      handleSongSelect
+    });
   };  
 
   // Playlist management
   const createPlaylist = (name) => {
-    const newPlaylist = {
-      id: Date.now().toString(),
-      name: name,
-      songs: [],
-      createdAt: new Date().toISOString()
-    };
-    setPlaylists([...playlists, newPlaylist]);
+    createPlaylistHelper({ name, playlists, setPlaylists });
   };
 
   const addSongToPlaylist = (playlistId, song) => {
-    console.debug && console.debug('[App] addSongToPlaylist called', playlistId, song && song.title);
-    const pid = String(playlistId);
-    setPlaylists(prev => {
-      const next = prev.map(playlist => {
-        if (String(playlist.id) === pid) {
-          // Check if song already exists (compare as strings)
-          if (!playlist.songs.find(s => String(s.id) === String(song.id))) {
-            const updated = { ...playlist, songs: [...playlist.songs, song] };
-            console.debug && console.debug('[App] updated playlist', pid, updated);
-            return updated;
-          } else {
-            console.debug && console.debug('[App] song already in playlist', pid, song.id);
-          }
-        }
-        return playlist;
-      });
-      console.debug && console.debug('[App] playlists after add', next);
-
-      // Dispatch an event so callers can observe the change immediately (useful for tests/debug/UI feedback)
-      try {
-        window.dispatchEvent(new CustomEvent('sosu:playlist-updated', { detail: { playlistId: pid, song, playlists: next } }));
-      } catch (e) { console.error('dispatch playlist-updated failed', e); }
-
-      return next;
-    });
-
-    // Expose for quick console debugging and fallback calls
-    try { window.__sosu_addSongToPlaylist = addSongToPlaylist; } catch (e) {}
+    addSongToPlaylistHelper({ playlistId, song, setPlaylists });
   };
-
-  // Ensure a global helper is available immediately for other components to call directly
-  try {
-    window.__sosu_addSongToPlaylist = (playlistId, song) => {
-      console.debug && console.debug('[window helper] __sosu_addSongToPlaylist called', playlistId, song && song.title);
-      addSongToPlaylist(playlistId, song);
-    };
-  } catch (e) {}
 
   const removeSongFromPlaylist = (playlistId, songId) => {
-    setPlaylists(playlists.map(playlist => {
-      if (playlist.id === playlistId) {
-        return { ...playlist, songs: playlist.songs.filter(s => s.id !== songId) };
-      }
-      return playlist;
-    }));
+    removeSongFromPlaylistHelper({ playlistId, songId, playlists, setPlaylists });
   };
 
-  const lastPlaylistDeletedAtRef = React.useRef(0);
+  const lastPlaylistDeletedAtRef = useRef(0);
 
   const [confirmDelete, setConfirmDelete] = useState(null); // { id, name }
 
   const deletePlaylist = (playlistId) => {
-    try { console.debug && console.debug('[App] deletePlaylist invoked, activeElement before confirm (modal):', document.activeElement && (document.activeElement.tagName + ' ' + (document.activeElement.id || document.activeElement.className || ''))); } catch (e) {}
-    const target = playlists.find(p => p.id === playlistId);
-    setConfirmDelete({ id: playlistId, name: target?.name || '' });
+    requestDeletePlaylistHelper({ playlistId, playlists, setConfirmDelete });
   };
 
   const confirmDeleteNow = (playlistId) => {
-    try { console.debug && console.debug('[App] confirmDeleteNow', playlistId); } catch (e) {}
-    setPlaylists(playlists.filter(p => p.id !== playlistId));
-    // record deletion timestamp to avoid open race
-    try { lastPlaylistDeletedAtRef.current = Date.now(); } catch (e) {}
-    // blur any active element on next tick
-    try {
-      setTimeout(() => { try { if (document && document.activeElement) { document.activeElement.blur(); console.debug && console.debug('[App] blurred activeElement after confirmDeleteNow'); } } catch (e) {} }, 0);
-    } catch (e) {}
-
-    if (selectedPlaylistId === playlistId) {
-      setSelectedPlaylistId(null);
-      setCurrentView('songs');
-    }
-    setConfirmDelete(null);
-  };
-
-  const cancelConfirmDelete = () => setConfirmDelete(null);
-
-  // Export all user data as JSON
-  const handleExportData = () => {
-    const exportData = {
+    confirmDeletePlaylistHelper({
+      playlistId,
       playlists,
-      favorites,
-      playCounts,
-      recentlyPlayed,
-      settings: {
-        volume,
-        autoplay,
-        shuffle,
-        repeat,
-        discordRpcEnabled,
-        widgetServerEnabled,
-        albumArtBlur,
-        blurIntensity,
-        accentColor,
-        minDurationValue,
-        itemsPerPage,
-        eqBands,
-        hiddenArtists,
-        nameFilter,
-        nameFilterMode,
-        scanAllMaps,
-        sortBy: localStorage.getItem('sortBy') || 'none',
-        sortDuration: localStorage.getItem('sortDuration') || 'none'
-      },
-      exportDate: new Date().toISOString(),
-      version: VERSION
-    };
-
-    const dataStr = JSON.stringify(exportData, null, 2);
-    const dataBlob = new Blob([dataStr], { type: 'application/json' });
-    const url = URL.createObjectURL(dataBlob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `sosu-backup-${new Date().toISOString().split('T')[0]}.json`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+      setPlaylists,
+      setSelectedPlaylistId,
+      setCurrentView,
+      setConfirmDelete,
+      lastPlaylistDeletedAtRef
+    });
   };
 
-  // Import user data from JSON file
-  const handleImportData = (event) => {
-    const file = event.target.files[0];
-    if (!file) return;
+  const cancelConfirmDelete = () => {
+    cancelDeletePlaylistHelper({ setConfirmDelete });
+  };
 
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      try {
-        const importData = JSON.parse(e.target.result);
-        
-        // Import data with validation
-        if (importData.playlists) setPlaylists(importData.playlists);
-        if (importData.favorites) setFavorites(importData.favorites);
-        if (importData.playCounts) setPlayCounts(importData.playCounts);
-        if (importData.recentlyPlayed) setRecentlyPlayed(importData.recentlyPlayed);
-        
-        // Import settings
-        if (importData.settings) {
-          const s = importData.settings;
-          if (s.volume !== undefined) setVolume(s.volume);
-          if (s.autoplay !== undefined) setAutoplay(s.autoplay);
-          if (s.shuffle !== undefined) setShuffle(s.shuffle);
-          if (s.repeat !== undefined) setRepeat(s.repeat);
-          if (s.discordRpcEnabled !== undefined) setDiscordRpcEnabled(s.discordRpcEnabled);
-          if (s.widgetServerEnabled !== undefined) {
-            setWidgetServerEnabled(s.widgetServerEnabled);
-            // Auto-start widget server if it was enabled in import
-            if (s.widgetServerEnabled && window.electronAPI) {
-              setTimeout(async () => {
-                const isRunning = await window.electronAPI.widgetIsRunning();
-                if (!isRunning) {
-                  const result = await window.electronAPI.widgetStartServer(3737);
-                  if (result.success) {
-                    console.log('[Import] Auto-started widget server');
-                  }
-                }
-              }, 500);
-            }
-          }
-          if (s.albumArtBlur !== undefined) setAlbumArtBlur(s.albumArtBlur);
-          if (s.blurIntensity !== undefined) setBlurIntensity(s.blurIntensity);
-          if (s.accentColor !== undefined) setAccentColor(s.accentColor);
-          if (s.vuEnabled !== undefined) setVuEnabled(s.vuEnabled);
-          if (s.minDurationValue !== undefined) setMinDurationValue(s.minDurationValue);
-          if (s.itemsPerPage !== undefined) setItemsPerPage(s.itemsPerPage);
-          if (s.eqBands !== undefined) setEqBands(normalizeEqBands(s.eqBands));
-          if (Array.isArray(s.hiddenArtists)) {
-            // If imported array is empty, default to ['Unknown Artist']
-            setHiddenArtists(s.hiddenArtists.length === 0 ? ['Unknown Artist'] : s.hiddenArtists);
-          }
-          if (typeof s.nameFilter === 'string') setNameFilter(s.nameFilter);
-          if (typeof s.nameFilterMode === 'string') {
-            // Migration: we removed 'exact' from UI; treat as 'contains'
-            setNameFilterMode(s.nameFilterMode === 'exact' ? 'contains' : s.nameFilterMode);
-          }
-          if (typeof s.scanAllMaps === 'boolean') setScanAllMaps(s.scanAllMaps);
-          if (typeof s.dedupeTitlesEnabled === 'boolean') setDedupeTitlesEnabled(s.dedupeTitlesEnabled);
-          if (s.sortBy !== undefined) localStorage.setItem('sortBy', s.sortBy);
-          if (s.sortDuration !== undefined) localStorage.setItem('sortDuration', s.sortDuration);
-        }
-        
-        alert('Data imported successfully!');
-      } catch (error) {
-        console.error('Import error:', error);
-        alert('Failed to import data. Please check the file format.');
+  useEffect(() => {
+    ensurePlaylistGlobalHelperHelper({
+      addSongToPlaylist: ({ playlistId, song, setPlaylists: targetSetPlaylists }) => {
+        addSongToPlaylistHelper({ playlistId, song, setPlaylists: targetSetPlaylists });
+      },
+      setPlaylists
+    });
+  }, [setPlaylists]);
+
+  const getSettingsSnapshot = () =>
+    getSettingsSnapshotHelper({
+      volume,
+      autoplay,
+      shuffle,
+      repeat,
+      discordRpcEnabled,
+      widgetServerEnabled,
+      albumArtBlur,
+      blurIntensity,
+      accentColor,
+      minDurationValue,
+      itemsPerPage,
+      eqBands,
+      hiddenArtists,
+      nameFilter,
+      nameFilterMode,
+      scanAllMaps,
+      dedupeTitlesEnabled,
+      showSongBadges,
+      vuEnabled,
+      hardwareAcceleration,
+      closeToTray,
+      askBeforeClose
+    });
+
+  const applySettings = (settings, logPrefix) =>
+    applySettingsFromDataHelper({
+      settings,
+      normalizeEqBands,
+      electronAPI: window.electronAPI,
+      logPrefix,
+      setters: {
+        setVolume,
+        setAutoplay,
+        setShuffle,
+        setRepeat,
+        setDiscordRpcEnabled,
+        setWidgetServerEnabled,
+        setAlbumArtBlur,
+        setBlurIntensity,
+        setAccentColor,
+        setVuEnabled,
+        setMinDurationValue,
+        setItemsPerPage,
+        setEqBands,
+        setHiddenArtists,
+        setNameFilter,
+        setNameFilterMode,
+        setScanAllMaps,
+        setDedupeTitlesEnabled,
+        setShowSongBadges,
+        setHardwareAcceleration,
+        setCloseToTray,
+        setAskBeforeClose
       }
-    };
-    reader.readAsText(file);
-    // Reset file input
-    event.target.value = '';
+    });
+
+  const handleExportData = () => {
+    handleExportDataHelper({ settings: getSettingsSnapshot(), version: VERSION });
+  };
+
+  const handleImportData = (event) => {
+    handleImportDataHelper({
+      event,
+      applySettings: (settings) => applySettings(settings, 'Import')
+    });
+  };
+
+  const getProfileData = () =>
+    getProfileDataHelper({ settings: getSettingsSnapshot(), version: VERSION });
+
+  const handleSaveProfile = async (profileName) => {
+    return handleSaveProfileHelper({
+      profileName,
+      profileData: getProfileData(),
+      electronAPI: window.electronAPI
+    });
+  };
+
+  const handleLoadProfile = async (profileName) => {
+    return handleLoadProfileHelper({
+      profileName,
+      electronAPI: window.electronAPI,
+      applySettings: (settings) => applySettings(settings, 'Profile')
+    });
+  };
+
+  const handleDeleteProfile = async (profileName) => {
+    return handleDeleteProfileHelper({ profileName, electronAPI: window.electronAPI });
+  };
+
+  const handleListProfiles = async () => {
+    return handleListProfilesHelper({ electronAPI: window.electronAPI });
+  };
+
+  const handleExportProfile = async (profileName) => {
+    return handleExportProfileHelper({ profileName, electronAPI: window.electronAPI });
   };
 
   const handleViewChange = (view) => {
-    setCurrentView(view);
-    setSelectedPlaylistId(null);
+    handleViewChangeHelper({ view, setCurrentView, setSelectedPlaylistId });
   };
 
   const handleSelectPlaylist = (playlistId) => {
-    setSelectedPlaylistId(playlistId);
-    setCurrentView(`playlist-${playlistId}`);
+    handleSelectPlaylistHelper({ playlistId, setSelectedPlaylistId, setCurrentView });
   };
 
-  // Get current songs to display
-  const getCurrentSongs = () => {
-    let songsToReturn;
-    
-    if (currentView === 'songs') {
-      songsToReturn = songs;
-    } else if (currentView === 'recently-played') {
-      songsToReturn = recentlyPlayed;
-    } else if (currentView === 'favorites') {
-      songsToReturn = songs.filter(song => favorites[song.id]);
-    } else if (currentView === 'most-played') {
-      songsToReturn = songs
-        .filter(song => playCounts[song.id] && playCounts[song.id] > 0)
-        .sort((a, b) => (playCounts[b.id] || 0) - (playCounts[a.id] || 0));
-    } else {
-      songsToReturn = playlists.find(p => p.id === selectedPlaylistId)?.songs ?? [];
-    }
-
-    // First apply per-song filters (duration, hidden artists, nameFilter)
-    const filtered = songsToReturn.filter(song => {
-      const duration = songDurations?.[song.id] ?? song.duration;
-
-      // ✅ Use user-defined minDurationValue instead of hardcoded 10
-      if (duration && duration < minDurationValue) return false;
-
-      // Filter by hidden artists
-      if (hiddenArtists.length > 0 && song.artist) {
-        const artistLower = song.artist.toLowerCase().trim();
-        if (hiddenArtists.some(hidden => hidden.toLowerCase().trim() === artistLower)) {
-          return false;
-        }
-      }
-
-      // Title Filter (hide): supports "mode::term" entries, comma-separated.
-      if (nameFilter) {
-        const songTitle = (song.title || '').toLowerCase();
-        const raw = nameFilter
-          .split(',')
-          .map(s => s.trim())
-          .filter(Boolean);
-
-        for (const item of raw) {
-          const idx = item.indexOf('::');
-          const mode = (idx > 0 ? item.slice(0, idx) : nameFilterMode).toLowerCase();
-          const term = (idx > 0 ? item.slice(idx + 2) : item).toLowerCase().trim();
-          if (!term) continue;
-
-          let hit = false;
-          switch (mode) {
-            case 'startswith':
-              hit = songTitle.startsWith(term);
-              break;
-            case 'endswith':
-              hit = songTitle.endsWith(term);
-              break;
-            case 'contains':
-            default:
-              hit = songTitle.includes(term);
-              break;
-          }
-
-          if (hit) return false; // hide when any term matches
-        }
-      }
-
-      return true;
-    });
-
-    // If dedupe by title is disabled, return the filtered list as-is
-    if (!dedupeTitlesEnabled) return filtered;
-
-    // Group by normalized title (empty titles are treated as unique by id)
-    const groups = new Map();
-
-    for (const s of filtered) {
-      const normalized = (s.title || '').toLowerCase().trim();
-      const key = normalized || `__id__${s.id}`;
-      const arr = groups.get(key) || [];
-      arr.push(s);
-      groups.set(key, arr);
-    }
-
-    // Build resulting list preserving first-occurrence order but replacing groups with a single canonical item
-    const processed = new Set();
-    const result = [];
-
-    for (const s of filtered) {
-      const normalized = (s.title || '').toLowerCase().trim();
-      const key = normalized || `__id__${s.id}`;
-      if (processed.has(key)) continue;
-
-      const group = groups.get(key) || [s];
-      if (group.length === 1) {
-        result.push(s);
-      } else {
-        // Score songs by completeness: image, beatmapSetId, artist quality, duration
-        const scored = group.map(song => {
-          let score = 0;
-          if (song.imageFile) score += 30;
-          if (song.beatmapSetId) score += 25;
-          if (song.artist && song.artist !== 'Unknown Artist') score += 10;
-          if (song.title) score += 5;
-          if (song.duration) score += Math.min(10, Math.round(song.duration / 30));
-          return { song, score };
-        }).sort((a, b) => b.score - a.score);
-
-        const canonical = { ...scored[0].song };
-        canonical.duplicates = group.filter(x => x.id !== canonical.id);
-        canonical.duplicatesCount = canonical.duplicates.length;
-        result.push(canonical);
-      }
-
-      processed.add(key);
-    }
-
-    return result;
-  };  
   
 
   // Show first run screen if no folder is selected
@@ -1560,7 +1175,7 @@ function App() {
             setItemsPerPage={setItemsPerPage}
             onExportData={handleExportData}
             onImportData={handleImportData}
-            onResetApp={resetAppToDefaults}
+            onResetApp={handleResetApp}
             hiddenArtists={hiddenArtists}
             setHiddenArtists={setHiddenArtists}
             nameFilter={nameFilter}
@@ -1568,7 +1183,7 @@ function App() {
             nameFilterMode={nameFilterMode}
             setNameFilterMode={setNameFilterMode}
             getAllArtists={getAllArtists}
-            filterStats={getFilterStats()}
+            filterStats={filterStats}
             scanAllMaps={scanAllMaps}
             setScanAllMaps={setScanAllMaps}
             dedupeTitlesEnabled={dedupeTitlesEnabled}
@@ -1576,6 +1191,17 @@ function App() {
             showSongBadges={showSongBadges}
             onSetShowSongBadges={setShowSongBadges}
             totalScanned={songs.length}
+            onSaveProfile={handleSaveProfile}
+            onLoadProfile={handleLoadProfile}
+            onDeleteProfile={handleDeleteProfile}
+            onListProfiles={handleListProfiles}
+            onExportProfile={handleExportProfile}
+            closeToTray={closeToTray}
+            onSetCloseToTray={setCloseToTray}
+            askBeforeClose={askBeforeClose}
+            onSetAskBeforeClose={setAskBeforeClose}
+            hardwareAcceleration={hardwareAcceleration}
+            onSetHardwareAcceleration={setHardwareAcceleration}
           />
           <EQModal
             isOpen={showEQModal}
@@ -1594,6 +1220,13 @@ function App() {
             isOpen={showCreatePlaylistModal}
             onClose={() => setShowCreatePlaylistModal(false)}
             onCreate={createPlaylist}
+          />
+
+          <CloseConfirmDialog
+            isOpen={showCloseConfirmDialog}
+            onMinimize={handleCloseConfirmMinimize}
+            onQuit={handleCloseConfirmQuit}
+            onCancel={handleCloseConfirmCancel}
           />
 
           {/* Non-blocking confirm dialog for playlist deletion (replaces window.confirm to avoid focus races) */}
@@ -1619,7 +1252,7 @@ function App() {
 
           {/* Fallback: open create playlist modal when other code dispatches the custom event */}
           <MainContent
-            songs={getCurrentSongs()}
+            songs={getCurrentSongsHelper(currentSongsArgs)}
             onSongSelect={handleSongSelect}
             currentSong={currentSong}
             songDurations={songDurations}

@@ -1,4 +1,3 @@
-import React from 'react';
 import { Music2, FolderOpen } from 'lucide-react';
 import './FirstRunScreen.css';
 

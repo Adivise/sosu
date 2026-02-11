@@ -15,6 +15,7 @@ files:
   - "!README.user.md"
   - "!CONTRIBUTING.md"
   - "!CODE_OF_CONDUCT.md"
+  - "!global.d.ts"
 asarUnpack:
   - 'resources/**'
 asar: true

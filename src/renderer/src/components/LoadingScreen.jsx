@@ -1,4 +1,3 @@
-import React from 'react';
 import { Music2 } from 'lucide-react';
 import './LoadingScreen.css';
 import { VERSION } from '../version';

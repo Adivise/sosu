@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { Music, ExternalLink, Folder } from 'lucide-react';
 import './SongDetailsModal.css';
 

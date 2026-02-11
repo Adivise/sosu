@@ -17,8 +17,6 @@ import {
 import PlaylistMenu from './PlaylistMenu';
 import './PlayerBar.css';
 import useAudioEqualizer from './useAudioEqualizer';
-import { DEFAULT_EQ_BANDS } from './eqConstants';
-import MiniVUWaveform from './MiniVUWaveform';
 import VUPanel from './VUPanel';
 
 const PlayerBar = ({

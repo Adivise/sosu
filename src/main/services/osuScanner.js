@@ -5,8 +5,8 @@ import parseOsuFile from '../core/parseOsu.js';
 import os from 'os';
 
 // Configuration
-const CONCURRENT_SCANS = process.env.OSU_SCANS ? Math.max(1, parseInt(process.env.OSU_SCANS, 10)) : Math.max(4, Math.min(16, os.cpus().length * 2)); // Number of folders to scan in parallel (dynamic)
-const CONCURRENT_METADATA = process.env.OSU_METADATA ? Math.max(1, parseInt(process.env.OSU_METADATA, 10)) : Math.max(2, Math.min(8, os.cpus().length)); // Number of metadata parsing operations in parallel (dynamic)
+const CONCURRENT_SCANS = Math.max(4, Math.min(16, os.cpus().length * 2)); // Number of folders to scan in parallel (dynamic)
+const CONCURRENT_METADATA = Math.max(2, Math.min(8, os.cpus().length)); // Number of metadata parsing operations in parallel (dynamic)
 
 /**
  * Process a single song folder

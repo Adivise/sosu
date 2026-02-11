@@ -7,6 +7,15 @@ contextBridge.exposeInMainWorld('electronAPI', {
   windowMinimize: () => ipcRenderer.invoke('window-minimize'),
   windowMaximize: () => ipcRenderer.invoke('window-maximize'),
   windowClose: () => ipcRenderer.invoke('window-close'),
+  appMinimizeToTray: () => ipcRenderer.invoke('app-minimize-to-tray'),
+  appQuit: () => ipcRenderer.invoke('app-quit'),
+  appRestart: () => ipcRenderer.invoke('app-restart'),
+  onAppCloseRequested: (callback) => {
+    ipcRenderer.on('app-close-requested', () => callback());
+  },
+  removeAppCloseRequestedListener: () => {
+    ipcRenderer.removeAllListeners('app-close-requested');
+  },
   onScanProgress: (callback) => {
     ipcRenderer.on('scan-progress', (event, data) => callback(data));
   },
@@ -28,5 +37,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
   widgetGetUrl: () => ipcRenderer.invoke('widget-get-url'),
   widgetUpdateNowPlaying: (data) => ipcRenderer.send('widget-update-now-playing', data),
   widgetSetVersion: (version) => ipcRenderer.invoke('widget-set-version', version),
+  clearAllWidgets: () => ipcRenderer.invoke('clear-all-widgets'),
+
+  // Profile Management APIs
+  profileSave: (profileName, profileData) => ipcRenderer.invoke('profile-save', profileName, profileData),
+  profileLoad: (profileName) => ipcRenderer.invoke('profile-load', profileName),
+  profileDelete: (profileName) => ipcRenderer.invoke('profile-delete', profileName),
+  profileList: () => ipcRenderer.invoke('profile-list'),
 });
 

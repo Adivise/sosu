@@ -1,9 +1,8 @@
-import React from 'react';
 import { Music, ListMusic, Plus, Settings2Icon, FileMusicIcon, Clock, Heart, TrendingUp } from 'lucide-react';
 import { VERSION } from '../version';
 import './Sidebar.css';
 
-const Sidebar = ({ onSelectFolder, osuFolderPath, currentView, onViewChange, playlists, onCreatePlaylist, onSelectPlaylist, selectedPlaylistId, onOpenSettings }) => {
+const Sidebar = ({ onSelectFolder, currentView, onViewChange, playlists, onCreatePlaylist, onSelectPlaylist, selectedPlaylistId, onOpenSettings }) => {
   return (
     <div className="sidebar">
       <div className="sidebar-header">

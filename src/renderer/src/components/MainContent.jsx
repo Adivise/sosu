@@ -17,8 +17,6 @@ const MainContent = ({
   onRemoveFromPlaylist,
   onDeletePlaylist,
   minDurationValue = 0,
-  albumArtBlur = false,
-  blurIntensity = 60,
   favorites = {},
   onToggleFavorite,
   isPlayingNow = false,
@@ -30,7 +28,6 @@ const MainContent = ({
   onClearPreview = null,
   onCreatePlaylist = null,
   highlightedSongId = null,
-  showSongBadges = true,
   playCounts = {},
   nameFilter = ''
 }) => {

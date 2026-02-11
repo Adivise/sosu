@@ -1,4 +1,3 @@
-import React from 'react';
 import { Minus, Square, X } from 'lucide-react';
 import './TitleBar.css';
 

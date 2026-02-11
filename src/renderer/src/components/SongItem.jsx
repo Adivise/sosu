@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import ReactDOM from 'react-dom';
-import { Play, Pause, Music, Plus, X, Heart } from 'lucide-react';
+import { Pause, Music, Plus, X, Heart } from 'lucide-react';
 import PlaylistMenu from './PlaylistMenu';
 import ContextMenu from './ContextMenu';
 import './SongItem.css';

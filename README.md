@@ -13,45 +13,47 @@ Take your osu! music experience to the next level with SOSU.
 ### 🎬 Watch demo on youtbue (OUTDATED!!!)
 [![Watch the video](https://img.youtube.com/vi/d_4Dcfb4kIA/0.jpg)](https://www.youtube.com/watch?v=d_4Dcfb4kIA)
 
-# 🌟 Features
+# 🌟 Features (28 Total)
 
-### Core
-- 🎵 **Music Player** - Play songs from your osu! Songs folder
-- 🎨 **Modern UI** - Beautiful, dark-themed interface inspired by Spotify
-- 📁 **Playlist Support** - Create and manage custom playlists
-- 📑 **Views: Library, Favorites, Recently Played, Most Played** - Multiple ways to browse your osu! music
-- 💾 **Auto Save** - Playlists, filters, equalizer, theme, playback state and more are saved automatically
+SOSU comes packed with **28+ features** organized into 5 main categories:
 
-### Search, Filters & Library
-- 🔍 **Search Bar with Suggestions** - Real-time search with history and smart suggestions by title / artist / folder
-- 🎚️ **Duration Filter** - Hide songs shorter than a minimum duration (per second)
-- 🎤 **Artist Filter** - Hide songs from specific artists using a searchable list
-- 🏷️ **Title Filters** - Hide songs whose titles match custom keywords (contains / starts with / ends with)
-- 🧹 **Duplicate Title Filter** - Optionally show only one song per title to reduce clutter in Library
-- 📈 **Filter Statistics** - See total / visible / hidden songs, plus a breakdown (duration / artist / title / duplicates)
-- 📄 **Per-View Pagination** - Library, Favorites, Most Played, playlists etc. each remember their own current page
+### 🎵 Core Features (5)
+- **Music Player** - Play songs from your osu! Songs folder
+- **Modern UI** - Beautiful, dark-themed interface inspired by Spotify
+- **Playlist Support** - Create and manage custom playlists
+- **Multiple Views** - Library, Favorites, Recently Played, Most Played
+- **Auto Save** - Playlists, filters, equalizer, theme, playback state and more saved automatically
 
-### Playback & Audio
-- 🎛️ **Full Playback Controls** - Shuffle, repeat, autoplay, next/previous, seek and volume control
-- 🎚️ **10-Band Equalizer** - Custom EQ with multiple presets and fine 0.1 dB adjustments
-- 🎵 **Per-Song Favorites** - Mark favorites, with dedicated Favorites view
-- 📈 **Play Count Tracking** - Tracks how often you play each song, powering the Most Played view
-- 🕒 **Playback Speed Control** - Change speed (0.5x–2.0x) with presets and a detailed slider
-- 📊 **Progress Bar** - Visual timeline with drag-to-seek support
+### 🔍 Search, Filters & Library (7)
+- **Search Bar with Suggestions** - Real-time search with history and smart suggestions by title / artist / folder
+- **Duration Filter** - Hide songs shorter than a minimum duration (per second)
+- **Artist Filter** - Hide songs from specific artists using a searchable list
+- **Title Filters** - Hide songs whose titles match custom keywords (contains / starts with / ends with)
+- **Duplicate Title Filter** - Optionally show only one song per title to reduce clutter
+- **Filter Statistics** - See total / visible / hidden songs, plus a breakdown (duration / artist / title / duplicates)
+- **Per-View Pagination** - Each view remembers its own current page
 
-### Integrations & Streaming
-- 🎮 **Discord Rich Presence** - Show current song on your Discord profile
-- 🌐 **Widget Server (OBS/Stream)** - Built-in HTTP + WebSocket server for overlay widgets in OBS / Streamlabs
-- 📡 **Widget API Docs & Themes** - Auto-generated docs and theme browser at `http://localhost:3737/`
-- 🔗 **Beatmap Links** - Click song titles/artists to open beatmaps on osu.ppy.sh
+### 🎛️ Playback & Audio (6)
+- **Full Playback Controls** - Shuffle, repeat, autoplay, next/previous, seek and volume control
+- **10-Band Equalizer** - Custom EQ with multiple presets and fine 0.1 dB adjustments
+- **Per-Song Favorites** - Mark favorites, with dedicated Favorites view
+- **Play Count Tracking** - Tracks how often you play each song, powering the Most Played view
+- **Playback Speed Control** - Change speed (0.5x–2.0x) with presets and a detailed slider
+- **Progress Bar** - Visual timeline with drag-to-seek support
 
-### Appearance & Data
-- 🖼️ **Blurred Album Art Background** - Optional blurred background based on current song cover
-- 🎨 **Custom Accent Color** - Select any accent color or use presets (Spotify green, violet, pink, etc.)
-- 🧾 **Backup & Restore** - Export/import all playlists, favorites, play counts and settings as JSON
-- ♻️ **Rescan & Reset** - Rescan osu! Songs folder or fully reset the app to first-run state from Settings
-- ⚡ **Fast & Lightweight** - Optimized scanning and metadata caching for large osu! libraries
-- 📱 **Cross-Platform** - Available for Windows, macOS, and Linux
+### 🌐 Integrations & Streaming (4)
+- **Discord Rich Presence** - Show current song on your Discord profile
+- **Widget Server (OBS/Stream)** - Built-in HTTP + WebSocket server for overlay widgets in OBS / Streamlabs
+- **Widget API Docs & Themes** - Auto-generated docs and theme browser at `http://localhost:3737/`
+- **Beatmap Links** - Click song titles/artists to open beatmaps on osu.ppy.sh
+
+### 🎨 Appearance & Data Management (6)
+- **Blurred Album Art Background** - Optional blurred background based on current song cover
+- **Custom Accent Color** - Select any accent color or use presets (Spotify green, violet, pink, etc.)
+- **Backup & Restore** - Export/import all playlists, favorites, play counts and settings as JSON
+- **Rescan & Reset** - Rescan osu! Songs folder or fully reset the app to first-run state from Settings
+- **Fast & Lightweight** - Optimized scanning and metadata caching for large osu! libraries
+- **Cross-Platform** - Available for Windows, macOS, and Linux
 
 ## 📋 Requirements
 - [osu!](https://osu.ppy.sh/) - osu! game installation with Songs folder
