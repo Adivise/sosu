@@ -53,8 +53,8 @@ function createTray() {
   }
 
   const iconPath = app.isPackaged
-    ? path.join(process.resourcesPath, iconFile)
-    : path.join(__dirname, `../../resources/${iconFile}`);
+    ? path.join(process.resourcesPath, 'icons', iconFile)
+    : path.join(__dirname, `../../resources/icons/${iconFile}`);
   
   console.log('[Main] Tray icon path:', iconPath);
   

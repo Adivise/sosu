@@ -19,9 +19,16 @@ files:
 asarUnpack:
   - 'resources/**'
 asar: true
+extraResources:
+  - from: resources/icons/icon.png
+    to: icons/icon.png
+  - from: resources/icons/icon.ico
+    to: icons/icon.ico
+  - from: resources/icons/icon.icns
+    to: icons/icon.icns
 win:
   publisherName: Adivise
-  icon: resources/icon.png
+  icon: resources/icons/icon.png
   target:
     - nsis
     - portable
@@ -41,9 +48,9 @@ nsis:
   perMachine: true
   allowToChangeInstallationDirectory: true
   differentialPackage: false
-  installerIcon: resources/icon.ico
-  uninstallerIcon: resources/icon.ico
-  installerHeaderIcon: resources/icon.ico
+  installerIcon: resources/icons/icon.ico
+  uninstallerIcon: resources/icons/icon.ico
+  installerHeaderIcon: resources/icons/icon.ico
   license: resources/license.txt
 portable:
   artifactName: sosu-${version}-portable.${ext}
@@ -53,9 +60,9 @@ mac:
     - pkg
   entitlementsInherit: resources/entitlements.mac.plist
   notarize: false
-  icon: resources/icon.icns
+  icon: resources/icons/icon.icns
 dmg:
-  icon: resources/icon.icns
+  icon: resources/icons/icon.icns
   artifactName: sosu-${version}.${ext}
 pkg:
   artifactName: sosu-${version}.${ext}
@@ -66,7 +73,7 @@ linux:
     - rpm
   maintainer: adivise
   category: Utility
-  icon: resources/icon.png
+  icon: resources/icons/icon.png
 appImage:
   artifactName: sosu-${version}.${ext}
 deb:

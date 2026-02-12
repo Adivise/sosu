@@ -14,7 +14,9 @@ import { docsCSS } from '../templates/docsCSS.js';
  * @param {object} res - HTTP response object
  */
 export function serveFavicon(res) {
-  const iconPath = path.join(app.getAppPath(), 'resources', 'icon.ico');
+  const iconPath = app.isPackaged
+    ? path.join(process.resourcesPath, 'icons', 'icon.ico')
+    : path.join(app.getAppPath(), 'resources', 'icons', 'icon.ico');
   if (!fs.existsSync(iconPath)) {
     res.writeHead(404);
     res.end('Not found');
