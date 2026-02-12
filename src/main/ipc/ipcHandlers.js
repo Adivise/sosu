@@ -5,7 +5,7 @@ import path from 'path';
 import { scanOsuFolder } from '../services/osuScanner.js';
 import * as discord from '../services/discord.js';
 import * as widgetServer from '../services/widgetServer.js';
-import { userDataFile, songsCacheFile, profilesPath } from '../config/paths.js';
+import { userDataFile, songsCacheFile, profilesPath, widgetThemesPath } from '../config/paths.js';
 
 export async function init({ mainWindow, userDataPath, setIsQuitting }) {
     ipcMain.handle('scan-osu-folder', async (event, folderPath, forceRescan = false, scanAllMaps = false) => {
@@ -162,6 +162,38 @@ export async function init({ mainWindow, userDataPath, setIsQuitting }) {
         return { success: true };
     });
 
+    ipcMain.handle('app-full-reset', async () => {
+        const { app } = require('electron');
+        try {
+            if (fsSync.existsSync(userDataFile)) {
+                await fs.unlink(userDataFile);
+            }
+            if (fsSync.existsSync(songsCacheFile)) {
+                await fs.unlink(songsCacheFile);
+            }
+            if (fsSync.existsSync(profilesPath)) {
+                await fs.rm(profilesPath, { recursive: true, force: true });
+            }
+            if (fsSync.existsSync(widgetThemesPath)) {
+                await fs.rm(widgetThemesPath, { recursive: true, force: true });
+            }
+        } catch (err) {
+            console.error('[Reset] Full reset failed:', err);
+            return { success: false, error: err.message };
+        }
+
+        setTimeout(() => {
+            try {
+                app.relaunch();
+                app.exit(0);
+            } catch (e) {
+                app.quit();
+            }
+        }, 100);
+
+        return { success: true };
+    });
+
     ipcMain.handle('get-user-data', async () => {
         console.log('[UserData] User data file path:', userDataFile);
         try {
@@ -305,17 +337,13 @@ export async function init({ mainWindow, userDataPath, setIsQuitting }) {
 
     ipcMain.handle('clear-all-widgets', async () => {
         try {
-            const fs = await import('fs');
-            const path = await import('path');
-            const { widgetThemesPath } = await import('../config/paths.js');
-            
-            if (fs.existsSync(widgetThemesPath)) {
+            if (fsSync.existsSync(widgetThemesPath)) {
                 // Get all widget directories except 'default'
-                const themes = fs.readdirSync(widgetThemesPath);
+                const themes = fsSync.readdirSync(widgetThemesPath);
                 for (const theme of themes) {
                     if (theme !== 'default') {
                         const themeDir = path.join(widgetThemesPath, theme);
-                        fs.rmSync(themeDir, { recursive: true, force: true });
+                        fsSync.rmSync(themeDir, { recursive: true, force: true });
                     }
                 }
             }

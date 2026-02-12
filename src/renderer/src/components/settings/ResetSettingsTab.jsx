@@ -1,7 +1,8 @@
 import { RotateCcw, Trash2 } from 'lucide-react';
 
 const ResetSettingsTab = ({
-  onResetApp,
+  onResetSettings,
+  onResetFull,
   onClearCache,
   onClose,
 }) => {
@@ -70,21 +71,40 @@ const ResetSettingsTab = ({
         </div>
       </div>
 
-      {/* RESET APP SECTION */}
+      {/* SETTINGS RESET SECTION */}
       <div className="settings-section settings-card danger-zone">
-        <h3 className="settings-section-title danger">Reset App</h3>
-        <p className="settings-section-sub danger">Restore the entire app to factory defaults. All settings, playlists, favorites, and data will be cleared.</p>
+        <h3 className="settings-section-title danger">Settings Reset</h3>
+        <p className="settings-section-sub danger">Reset settings only (visuals, filters, playback options). Your library data stays intact.</p>
         <div style={{ display: 'flex', gap: 8 }}>
-          <button 
+          <button
             className="settings-button danger"
             onClick={() => {
-              if (window.confirm('Reset the app to default settings (like first run)? This will clear all local settings, playlists, favorites, and caches.')) {
-                onResetApp && onResetApp();
+              if (window.confirm('Reset settings to defaults? This will NOT delete playlists, favorites, or cache.')) {
+                onResetSettings && onResetSettings();
                 onClose();
               }
             }}
           >
-            <RotateCcw size={16} /> Reset App to Defaults
+            <RotateCcw size={16} /> Reset Settings
+          </button>
+        </div>
+      </div>
+
+      {/* FULL RESET SECTION */}
+      <div className="settings-section settings-card danger-zone">
+        <h3 className="settings-section-title danger">Full Reset</h3>
+        <p className="settings-section-sub danger">Clear everything: settings, playlists, favorites, cache, widgets, and profiles.</p>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button
+            className="settings-button danger"
+            onClick={() => {
+              if (window.confirm('Full reset? This will delete ALL local data, cache, widgets, and profiles.')) {
+                onResetFull && onResetFull();
+                onClose();
+              }
+            }}
+          >
+            <RotateCcw size={16} /> Full Reset
           </button>
         </div>
       </div>

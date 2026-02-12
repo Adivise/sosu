@@ -3,6 +3,7 @@ node_modules/
 /.pnp
 .pnp.js
 /build
+/sosu-site
 
 # Misc
 .DS_Store

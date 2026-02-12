@@ -1,4 +1,32 @@
-export const resetAppToDefaults = async (deps) => {
+const DEFAULTS = {
+  volume: 1,
+  autoplay: false,
+  shuffle: false,
+  repeat: false,
+  minDurationValue: 60,
+  itemsPerPage: 50,
+  albumArtBlur: true,
+  blurIntensity: 60,
+  accentColor: '#1db954',
+  showSongBadges: false,
+  hiddenArtists: ['Unknown Artist'],
+  nameFilter: '',
+  nameFilterMode: 'contains',
+  scanAllMaps: false,
+  dedupeTitlesEnabled: true,
+  vuEnabled: true,
+  closeToTray: true,
+  askBeforeClose: true,
+  hardwareAcceleration: true
+};
+
+const clearLocalStorageKeys = (keys) => {
+  keys.forEach((k) => {
+    try { localStorage.removeItem(k); } catch (e) {}
+  });
+};
+
+export const resetSettingsToDefaults = async (deps) => {
   const {
     electronAPI,
     DEFAULT_EQ_BANDS,
@@ -15,6 +43,7 @@ export const resetAppToDefaults = async (deps) => {
     setBlurIntensity,
     setAccentColor,
     setVuEnabled,
+    setShowSongBadges,
     clearRecentlyPlayed,
     setFavorites,
     clearPlayCounts,
@@ -34,7 +63,8 @@ export const resetAppToDefaults = async (deps) => {
     setSelectedPlaylistId,
     setCurrentView,
     setCloseToTray,
-    setAskBeforeClose
+    setAskBeforeClose,
+    setHardwareAcceleration
   } = deps || {};
 
   try {
@@ -46,14 +76,15 @@ export const resetAppToDefaults = async (deps) => {
     }
 
     const keysToClear = [
+      'volume',
+      'autoplay',
+      'shuffle',
+      'repeat',
       'eqBands',
       'albumArtBlur',
       'blurIntensity',
       'accentColor',
       'showSongBadges',
-      'recentlyPlayed',
-      'favorites',
-      'playCounts',
       'itemsPerPage',
       'sortBy',
       'sortDuration',
@@ -65,74 +96,49 @@ export const resetAppToDefaults = async (deps) => {
       'dedupeTitlesEnabled',
       'vuEnabled',
       'closeToTray',
-      'askBeforeClose'
+      'askBeforeClose',
+      'hardwareAcceleration',
+      'minDurationValue'
     ];
-    keysToClear.forEach((k) => localStorage.removeItem(k));
+    clearLocalStorageKeys(keysToClear);
 
-    setVolume?.(0.5);
-    setAutoplay?.(false);
-    setShuffle?.(false);
-    setRepeat?.(false);
-    setPlaylists?.([]);
-    setOsuFolderPath?.(null);
+    setVolume?.(DEFAULTS.volume);
+    setAutoplay?.(DEFAULTS.autoplay);
+    setShuffle?.(DEFAULTS.shuffle);
+    setRepeat?.(DEFAULTS.repeat);
     setDiscordRpcEnabled?.(false);
     setWidgetServerEnabled?.(false);
     setEqBands?.(DEFAULT_EQ_BANDS);
-    setAlbumArtBlur?.(true);
-    setBlurIntensity?.(60);
-    setAccentColor?.('#1db954');
-    setVuEnabled?.(true);
-    clearRecentlyPlayed?.();
-    setFavorites?.({});
-    clearPlayCounts?.();
+    setAlbumArtBlur?.(DEFAULTS.albumArtBlur);
+    setBlurIntensity?.(DEFAULTS.blurIntensity);
+    setAccentColor?.(DEFAULTS.accentColor);
+    setShowSongBadges?.(DEFAULTS.showSongBadges);
+    setVuEnabled?.(DEFAULTS.vuEnabled);
     setDurationFilter?.({ min: 0, max: Infinity });
-    setMinDurationValue?.(60);
-    setItemsPerPage?.(50);
-    setHiddenArtists?.(['Unknown Artist']);
-    setNameFilter?.('');
-    setNameFilterMode?.('contains');
-    setScanAllMaps?.(false);
-    setDedupeTitlesEnabled?.(true);
-    setCloseToTray?.(false);
-    setAskBeforeClose?.(true);
-    setDisplayedSongs?.([]);
-    setCurrentSong?.(null);
-    setIsPlaying?.(false);
-    setCurrentTime?.(0);
-    setDuration?.(0);
-    setSelectedPlaylistId?.(null);
-    setCurrentView?.('songs');
+    setMinDurationValue?.(DEFAULTS.minDurationValue);
+    setItemsPerPage?.(DEFAULTS.itemsPerPage);
+    setHiddenArtists?.(DEFAULTS.hiddenArtists);
+    setNameFilter?.(DEFAULTS.nameFilter);
+    setNameFilterMode?.(DEFAULTS.nameFilterMode);
+    setScanAllMaps?.(DEFAULTS.scanAllMaps);
+    setDedupeTitlesEnabled?.(DEFAULTS.dedupeTitlesEnabled);
+    setCloseToTray?.(DEFAULTS.closeToTray);
+    setAskBeforeClose?.(DEFAULTS.askBeforeClose);
+    setHardwareAcceleration?.(DEFAULTS.hardwareAcceleration);
+  } catch (err) {
+    console.error('[Reset] Failed to reset settings to defaults:', err);
+  }
+};
 
-    if (electronAPI?.saveUserData) {
-      await electronAPI.saveUserData({
-        volume: 1,
-        autoplay: false,
-        shuffle: false,
-        repeat: false,
-        playlists: [],
-        osuFolderPath: null,
-        discordRpcEnabled: false,
-        widgetServerEnabled: false,
-        minDurationValue: 60,
-        itemsPerPage: 50,
-        albumArtBlur: true,
-        blurIntensity: 60,
-        accentColor: '#1db954',
-        showSongBadges: false,
-        hiddenArtists: ['Unknown Artist'],
-        nameFilter: '',
-        nameFilterMode: 'contains',
-        scanAllMaps: false,
-        dedupeTitlesEnabled: true,
-        vuEnabled: true,
-        closeToTray: false,
-        askBeforeClose: true,
-        lastPlayedSong: null,
-        lastPlaybackState: { isPlaying: false, currentTime: 0, duration: 0 },
-        eqBands: DEFAULT_EQ_BANDS
-      });
+export const resetFullToDefaults = async (deps) => {
+  const { electronAPI } = deps || {};
+
+  try {
+    try { localStorage.clear(); } catch (e) {}
+    if (electronAPI?.appFullReset) {
+      await electronAPI.appFullReset();
     }
   } catch (err) {
-    console.error('[Reset] Failed to reset app to defaults:', err);
+    console.error('[Reset] Failed to full reset:', err);
   }
 };

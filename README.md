@@ -13,47 +13,67 @@ Take your osu! music experience to the next level with SOSU.
 ### 🎬 Watch demo on youtbue (OUTDATED!!!)
 [![Watch the video](https://img.youtube.com/vi/d_4Dcfb4kIA/0.jpg)](https://www.youtube.com/watch?v=d_4Dcfb4kIA)
 
-# 🌟 Features (28 Total)
+# 🌟 Features (50+ Total)
 
-SOSU comes packed with **28+ features** organized into 5 main categories:
+SOSU comes packed with **50+ features** organized into 7 main categories:
 
-### 🎵 Core Features (5)
-- **Music Player** - Play songs from your osu! Songs folder
-- **Modern UI** - Beautiful, dark-themed interface inspired by Spotify
-- **Playlist Support** - Create and manage custom playlists
+### 🎵 Core Features
+- **Music Player** - Play songs from your osu! Songs folder with seamless playback
+- **Spotify-inspired UI** - Modern, beautiful interface designed for comfort
+- **Playlist Support** - Create, manage, and organize custom playlists
 - **Multiple Views** - Library, Favorites, Recently Played, Most Played
-- **Auto Save** - Playlists, filters, equalizer, theme, playback state and more saved automatically
+- **Auto-save** - Automatic saving of settings and playback state
+- **Close Confirmation** - Confirm before closing and choose minimize to tray or quit
 
-### 🔍 Search, Filters & Library (7)
-- **Search Bar with Suggestions** - Real-time search with history and smart suggestions by title / artist / folder
-- **Duration Filter** - Hide songs shorter than a minimum duration (per second)
-- **Artist Filter** - Hide songs from specific artists using a searchable list
-- **Title Filters** - Hide songs whose titles match custom keywords (contains / starts with / ends with)
-- **Duplicate Title Filter** - Optionally show only one song per title to reduce clutter
-- **Filter Statistics** - See total / visible / hidden songs, plus a breakdown (duration / artist / title / duplicates)
-- **Per-View Pagination** - Each view remembers its own current page
+### 🔍 Search & Filter
+- **Real-time Search** - Instant search with smart suggestions
+- **Duration Filter** - Hide songs shorter than specified length
+- **Artist Hide List** - Filter out songs from specific artists
+- **Advanced Title Filters** - Contains, starts with, ends with filters
+- **Remove Duplicates** - Automatically filter duplicate song titles
+- **Filter Statistics** - View detailed filter results and stats
 
-### 🎛️ Playback & Audio (6)
-- **Full Playback Controls** - Shuffle, repeat, autoplay, next/previous, seek and volume control
-- **10-Band Equalizer** - Custom EQ with multiple presets and fine 0.1 dB adjustments
-- **Per-Song Favorites** - Mark favorites, with dedicated Favorites view
-- **Play Count Tracking** - Tracks how often you play each song, powering the Most Played view
-- **Playback Speed Control** - Change speed (0.5x–2.0x) with presets and a detailed slider
-- **Progress Bar** - Visual timeline with drag-to-seek support
+### 🎛️ Playback & Audio
+- **Full Playback Control** - Play, pause, next, previous, seek, volume
+- **Shuffle Mode** - Randomize your playlist playback
+- **Repeat Modes** - Repeat all, repeat one, or no repeat
+- **Autoplay** - Automatically play next song
+- **Playback Speed** - Adjust speed from 0.5x to 2.0x
+- **10-band Equalizer** - Professional audio tuning
+- **VU Visualizer** - Real-time audio visualization
 
-### 🌐 Integrations & Streaming (4)
-- **Discord Rich Presence** - Show current song on your Discord profile
-- **Widget Server (OBS/Stream)** - Built-in HTTP + WebSocket server for overlay widgets in OBS / Streamlabs
-- **Widget API Docs & Themes** - Auto-generated docs and theme browser at `http://localhost:3737/`
-- **Beatmap Links** - Click song titles/artists to open beatmaps on osu.ppy.sh
+### 📚 Library Management
+- **Favorites** - Mark and organize your favorite songs
+- **Play Count Tracking** - See how many times you've played each song
+- **Recently Played** - Quick access to your recent listening history
+- **Most Played** - Discover your most-played tracks
+- **Song Details** - View comprehensive metadata and info
 
-### 🎨 Appearance & Data Management (6)
-- **Blurred Album Art Background** - Optional blurred background based on current song cover
-- **Custom Accent Color** - Select any accent color or use presets (Spotify green, violet, pink, etc.)
-- **Backup & Restore** - Export/import all playlists, favorites, play counts and settings as JSON
-- **Rescan & Reset** - Rescan osu! Songs folder or fully reset the app to first-run state from Settings
-- **Fast & Lightweight** - Optimized scanning and metadata caching for large osu! libraries
-- **Cross-Platform** - Available for Windows, macOS, and Linux
+### 🌐 Integrations
+- **Discord Rich Presence** - Show what you're listening to on Discord
+- **OBS Widget Server** - Display now-playing on your stream
+- **WebSocket API** - Control SOSU from external apps
+- **Beatmap Links** - Quick links to osu.ppy.sh
+- **Now-Playing API** - Public API for current song info
+
+### 🎨 Customization
+- **Blurred Album Art** - Dynamic background from album covers
+- **Custom Accent Colors** - Personalize your interface colors
+- **Dark Theme** - Eye-friendly dark mode by default
+- **Hardware Acceleration** - Toggle GPU acceleration for compatibility and performance
+- **Widget Themes** - Customize OBS widgets with themes
+- **Theme Download** - Get themes directly from GitHub
+
+### 🧰 Data Management
+- **Profiles** - Save and switch between multiple setup profiles
+- **Profile Import/Export** - Backup or restore your profiles when needed
+- **Rescan Library** - Refresh your music library
+- **Reset Widgets** - Clear all custom widgets with one action
+- **Reset Cache** - Clear cached data to resolve issues fast
+- **Settings Reset** - Reset settings only without deleting library data
+- **Full Reset** - Clear all local data and start fresh
+
+> **Note:** Profiles do not include tray behavior or hardware acceleration settings.
 
 ## 📋 Requirements
 - [osu!](https://osu.ppy.sh/) - osu! game installation with Songs folder

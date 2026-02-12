@@ -18,10 +18,7 @@ export const getSettingsSnapshot = (deps) => {
     scanAllMaps,
     dedupeTitlesEnabled,
     showSongBadges,
-    vuEnabled,
-    hardwareAcceleration,
-    closeToTray,
-    askBeforeClose
+    vuEnabled
   } = deps;
 
   return {
@@ -44,9 +41,6 @@ export const getSettingsSnapshot = (deps) => {
     dedupeTitlesEnabled,
     showSongBadges,
     vuEnabled,
-    hardwareAcceleration,
-    closeToTray,
-    askBeforeClose,
     sortBy: localStorage.getItem('sortBy') || 'none',
     sortDuration: localStorage.getItem('sortDuration') || 'none'
   };
@@ -74,10 +68,7 @@ export const applySettingsFromData = ({ settings, setters, normalizeEqBands, ele
     setNameFilterMode,
     setScanAllMaps,
     setDedupeTitlesEnabled,
-    setShowSongBadges,
-    setHardwareAcceleration,
-    setCloseToTray,
-    setAskBeforeClose
+    setShowSongBadges
   } = setters;
 
   if (s.volume !== undefined) setVolume(s.volume);
@@ -116,9 +107,6 @@ export const applySettingsFromData = ({ settings, setters, normalizeEqBands, ele
   if (typeof s.scanAllMaps === 'boolean') setScanAllMaps(s.scanAllMaps);
   if (typeof s.dedupeTitlesEnabled === 'boolean') setDedupeTitlesEnabled(s.dedupeTitlesEnabled);
   if (typeof s.showSongBadges === 'boolean') setShowSongBadges(s.showSongBadges);
-  if (typeof s.hardwareAcceleration === 'boolean') setHardwareAcceleration(s.hardwareAcceleration);
-  if (typeof s.closeToTray === 'boolean') setCloseToTray(s.closeToTray);
-  if (typeof s.askBeforeClose === 'boolean') setAskBeforeClose(s.askBeforeClose);
   if (s.sortBy !== undefined) localStorage.setItem('sortBy', s.sortBy);
   if (s.sortDuration !== undefined) localStorage.setItem('sortDuration', s.sortDuration);
 };

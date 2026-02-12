@@ -1,7 +1,7 @@
 {
   "name": "sosu",
-  "version": "2.6.0",
-  "description": "A music player for osu! songs built with Electron and React",
+  "version": "2.6.1",
+  "description": "A modern, feature-rich music player for osu! beatmaps with 50+ features including Discord Rich Presence, 10-band EQ, OBS widgets, playlists, and Spotify-inspired UI. Built with Electron & React.",
   "author": "Adivise",
   "main": "out/main/main.js",
   "scripts": {
@@ -11,6 +11,7 @@
     "clean": "npx rimraf out dist",
     "build": "npm run clean && npm run sync-version && npx electron-vite build",
     "build:win": "npm run build && electron-builder --win",
+    "build:exe": "npm run build && electron-builder --win portable",
     "build:mac": "npm run build && electron-builder --mac",
     "build:linux": "npm run build && electron-builder --linux"
   },

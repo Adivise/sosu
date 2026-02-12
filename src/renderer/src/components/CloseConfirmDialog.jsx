@@ -8,10 +8,12 @@ const CloseConfirmDialog = ({ isOpen, onMinimize, onQuit, onCancel }) => {
   if (!isOpen) return null;
 
   const handleMinimize = () => {
-    onMinimize(dontAskAgain);
+    onCancel();
+    setTimeout(() => onMinimize(dontAskAgain), 0);
   };
 
   const handleQuit = () => {
+    onCancel();
     onQuit(dontAskAgain);
   };
 

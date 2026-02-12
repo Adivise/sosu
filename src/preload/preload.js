@@ -10,6 +10,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   appMinimizeToTray: () => ipcRenderer.invoke('app-minimize-to-tray'),
   appQuit: () => ipcRenderer.invoke('app-quit'),
   appRestart: () => ipcRenderer.invoke('app-restart'),
+  appFullReset: () => ipcRenderer.invoke('app-full-reset'),
   onAppCloseRequested: (callback) => {
     ipcRenderer.on('app-close-requested', () => callback());
   },

@@ -19,6 +19,13 @@ files:
 asarUnpack:
   - 'resources/**'
 asar: true
+extraResources:
+  - from: resources/icon.png
+    to: icon.png
+  - from: resources/icon.ico
+    to: icon.ico
+  - from: resources/icon.icns
+    to: icon.icns
 win:
   publisherName: Adivise
   icon: resources/icon.png

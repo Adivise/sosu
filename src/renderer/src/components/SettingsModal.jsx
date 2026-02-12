@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { X, Settings, Palette, Monitor, Filter, Database, RotateCcw } from 'lucide-react';
 import './SettingsModal.css';
 import GeneralSettingsTab from './settings/GeneralSettingsTab';
@@ -8,7 +8,7 @@ import FiltersSettingsTab from './settings/FiltersSettingsTab';
 import DataSettingsTab from './settings/DataSettingsTab';
 import ResetSettingsTab from './settings/ResetSettingsTab';
 
-const SettingsModal = ({ isOpen, onClose, osuFolderPath, onSelectFolder, onRemoveFolder, discordRpcEnabled, onSetDiscordRpcEnabled, widgetServerEnabled, onSetWidgetServerEnabled, albumArtBlur, onSetAlbumArtBlur, blurIntensity, onSetBlurIntensity, accentColor, onSetAccentColor, onClearCache, minDurationValue, setMinDurationValue, itemsPerPage, setItemsPerPage, onExportData, onImportData, onResetApp, hiddenArtists, setHiddenArtists, nameFilter, setNameFilter, nameFilterMode, setNameFilterMode, getAllArtists, filterStats, scanAllMaps, setScanAllMaps, dedupeTitlesEnabled, setDedupeTitlesEnabled, showSongBadges, onSetShowSongBadges, totalScanned, vuEnabled, onSetVuEnabled, onSaveProfile, onLoadProfile, onDeleteProfile, onListProfiles, onExportProfile, closeToTray, onSetCloseToTray, askBeforeClose, onSetAskBeforeClose, hardwareAcceleration, onSetHardwareAcceleration }) => {
+const SettingsModal = ({ isOpen, onClose, osuFolderPath, onSelectFolder, onRemoveFolder, discordRpcEnabled, onSetDiscordRpcEnabled, widgetServerEnabled, onSetWidgetServerEnabled, albumArtBlur, onSetAlbumArtBlur, blurIntensity, onSetBlurIntensity, accentColor, onSetAccentColor, onClearCache, minDurationValue, setMinDurationValue, itemsPerPage, setItemsPerPage, onExportData, onImportData, onResetSettings, onResetFull, hiddenArtists, setHiddenArtists, nameFilter, setNameFilter, nameFilterMode, setNameFilterMode, getAllArtists, filterStats, scanAllMaps, setScanAllMaps, dedupeTitlesEnabled, setDedupeTitlesEnabled, showSongBadges, onSetShowSongBadges, totalScanned, vuEnabled, onSetVuEnabled, onSaveProfile, onLoadProfile, onDeleteProfile, onListProfiles, onExportProfile, closeToTray, onSetCloseToTray, askBeforeClose, onSetAskBeforeClose, hardwareAcceleration, onSetHardwareAcceleration }) => {
   const [activeTab, setActiveTab] = useState('general');
   const tabsRef = useRef(null);
 
@@ -172,7 +172,8 @@ const SettingsModal = ({ isOpen, onClose, osuFolderPath, onSelectFolder, onRemov
           {/* RESET TAB */}
           {activeTab === 'reset' && (
             <ResetSettingsTab
-              onResetApp={onResetApp}
+              onResetSettings={onResetSettings}
+              onResetFull={onResetFull}
               onClearCache={onClearCache}
               onClose={onClose}
             />

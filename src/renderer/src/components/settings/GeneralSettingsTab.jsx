@@ -1,10 +1,8 @@
-import React from 'react';
-import { FolderOpen, Trash2 } from 'lucide-react';
+import { FolderOpen } from 'lucide-react';
 
 const GeneralSettingsTab = ({
   osuFolderPath,
   onSelectFolder,
-  onRemoveFolder,
   onClearCache,
   onClose,
   scanAllMaps,
@@ -41,11 +39,6 @@ const GeneralSettingsTab = ({
           <button className="settings-button primary" onClick={handleChangePath}>
             <FolderOpen size={16} /> {osuFolderPath ? 'Change Folder' : 'Select Folder'}
           </button>
-          {osuFolderPath && (
-            <button className="settings-button danger" onClick={handleClearCache}>
-              <Trash2 size={16} /> Re-scan
-            </button>
-          )}
         </div>
         {osuFolderPath && (
           <>

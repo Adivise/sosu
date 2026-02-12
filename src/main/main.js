@@ -45,10 +45,16 @@ let tray = null;
 let isQuitting = false;
 
 function createTray() {
-  // Create tray icon (you'll need to add an icon file)
-  const iconPath = app.isPackaged 
-    ? path.join(process.resourcesPath, 'icon.png')
-    : path.join(__dirname, '../../resources/icon.png');
+  let iconFile = 'icon.png';
+  if (process.platform === 'win32') {
+    iconFile = 'icon.ico';
+  } else if (process.platform === 'darwin') {
+    iconFile = 'icon.icns';
+  }
+
+  const iconPath = app.isPackaged
+    ? path.join(process.resourcesPath, iconFile)
+    : path.join(__dirname, `../../resources/${iconFile}`);
   
   console.log('[Main] Tray icon path:', iconPath);
   
@@ -80,7 +86,7 @@ function createTray() {
   ]);
   
   if (tray) {
-    tray.setToolTip('Sosu Music Player');
+    tray.setToolTip('sosu!');
     tray.setContextMenu(contextMenu);
     
     tray.on('click', () => {

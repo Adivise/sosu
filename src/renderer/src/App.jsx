@@ -25,7 +25,7 @@ import {
   updatePlaybackHistory as updatePlaybackHistoryHelper
 } from './utils/playbackHelpers';
 import { scheduleSave as scheduleSaveHelper } from './utils/userDataSave';
-import { resetAppToDefaults as resetAppToDefaultsHelper } from './handlers/resetAppToDefaults';
+import { resetSettingsToDefaults as resetSettingsToDefaultsHelper, resetFullToDefaults as resetFullToDefaultsHelper } from './handlers/resetAppToDefaults';
 import {
   handlePlayPause as handlePlayPauseHelper,
   handleSongSelect as handleSongSelectHelper,
@@ -125,7 +125,7 @@ function App() {
   const [albumArtBlur, setAlbumArtBlur] = useLocalStorageState('albumArtBlur', true);
   const [blurIntensity, setBlurIntensity] = useLocalStorageState('blurIntensity', 60);
   const [accentColor, setAccentColor] = useLocalStorageState('accentColor', '#1db954');
-  const [showSongBadges, setShowSongBadges] = useLocalStorageState('showSongBadges', true);
+  const [showSongBadges, setShowSongBadges] = useLocalStorageState('showSongBadges', false);
   const [favorites, setFavorites] = useLocalStorageState('favorites', {});
   const [durationFilter, setDurationFilter] = useState({ min: 0, max: Infinity });
   const [itemsPerPage, setItemsPerPage] = useLocalStorageState('itemsPerPage', 50);
@@ -332,6 +332,8 @@ function App() {
             setEqBands(normalizeEqBands(data.eqBands));
           }
           if (typeof data.vuEnabled === 'boolean') setVuEnabled(data.vuEnabled);
+          if (typeof data.showSongBadges === 'boolean') setShowSongBadges(data.showSongBadges);
+          if (typeof data.hardwareAcceleration === 'boolean') setHardwareAcceleration(data.hardwareAcceleration);
         }
         
         // Load songs cache
@@ -498,6 +500,7 @@ function App() {
       blurIntensity,
       accentColor,
       showSongBadges,
+      hardwareAcceleration,
       hiddenArtists,
       nameFilter,
       nameFilterMode,
@@ -525,7 +528,7 @@ function App() {
         pendingSaveRef.current = null;
       }
     };
-  }, [userDataLoaded, volume, autoplay, shuffle, repeat, playlists, osuFolderPath, discordRpcEnabled, widgetServerEnabled, minDurationValue, itemsPerPage, albumArtBlur, blurIntensity, accentColor, showSongBadges, hiddenArtists, nameFilter, nameFilterMode, scanAllMaps, dedupeTitlesEnabled, currentSong, duration, eqBands, recentlyPlayed, playCounts]);
+  }, [userDataLoaded, volume, autoplay, shuffle, repeat, playlists, osuFolderPath, discordRpcEnabled, widgetServerEnabled, minDurationValue, itemsPerPage, albumArtBlur, blurIntensity, accentColor, showSongBadges, hardwareAcceleration, hiddenArtists, nameFilter, nameFilterMode, scanAllMaps, dedupeTitlesEnabled, currentSong, duration, eqBands, recentlyPlayed, playCounts]);
 
   // Ensure data is flushed when the window is being closed or hidden (force save on exit)
   useEffect(() => {
@@ -550,6 +553,7 @@ function App() {
             blurIntensity,
             accentColor,
             showSongBadges,
+            hardwareAcceleration,
             hiddenArtists,
             nameFilter,
             nameFilterMode,
@@ -585,7 +589,7 @@ function App() {
       window.removeEventListener('pagehide', onPageHide);
       document.removeEventListener('visibilitychange', onVisibilityChange);
     };
-  }, [userDataLoaded, volume, autoplay, shuffle, repeat, playlists, osuFolderPath, discordRpcEnabled, widgetServerEnabled, minDurationValue, itemsPerPage, albumArtBlur, blurIntensity, accentColor, showSongBadges, hiddenArtists, nameFilter, nameFilterMode, scanAllMaps, dedupeTitlesEnabled, currentSong, currentTime, duration, eqBands, recentlyPlayed, playCounts]);
+  }, [userDataLoaded, volume, autoplay, shuffle, repeat, playlists, osuFolderPath, discordRpcEnabled, widgetServerEnabled, minDurationValue, itemsPerPage, albumArtBlur, blurIntensity, accentColor, showSongBadges, hardwareAcceleration, hiddenArtists, nameFilter, nameFilterMode, scanAllMaps, dedupeTitlesEnabled, currentSong, currentTime, duration, eqBands, recentlyPlayed, playCounts]);
 
   // Handle frequent updates to playback state (throttled, immediate on song change or pause)
   const prevSongIdRef = useRef(null);
@@ -754,8 +758,8 @@ function App() {
 
 
 
-  const handleResetApp = async () => {
-    await resetAppToDefaultsHelper({
+  const handleResetSettings = async () => {
+    await resetSettingsToDefaultsHelper({
       electronAPI: window.electronAPI,
       DEFAULT_EQ_BANDS,
       setVolume,
@@ -771,6 +775,7 @@ function App() {
       setBlurIntensity,
       setAccentColor,
       setVuEnabled,
+      setShowSongBadges,
       clearRecentlyPlayed,
       setFavorites,
       clearPlayCounts,
@@ -789,11 +794,15 @@ function App() {
       setDuration,
       setSelectedPlaylistId,
       setCurrentView,
-      setSongs,
-      setSongsCache,
-      setSongDurations,
       setCloseToTray,
-      setAskBeforeClose
+      setAskBeforeClose,
+      setHardwareAcceleration
+    });
+  };
+
+  const handleResetFull = async () => {
+    await resetFullToDefaultsHelper({
+      electronAPI: window.electronAPI
     });
   };
 
@@ -1175,7 +1184,8 @@ function App() {
             setItemsPerPage={setItemsPerPage}
             onExportData={handleExportData}
             onImportData={handleImportData}
-            onResetApp={handleResetApp}
+            onResetSettings={handleResetSettings}
+            onResetFull={handleResetFull}
             hiddenArtists={hiddenArtists}
             setHiddenArtists={setHiddenArtists}
             nameFilter={nameFilter}
