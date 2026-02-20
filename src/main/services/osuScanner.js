@@ -2,6 +2,7 @@ import fs from 'fs/promises';
 import path from 'path';
 import { parseFile } from 'music-metadata';
 import parseOsuFile from '../core/parseOsu.js';
+import { findAudioFilename } from '../core/beatmap-utils.js';
 import os from 'os';
 
 // Configuration
@@ -75,22 +76,17 @@ async function processSongFolder(entry, folderPath, cacheMap, cacheFolderMtimes,
         return { song: null, reused: false, invalidBeatmapId: true };
     }
 
-    // 🔍 Try to find correct audio filename
+    // 🔍 Try to find correct audio filename (shared helper)
     let audioFileName = osuMetadata.audioFilename;
     let audioFilePath = null;
-    const supportedExts = ['.mp3', '.ogg', '.wav', '.flac'];
 
-    if (audioFileName) {
-        // Try to find file case-insensitively
-        const found = files.find(f => f.toLowerCase() === audioFileName.toLowerCase());
-        if (found) audioFilePath = path.join(songPath, found);
-    }
-
-    // Fallback: find first valid audio file
-    if (!audioFilePath) {
-        const audioFiles = files.filter(f => supportedExts.some(ext => f.toLowerCase().endsWith(ext)));
-        if (audioFiles.length > 0) audioFilePath = path.join(songPath, audioFiles[0]);
-        audioFileName = audioFiles[0] || null;
+    const found = findAudioFilename(files, audioFileName);
+    if (found) {
+        audioFileName = found;
+        audioFilePath = path.join(songPath, found);
+    } else {
+        audioFileName = null;
+        audioFilePath = null;
     }
 
     if (!audioFilePath) {
@@ -114,6 +110,7 @@ async function processSongFolder(entry, folderPath, cacheMap, cacheFolderMtimes,
             songPath,
             entry,
             osuMetadata,
+            osuFiles,
             imageFiles,
             files,
             folderMtime
@@ -126,7 +123,7 @@ async function processSongFolder(entry, folderPath, cacheMap, cacheFolderMtimes,
  * Process metadata for a song (audio parsing, image extraction)
  */
 async function processMetadata(metadataTask) {
-    const { audioFilePath, audioFileName, songPath, entry, osuMetadata, imageFiles, files } = metadataTask;
+    const { audioFilePath, audioFileName, songPath, entry, osuMetadata, osuFiles, imageFiles, files } = metadataTask;
     
     let audioMetadata = null;
     let embeddedImage = null;
@@ -178,6 +175,11 @@ async function processMetadata(metadataTask) {
     // Use deterministic ID based on folder name + audio filename
     const stableId = `${entry.name}::${audioFileName || 'audio'}`;
     
+    const osuFileEntries = (osuFiles || []).map((name) => ({
+        name,
+        path: path.join(songPath, name)
+    }));
+
     return {
         id: stableId,
         folderName: entry.name,
@@ -208,6 +210,7 @@ async function processMetadata(metadataTask) {
         genre: audioMetadata?.common?.genre?.join(', ') || null,
         beatmapSetId,
         beatmapId: osuMetadata.beatmapId,
+        osuFiles: osuFileEntries,
         _folderMtime: folderMtime // Internal field for cache optimization
     };
 }
@@ -394,6 +397,9 @@ export async function scanOsuFolder(folderPath, eventSender, existingCache = nul
         let cachedSongsCount = 0;
         let invalidBeatmapIdCount = 0;
         for (const result of folderResults) {
+            // processInParallel may return null for failed tasks — guard against that
+            if (!result) continue;
+
             if (result.song) {
                 songs.push(result.song);
                 if (result.reused) reusedCount++;
@@ -401,7 +407,7 @@ export async function scanOsuFolder(folderPath, eventSender, existingCache = nul
             } else if (result.metadataTask) {
                 metadataTasks.push(result.metadataTask);
                 newCount++;
-            } else if (result && result.invalidBeatmapId) {
+            } else if (result.invalidBeatmapId) {
                 invalidBeatmapIdCount++;
             }
         }

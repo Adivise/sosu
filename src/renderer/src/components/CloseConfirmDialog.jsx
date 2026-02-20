@@ -68,7 +68,7 @@ const CloseConfirmDialog = ({ isOpen, onMinimize, onQuit, onCancel }) => {
               checked={dontAskAgain}
               onChange={(e) => setDontAskAgain(e.target.checked)}
             />
-            <span>Remember my choice and don't ask again</span>
+            <span>Remember my choice and don&apos;t ask again</span>
           </label>
         </div>
       </div>

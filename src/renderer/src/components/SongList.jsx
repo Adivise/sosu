@@ -1,13 +1,15 @@
-import { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import SongItem from './SongItem';
 import './SongList.css';
 
-const SongList = ({ songs, onSongSelect, onPreviewSelect = null, currentSong, songDurations, isPlaylist, onRemoveFromPlaylist, allSongs, onAddToPlaylist, playlists, showSongBadges = true, favorites = {}, onToggleFavorite, isPlayingNow = false, itemsPerPage = 50, currentPage: controlledPage, onPageChange, onAddArtistToFilter = null, onOpenSongDetails = null, onClearPreview = null, onCreatePlaylist = null, highlightedSongId = null, playCounts = {}, isMostPlayed = false, viewKey = null }) => {
+const SongList = ({ listRef: listRefProp, songs, onSongSelect, onPreviewSelect = null, currentSong, songDurations, isPlaylist, onRemoveFromPlaylist, allSongs, onAddToPlaylist, playlists, showSongBadges = true, favorites = {}, onToggleFavorite, isPlayingNow = false, itemsPerPage = 50, currentPage: controlledPage, onPageChange, onAddArtistToFilter = null, onOpenSongDetails = null, onOpenBeatmapPreview = null, onClearPreview = null, onCreatePlaylist = null, highlightedSongId = null, playCounts = {}, isMostPlayed = false, viewKey = null }) => {
   const [internalPage, setInternalPage] = useState(1);
-  const listRef = useRef(null);
+  const internalListRef = useRef(null);
+  const listRef = listRefProp != null ? listRefProp : internalListRef;
   const scrollContainerRef = useRef(null);
   const isControlled = typeof controlledPage === 'number' && controlledPage > 0;
   const currentPage = isControlled ? controlledPage : internalPage;
+  const [songDifficulties, setSongDifficulties] = useState({});
 
   // Get durations from allSongs if available (for playlist songs)
   const getSongDuration = (song) => {
@@ -38,12 +40,12 @@ const SongList = ({ songs, onSongSelect, onPreviewSelect = null, currentSong, so
         const key = viewKey ? `sosu:scroll:${viewKey}` : null;
         if (key) {
           const saved = sessionStorage.getItem(key);
-          console.debug && console.debug('[SongList] restore scroll', { viewKey, key, saved });
+          if (typeof console !== 'undefined' && console.debug) console.debug('[SongList] restore scroll', { viewKey, key, saved });
           if (saved != null) {
             const val = Math.max(0, Math.min(scrollEl.scrollHeight, parseInt(saved, 10) || 0));
             // Defer to next frame to ensure layout finished
             requestAnimationFrame(() => requestAnimationFrame(() => {
-              try { scrollEl.scrollTop = val; console.debug && console.debug('[SongList] applied scrollTop', val); } catch (err) { console.error('[SongList] failed apply scroll', err); }
+              try { scrollEl.scrollTop = val; if (typeof console !== 'undefined' && console.debug) console.debug('[SongList] applied scrollTop', val); } catch (err) { console.error('[SongList] failed apply scroll', err); }
             }));
             return;
           }
@@ -85,13 +87,67 @@ const SongList = ({ songs, onSongSelect, onPreviewSelect = null, currentSong, so
     return () => window.removeEventListener('sosu:jump-to-song', handler);
   }, [songs, itemsPerPage]);
 
+  // Load difficulties when a song with multiple .osu files is selected
+  useEffect(() => {
+    if (!currentSong || !currentSong.folderPath || !Array.isArray(currentSong.osuFiles) || currentSong.osuFiles.length <= 1) {
+      setSongDifficulties({});
+      return;
+    }
+
+    // Check if we already loaded difficulties for this song
+    if (songDifficulties[currentSong.id]) return;
+
+    // Load difficulties from IPC
+    const loadDifficulties = async () => {
+      try {
+        const result = await window.electronAPI?.getSongDifficulties?.(currentSong.folderPath, currentSong.osuFiles);
+        if (result?.success && Array.isArray(result.difficulties)) {
+          // Create song objects from difficulties (excluding the current one)
+          // Use the same id as currentSong so it doesn't get cleared by the existence check
+          const difficultySongs = result.difficulties
+            .filter(d => d.filename !== currentSong.osuFiles[0]?.name)
+            .map((d) => {
+              const audioFile = d.audioFilePath || currentSong.audioFile;
+              if (!audioFile) {
+                console.warn('[SongList] Difficulty', d.filename, 'has no audio file');
+              }
+              return {
+                ...currentSong,
+                id: currentSong.id, // Keep same id to avoid being cleared
+                version: d.version,
+                audioFilename: d.audioFilename,
+                audioFileName: d.audioFilename,
+                audioFile, // Use difficulty's audio file
+                beatmapId: d.beatmapId,
+                beatmapSetId: d.beatmapSetId,
+                mode: d.mode,
+                // Do NOT carry duplicate metadata into difficulty rows (no badges in OTHER DIFF)
+                duplicates: undefined,
+                duplicatesCount: 0,
+                _difficultyFilename: d.filename
+              };
+            });
+          
+          setSongDifficulties(prev => ({
+            ...prev,
+            [currentSong.id]: difficultySongs
+          }));
+        }
+      } catch (err) {
+        console.error('[SongList] Failed to load difficulties:', err);
+      }
+    };
+
+    loadDifficulties();
+  }, [currentSong?.id, currentSong?.folderPath, currentSong?.osuFiles]);
+
   // Calculate pagination
   const totalPages = Math.ceil(songs.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
   const paginatedSongs = useMemo(() => {
     return songs.slice(startIndex, endIndex);
-  }, [songs, startIndex, endIndex, itemsPerPage]);
+  }, [songs, startIndex, endIndex]);
 
   const handlePageChange = (page) => {
     if (onPageChange) {
@@ -121,7 +177,7 @@ const SongList = ({ songs, onSongSelect, onPreviewSelect = null, currentSong, so
           try {
             lastSaved = el.scrollTop;
             sessionStorage.setItem(`sosu:scroll:${viewKey}`, String(lastSaved));
-            console.debug && console.debug('[SongList] saved scroll', { viewKey, scrollTop: lastSaved });
+            if (typeof console !== 'undefined' && console.debug) console.debug('[SongList] saved scroll', { viewKey, scrollTop: lastSaved });
           } catch (e) {}
         }, 150);
       } catch (e) {}
@@ -136,9 +192,9 @@ const SongList = ({ songs, onSongSelect, onPreviewSelect = null, currentSong, so
         // Only snapshot if nothing saved yet (avoids overwriting a restored value before it applies)
         lastSaved = el.scrollTop;
         sessionStorage.setItem(key, String(lastSaved));
-        console.debug && console.debug('[SongList] initial snapshot scroll (no existing)', { viewKey, scrollTop: lastSaved });
+        if (typeof console !== 'undefined' && console.debug) console.debug('[SongList] initial snapshot scroll (no existing)', { viewKey, scrollTop: lastSaved });
       } else {
-        console.debug && console.debug('[SongList] preserved existing saved scroll on mount', { viewKey, saved: existing });
+        if (typeof console !== 'undefined' && console.debug) console.debug('[SongList] preserved existing saved scroll on mount', { viewKey, saved: existing });
       }
     } catch (e) {}
 
@@ -149,10 +205,9 @@ const SongList = ({ songs, onSongSelect, onPreviewSelect = null, currentSong, so
       try {
         if (lastSaved != null) {
           sessionStorage.setItem(`sosu:scroll:${viewKey}`, String(lastSaved));
-          console.debug && console.debug('[SongList] cleanup saved scroll', { viewKey, scrollTop: lastSaved });
+          if (typeof console !== 'undefined' && console.debug) console.debug('[SongList] cleanup saved scroll', { viewKey, scrollTop: lastSaved });
         } else {
-          // No local changes to save; avoid overwriting potentially restored value
-          console.debug && console.debug('[SongList] cleanup no local scroll changes to save', { viewKey });
+          if (typeof console !== 'undefined' && console.debug) console.debug('[SongList] cleanup no local scroll changes to save', { viewKey });
         }
       } catch (e) {}
     };
@@ -176,32 +231,111 @@ const SongList = ({ songs, onSongSelect, onPreviewSelect = null, currentSong, so
       </div>
       <div className="song-list-items" ref={listRef}>
         {paginatedSongs.map((song, index) => (
-          <SongItem
-            key={song.id}
-            song={song}
-            pageIndex={index}
-            index={startIndex + index + 1}
-            isPlaying={isPlayingNow && currentSong?.id === song.id}
-            isSelected={currentSong?.id === song.id}
-            isHighlighted={highlightedSongId === song.id}
-            onSelect={onSongSelect}
-            onPreviewSelect={onPreviewSelect}
-            onClearPreview={onClearPreview}
-            duration={getSongDuration(song)}
-            isPlaylist={isPlaylist}
-            onRemoveFromPlaylist={onRemoveFromPlaylist}
-            allSongs={allSongs}
-            onAddToPlaylist={onAddToPlaylist}
-            playlists={playlists}
-            showSongBadges={showSongBadges}
-            onCreatePlaylist={onCreatePlaylist}
-            isFavorite={favorites[song.id] || false}
-            onToggleFavorite={onToggleFavorite}
-            onAddArtistToFilter={onAddArtistToFilter}
-            onOpenSongDetails={onOpenSongDetails}
-            playCount={playCounts?.[song.id] || 0}
-            isMostPlayed={isMostPlayed}
-          />
+          <React.Fragment key={song.id}>
+            <SongItem
+              song={song}
+              pageIndex={index}
+              index={startIndex + index + 1}
+              isPlaying={isPlayingNow && currentSong?.id === song.id && !currentSong?._difficultyFilename}
+              isSelected={currentSong?.id === song.id && !currentSong?._difficultyFilename}
+              isHighlighted={highlightedSongId === song.id}
+              onSelect={onSongSelect}
+              onPreviewSelect={onPreviewSelect}
+              onClearPreview={onClearPreview}
+              duration={getSongDuration(song)}
+              isPlaylist={isPlaylist}
+              onRemoveFromPlaylist={onRemoveFromPlaylist}
+              allSongs={allSongs}
+              onAddToPlaylist={onAddToPlaylist}
+              playlists={playlists}
+              showSongBadges={showSongBadges}
+              onCreatePlaylist={onCreatePlaylist}
+              isFavorite={favorites[song.id] || false}
+              onToggleFavorite={onToggleFavorite}
+              onAddArtistToFilter={onAddArtistToFilter}
+              onOpenSongDetails={onOpenSongDetails}
+              onOpenBeatmapPreview={onOpenBeatmapPreview}
+              playCount={playCounts?.[song.id] || 0}
+              isMostPlayed={isMostPlayed}
+            />
+            {currentSong?.id === song.id && !currentSong?._difficultyFilename && Array.isArray(song.duplicates) && song.duplicates.length > 0 && (
+              <div className="song-list-dedupe-dropdown">
+                <div className="song-list-dedupe-dropdown-label">
+                  Hidden duplicates ({song.duplicatesCount ?? song.duplicates.length})
+                </div>
+                {song.duplicates.map((dup, dupIndex) => (
+                  <SongItem
+                    key={dup.id}
+                    song={dup}
+                    pageIndex={dupIndex}
+                    index={dupIndex + 1}
+                    isPlaying={isPlayingNow && currentSong?.id === dup.id}
+                    isSelected={currentSong?.id === dup.id}
+                    isHighlighted={highlightedSongId === dup.id}
+                    onSelect={onSongSelect}
+                    onPreviewSelect={onPreviewSelect}
+                    onClearPreview={onClearPreview}
+                    duration={getSongDuration(dup)}
+                    isPlaylist={false}
+                    onRemoveFromPlaylist={null}
+                    allSongs={allSongs}
+                    onAddToPlaylist={onAddToPlaylist}
+                    playlists={playlists}
+                    showSongBadges={showSongBadges}
+                    onCreatePlaylist={onCreatePlaylist}
+                    isFavorite={favorites[dup.id] || false}
+                    onToggleFavorite={onToggleFavorite}
+                    onAddArtistToFilter={onAddArtistToFilter}
+                    onOpenSongDetails={onOpenSongDetails}
+                    onOpenBeatmapPreview={onOpenBeatmapPreview}
+                    playCount={playCounts?.[dup.id] || 0}
+                    isMostPlayed={false}
+                    isDuplicate={true}
+                    canonicalSong={currentSong}
+                  />
+                ))}
+              </div>
+            )}
+            {/* Show difficulties dropdown if song has multiple .osu files */}
+            {currentSong?.id === song.id && Array.isArray(songDifficulties[song.id]) && songDifficulties[song.id].length > 0 && (
+              <div className="song-list-dedupe-dropdown">
+                <div className="song-list-dedupe-dropdown-label">
+                  Other difficulties ({songDifficulties[song.id].length})
+                </div>
+                {songDifficulties[song.id].map((diff, diffIndex) => (
+                  <SongItem
+                    key={diff._difficultyFilename || diff.id}
+                    song={diff}
+                    pageIndex={diffIndex}
+                    index={diffIndex + 1}
+                    isPlaying={isPlayingNow && currentSong?._difficultyFilename === diff._difficultyFilename && currentSong?.id === diff.id}
+                    isSelected={currentSong?._difficultyFilename === diff._difficultyFilename && currentSong?.id === diff.id}
+                    isHighlighted={highlightedSongId === diff.id}
+                    onSelect={onSongSelect}
+                    onPreviewSelect={onPreviewSelect}
+                    onClearPreview={onClearPreview}
+                    duration={getSongDuration(diff)}
+                    isPlaylist={false}
+                    onRemoveFromPlaylist={null}
+                    allSongs={allSongs}
+                    onAddToPlaylist={onAddToPlaylist}
+                    playlists={playlists}
+                    showSongBadges={false}
+                    onCreatePlaylist={onCreatePlaylist}
+                    isFavorite={favorites[diff.id] || false}
+                    onToggleFavorite={onToggleFavorite}
+                    onAddArtistToFilter={onAddArtistToFilter}
+                    onOpenSongDetails={onOpenSongDetails}
+                    onOpenBeatmapPreview={onOpenBeatmapPreview}
+                    playCount={playCounts?.[diff.id] || 0}
+                    isMostPlayed={false}
+                    isDuplicate={true}
+                    canonicalSong={currentSong}
+                  />
+                ))}
+              </div>
+            )}
+          </React.Fragment>
         ))}
       </div>
       {totalPages > 1 && (

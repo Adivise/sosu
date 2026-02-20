@@ -17,7 +17,7 @@ const GeneralSettingsTab = ({
   onSetHardwareAcceleration,
   totalScanned,
 }) => {
-  const handleClearCache = () => {
+  const _handleClearCache = () => {
     if (window.confirm('Are you sure you want to rescan the songs cache? This will rescan your osu! Songs folder and reset all cached metadata.')) {
       onClearCache();
       onClose();

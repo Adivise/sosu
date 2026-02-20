@@ -98,7 +98,7 @@ export const flushUserData = ({
     includeMode
   });
   scheduleSave(payload, 0, true);
-  if (logLabel) {
-    console.debug && console.debug(logLabel);
+  if (logLabel && typeof console !== 'undefined' && console.debug) {
+    console.debug(logLabel);
   }
 };

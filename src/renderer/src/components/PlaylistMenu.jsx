@@ -28,7 +28,7 @@ const PlaylistMenu = ({ playlists, onAddToPlaylist, onClose, onCreate }) => {
               key={playlist.id}
               className="playlist-menu-item"
               onClick={() => {
-                console.debug && console.debug('[PlaylistMenu] clicked playlist', playlist.id, playlist.name);
+                if (typeof console !== 'undefined' && console.debug) console.debug('[PlaylistMenu] clicked playlist', playlist.id, playlist.name);
                 onAddToPlaylist(playlist.id);
                 onClose();
               }}

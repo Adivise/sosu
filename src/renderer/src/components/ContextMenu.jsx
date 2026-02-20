@@ -1,6 +1,6 @@
 import React from 'react';
 import ReactDOM from 'react-dom';
-import { Music, ExternalLink, Folder, Plus, ChevronRight, UserX, Info } from 'lucide-react';
+import { Music, ExternalLink, Folder, Plus, ChevronRight, UserX, Info, PlayCircle } from 'lucide-react';
 
 const ContextMenu = React.memo(({
   menuContainerEl,
@@ -13,7 +13,8 @@ const ContextMenu = React.memo(({
   handleOpenBeatmap,
   handleOpenFolder,
   handleAddArtistToFilter,
-  handleOpenDetails
+  handleOpenDetails,
+  handleOpenPreview: _handleOpenPreview
 }) => {
   if (!menuContainerEl) return null;
 
@@ -62,9 +63,13 @@ const ContextMenu = React.memo(({
           <button
             className={`context-menu-item has-submenu ${playlistSubmenuVisible ? 'open' : ''}`}
             ref={playlistBtnRef}
-            onClick={(e) => { e.stopPropagation(); togglePlaylistSubmenu(e); }}
+            onClick={(e) => { 
+              e.stopPropagation(); 
+              if (typeof togglePlaylistSubmenu === 'function') togglePlaylistSubmenu(e); 
+            }}
             aria-haspopup="menu"
             aria-expanded={playlistSubmenuVisible}
+            disabled={!playlistBtnRef || typeof togglePlaylistSubmenu !== 'function'}
           >
             <Plus size={14} className="menu-icon" /> Add to Playlist
             <span className="submenu-caret" aria-hidden="true"><ChevronRight size={14} /></span>
@@ -74,13 +79,32 @@ const ContextMenu = React.memo(({
         </div>
         <div className="context-menu-sep" />
 
-        <button className="context-menu-item" onClick={onAddArtistClick} disabled={!song.artist}>
+        <button
+          className="context-menu-item"
+          onClick={onAddArtistClick}
+          disabled={!song.artist || typeof handleAddArtistToFilter !== 'function'}
+        >
           <UserX size={14} className="menu-icon" /> Add to Artist Filter
         </button>
 
         <div className="context-menu-sep" />
 
-        <button className="context-menu-item" onClick={handleOpenDetails}>
+        <button
+          className="context-menu-item context-menu-item-preview"
+          onClick={(e) => {
+            e.stopPropagation();
+            if (typeof _handleOpenPreview === 'function') _handleOpenPreview(song);
+          }}
+          disabled={typeof _handleOpenPreview !== 'function'}
+        >
+          <PlayCircle size={14} className="menu-icon" /> Preview Beatmap
+        </button>
+
+        <button
+          className="context-menu-item"
+          onClick={handleOpenDetails}
+          disabled={typeof handleOpenDetails !== 'function'}
+        >
           <Info size={14} className="menu-icon" /> Open More Details
         </button>
       </div>
@@ -88,5 +112,6 @@ const ContextMenu = React.memo(({
     menuContainerEl
   );
 });
+ContextMenu.displayName = 'ContextMenu';
 
 export default ContextMenu;

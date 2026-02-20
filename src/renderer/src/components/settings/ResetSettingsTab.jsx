@@ -80,7 +80,7 @@ const ResetSettingsTab = ({
             className="settings-button danger"
             onClick={() => {
               if (window.confirm('Reset settings to defaults? This will NOT delete playlists, favorites, or cache.')) {
-                onResetSettings && onResetSettings();
+                if (onResetSettings) onResetSettings();
                 onClose();
               }
             }}
@@ -99,7 +99,7 @@ const ResetSettingsTab = ({
             className="settings-button danger"
             onClick={() => {
               if (window.confirm('Full reset? This will delete ALL local data, cache, widgets, and profiles.')) {
-                onResetFull && onResetFull();
+                if (onResetFull) onResetFull();
                 onClose();
               }
             }}

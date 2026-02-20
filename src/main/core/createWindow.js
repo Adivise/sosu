@@ -16,8 +16,6 @@ export default function createWindow() {
             autoplayPolicy: 'no-user-gesture-required',
             preload: path.join(__dirname, '../preload/preload.js'),
         },
-        frame: false,
-        titleBarStyle: 'hidden',
         autoHideMenuBar: true,
         show: true,
     });

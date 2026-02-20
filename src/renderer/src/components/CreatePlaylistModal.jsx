@@ -17,8 +17,8 @@ const CreatePlaylistModal = ({ isOpen, onClose, onCreate }) => {
         if (inputRef.current) {
           // focus and select text if any; try multiple scheduling strategies to avoid races with dialogs/transitions
           inputRef.current.focus();
-          try { inputRef.current.select && inputRef.current.select(); } catch (e) {}
-          console.debug && console.debug('[CreatePlaylistModal] attempted focus on input');
+          try { if (inputRef.current.select) inputRef.current.select(); } catch (e) {}
+          if (typeof console !== 'undefined' && console.debug) console.debug('[CreatePlaylistModal] attempted focus on input');
         }
       } catch (e) {}
     };

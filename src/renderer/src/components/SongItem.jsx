@@ -2,10 +2,11 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import ReactDOM from 'react-dom';
 import { Pause, Music, Plus, X, Heart } from 'lucide-react';
 import PlaylistMenu from './PlaylistMenu';
+import PreviewDuplicatesMenu from './PreviewDuplicatesMenu';
 import ContextMenu from './ContextMenu';
 import './SongItem.css';
 
-const SongItem = ({ song, pageIndex = 0, index, isPlaying, isSelected, isHighlighted = false, onSelect, onPreviewSelect = null, onClearPreview = null, duration, isPlaylist, onRemoveFromPlaylist, allSongs, onAddToPlaylist, playlists, onCreatePlaylist = null, isFavorite = false, onToggleFavorite, onAddArtistToFilter = null, onOpenSongDetails = null, showSongBadges = false, playCount = 0, isMostPlayed = false }) => {
+const SongItem = ({ song, pageIndex = 0, index, isPlaying, isSelected, isHighlighted = false, onSelect, onPreviewSelect: _onPreviewSelect = null, onClearPreview = null, duration, isPlaylist, onRemoveFromPlaylist, allSongs: _allSongs, onAddToPlaylist, playlists, onCreatePlaylist = null, isFavorite = false, onToggleFavorite, onAddArtistToFilter = null, onOpenSongDetails = null, onOpenBeatmapPreview = null, showSongBadges = false, playCount = 0, isMostPlayed = false, isDuplicate = false, canonicalSong: _canonicalSong = null }) => {
   const [showPlaylistMenu, setShowPlaylistMenu] = useState(false);
   const addButtonRef = useRef(null);
   const menuContainerRef = useRef(null);
@@ -57,6 +58,29 @@ const SongItem = ({ song, pageIndex = 0, index, isPlaying, isSelected, isHighlig
     return undefined;
   }, [playlistSubmenuVisible]);
 
+  // Submenu for "Preview" (duplicates shown in a portal like the playlist submenu)
+  const [previewSubmenuVisible, setPreviewSubmenuVisible] = useState(false);
+  const [previewSubmenuReady, setPreviewSubmenuReady] = useState(false);
+  const [previewSubmenuPos, setPreviewSubmenuPos] = useState({ x: -9999, y: -9999 });
+  const previewBtnRef = useRef(null);
+  const previewSubmenuRef = useRef(null);
+  const lastMeasuredSubRectRef = useRef(null);
+  const [previewPortalEl, setPreviewPortalEl] = useState(null);
+  useEffect(() => {
+    if (previewSubmenuVisible) {
+      const el = document.createElement('div');
+      el.className = 'song-context-preview-root';
+      document.body.appendChild(el);
+      setPreviewPortalEl(el);
+
+      return () => {
+        if (el.parentNode) el.parentNode.removeChild(el);
+        setPreviewPortalEl(null);
+      };
+    }
+    return undefined;
+  }, [previewSubmenuVisible]);
+
   // Close context menu on outside click
   useEffect(() => {
     const onDocClick = (e) => {
@@ -66,10 +90,15 @@ const SongItem = ({ song, pageIndex = 0, index, isPlaying, isSelected, isHighlig
       if (playlistSubmenuRef.current && playlistSubmenuRef.current.contains(e.target)) {
         return;
       }
+      // If click is inside the preview submenu portal, ignore so buttons there receive the event
+      if (previewSubmenuRef.current && previewSubmenuRef.current.contains(e.target)) {
+        return;
+      }
 
       // Otherwise close menus
       setContextMenuVisible(false);
       setPlaylistSubmenuVisible(false);
+      setPreviewSubmenuVisible(false);
       openedByClickRef.current = false;
       if (onClearPreview) onClearPreview();
     };
@@ -83,6 +112,7 @@ const SongItem = ({ song, pageIndex = 0, index, isPlaying, isSelected, isHighlig
       if (e.key === 'Escape') {
         setContextMenuVisible(false);
         setPlaylistSubmenuVisible(false);
+        setPreviewSubmenuVisible(false);
         openedByClickRef.current = false;
       }
     };
@@ -178,7 +208,7 @@ const SongItem = ({ song, pageIndex = 0, index, isPlaying, isSelected, isHighlig
       const subRect = submenuEl.getBoundingClientRect();
 
       // cache last measured subRect for later heuristics
-      try { lastMeasuredSubRectRef.current = subRect; } catch (e) {}
+      try { lastMeasuredSubRectRef.current = subRect; } catch (_e) {}
 
       // Default: place to the right of the button (small overlap to avoid hover gap)
       const gap = 10;
@@ -229,6 +259,62 @@ const SongItem = ({ song, pageIndex = 0, index, isPlaying, isSelected, isHighlig
 
     return () => clearTimeout(id);
   }, [playlistSubmenuVisible, playlists]);
+
+  // Preview submenu positioning (duplicates) - reuse same portal/positioning approach as playlist submenu
+  useEffect(() => {
+    if (!previewSubmenuVisible) {
+      setPreviewSubmenuReady(false);
+      setPreviewSubmenuPos({ x: -9999, y: -9999 });
+      return;
+    }
+
+    const id = setTimeout(() => {
+      const submenuEl = previewSubmenuRef.current;
+      const btnEl = previewBtnRef.current;
+      if (!submenuEl || !btnEl) return;
+      const margin = 8;
+
+      submenuEl.style.left = '0px';
+      submenuEl.style.top = '0px';
+      submenuEl.style.visibility = 'hidden';
+
+      const btnRect = btnEl.getBoundingClientRect();
+      const subRect = submenuEl.getBoundingClientRect();
+
+      // Default: place to the right of the button
+      const gap = 10;
+      let x = Math.round(btnRect.right + gap);
+      let y = Math.round(btnRect.top + Math.round((btnRect.height - subRect.height) / 2));
+
+      // Flip to left if it would overflow
+      if (x + subRect.width > window.innerWidth - margin) {
+        x = Math.round(btnRect.left - subRect.width - gap);
+      }
+
+      if (y + subRect.height > window.innerHeight - margin) {
+        y = Math.max(margin, Math.round(window.innerHeight - margin - subRect.height));
+      }
+      if (y < margin) y = margin;
+
+      try {
+        submenuEl.style.left = `${x}px`;
+        submenuEl.style.top = `${y}px`;
+        submenuEl.style.visibility = 'visible';
+        submenuEl.style.opacity = '0.02';
+        submenuEl.style.pointerEvents = 'auto';
+        submenuEl.style.transform = 'translateX(-4px) scale(0.995)';
+      } catch (e) {}
+
+      setPreviewSubmenuPos({ x, y });
+
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        try { submenuEl.style.opacity = ''; submenuEl.style.pointerEvents = ''; submenuEl.style.transform = ''; } catch (e) {}
+        setPreviewSubmenuReady(true);
+      }));
+    }, 0);
+
+    return () => clearTimeout(id);
+  }, [previewSubmenuVisible]);
 
   const formatDuration = useCallback((seconds) => {
     if (!seconds || isNaN(seconds)) return '-';
@@ -341,6 +427,12 @@ const SongItem = ({ song, pageIndex = 0, index, isPlaying, isSelected, isHighlig
     setContextMenuVisible(false);
   }, [onOpenSongDetails, song]);
 
+  const _handleOpenPreview = useCallback((e) => {
+    e.stopPropagation();
+    if (onOpenBeatmapPreview) onOpenBeatmapPreview(song);
+    setContextMenuVisible(false);
+  }, [onOpenBeatmapPreview, song]);
+
   const handleContextMenu = useCallback((e) => {
     e.preventDefault();
     e.stopPropagation();
@@ -377,6 +469,21 @@ const SongItem = ({ song, pageIndex = 0, index, isPlaying, isSelected, isHighlig
       setPlaylistSubmenuReady(false);
     }
   }, [playlistSubmenuVisible]);
+
+  const _togglePreviewSubmenu = useCallback((e) => {
+    e.stopPropagation();
+    if (!previewBtnRef.current) return;
+    if (!previewSubmenuVisible) {
+      openedByClickRef.current = true;
+      setPreviewSubmenuReady(false);
+      setPreviewSubmenuPos({ x: -9999, y: -9999 });
+      setPreviewSubmenuVisible(true);
+    } else {
+      openedByClickRef.current = false;
+      setPreviewSubmenuVisible(false);
+      setPreviewSubmenuReady(false);
+    }
+  }, [previewSubmenuVisible]);
 
   const handleAddToPlaylistSelect = useCallback((playlistId) => {
     let handled = false;
@@ -441,6 +548,7 @@ const SongItem = ({ song, pageIndex = 0, index, isPlaying, isSelected, isHighlig
           handleOpenFolder={handleOpenFolder}
           handleAddArtistToFilter={handleAddArtistToFilter}
           handleOpenDetails={handleOpenDetails}
+          handleOpenPreview={(s) => { if (onOpenBeatmapPreview) onOpenBeatmapPreview(s || song); setContextMenuVisible(false); }}
         />
       )}
 
@@ -475,7 +583,35 @@ const SongItem = ({ song, pageIndex = 0, index, isPlaying, isSelected, isHighlig
         </div>,
         playlistPortalEl
       )}
-      <div className="song-item-number">
+
+      {/* Preview submenu (duplicates) rendered in a portal to the side, same behavior as playlist submenu */}
+      {previewPortalEl && previewSubmenuVisible && ReactDOM.createPortal(
+        <div
+          ref={previewSubmenuRef}
+          className={`context-submenu ${previewSubmenuReady ? 'ready' : 'measuring'}`}
+          style={{
+            position: 'fixed',
+            left: previewSubmenuReady ? `${previewSubmenuPos.x}px` : '-9999px',
+            top: previewSubmenuReady ? `${previewSubmenuPos.y}px` : '-9999px',
+            visibility: previewSubmenuReady ? 'visible' : 'hidden',
+            opacity: previewSubmenuReady ? 1 : 0,
+            pointerEvents: previewSubmenuReady ? 'auto' : 'none',
+            background: 'transparent',
+            border: 'none',
+            padding: 0,
+            zIndex: 2300
+          }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <PreviewDuplicatesMenu
+            song={song}
+            onPreview={(s) => { if (onOpenBeatmapPreview) onOpenBeatmapPreview(s || song); }}
+            onPreviewItem={(s) => { if (onOpenBeatmapPreview) onOpenBeatmapPreview(s); }}
+            onClose={() => { setPreviewSubmenuVisible(false); setContextMenuVisible(false); }}
+          />
+        </div>,
+        previewPortalEl
+      )}      <div className="song-item-number">
         {/* Show the index number by default. Only show Pause icon when this is the selected playing song. Hover no longer swaps the number for Play. */}
         {isSelected && isPlaying ? (
           <Pause size={16} />
@@ -513,13 +649,13 @@ const SongItem = ({ song, pageIndex = 0, index, isPlaying, isSelected, isHighlig
           )}
         </div>
         <div className="song-item-info">
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <div 
-              className="song-item-name" 
+          <div className="song-item-title-line">
+            <div
+              className="song-item-name"
               title={song.title}
             >
               {song.title}
-            </div> 
+            </div>
 
             {/* Flags for completeness (hidden when user disables badges) */}
             {showSongBadges && song.imageFile && (
@@ -535,12 +671,28 @@ const SongItem = ({ song, pageIndex = 0, index, isPlaying, isSelected, isHighlig
                 {song.duplicatesCount}
               </span>
             )}
+
+            {/* Badge: this folder has other difficulties (.osu files). Show only on the main row. */}
+            {showSongBadges && !isDuplicate && Array.isArray(song.osuFiles) && song.osuFiles.length > 1 && (
+              <span
+                className="diff-badge"
+                title={`This song has ${song.osuFiles.length} difficulties`}
+              >
+                +{Math.max(1, song.osuFiles.length - 1)}
+              </span>
+            )}
             {isMostPlayed && (
               <div className="song-item-plays">
                 <span className="plays-badge" title={`${playCount} plays`}>{formatPlays(playCount)}</span>
               </div>
             )}
-          </div> 
+          </div>
+
+          {song.version ? (
+            <div className="song-item-version" title={song.version}>
+              {song.version}
+            </div>
+          ) : null}
         </div>
       </div>
       <div 

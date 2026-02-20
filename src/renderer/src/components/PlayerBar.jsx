@@ -40,12 +40,20 @@ const PlayerBar = ({
   playlists,
   onAddToPlaylist,
   eqBands: eqBandsProp,
-  onEqBandsChange,
-  showEQModal,
+  onEqBandsChange: _onEqBandsChange,
+  showEQModal: _showEQModal,
   onOpenEQModal,
-  vuEnabled
+  vuEnabled,
+  onOpenBeatmapPreview: _onOpenBeatmapPreview,
+  controlsDisabled = false
 }) => {
   const audioRef = useRef(null);
+  // when controls are disabled we still want to pause audio immediately
+  useEffect(() => {
+    if (controlsDisabled && audioRef.current) {
+      audioRef.current.pause();
+    }
+  }, [controlsDisabled]);
   const [isMuted, setIsMuted] = useState(false);
   const [showPlaylistMenu, setShowPlaylistMenu] = useState(false);
   const [menuPortalEl, setMenuPortalEl] = useState(null);
@@ -53,8 +61,7 @@ const PlayerBar = ({
   const [playerMenuReady, setPlayerMenuReady] = useState(false);
   const playlistButtonRef = useRef(null);
   const playerMenuRef = useRef(null);
-  // legacy ref (kept for compatibility) - not used for absolute positioning anymore
-  const playerMenuContainerRef = useRef(null);
+  const _playerMenuContainerRef = useRef(null);
 
   // Volume percent tooltip state
   const [showVolumePercent, setShowVolumePercent] = useState(false);
@@ -140,12 +147,6 @@ const PlayerBar = ({
     return () => clearTimeout(id);
   }, [showPlaylistMenu]);
 
-  // Update parent when EQ bands change
-  const handleEqBandsChange = (newBands) => {
-    if (onEqBandsChange) {
-      onEqBandsChange(newBands);
-    }
-  };
   // Hookup WebAudio EQ and request analyser setup for VU meter
   const [setBandGain] = useAudioEqualizer({
     audioRef,
@@ -161,10 +162,9 @@ const PlayerBar = ({
 
   // Mini VU waveform state/refs
   const analyserRefs = React.useRef({ left: null, right: null, mix: null, splitter: null, raf: null, ctx: null });
-  const [leftLevel, setLeftLevel] = useState(0);
-  const [rightLevel, setRightLevel] = useState(0);
-  // small debug display for RMS (percentage 0-100)
-  const [rmsDisplay, setRmsDisplay] = useState(0);
+  const [_leftLevel, setLeftLevel] = useState(0);
+  const [_rightLevel, setRightLevel] = useState(0);
+  const [_rmsDisplay, setRmsDisplay] = useState(0);
   const lastRmsRef = useRef({ val: 0, lastUpdate: 0 });
 
 
@@ -241,16 +241,24 @@ const PlayerBar = ({
 
     if (currentSong) {
       // Only reset audio if this is a NEW song (not just play/pause toggle)
-      const isNewSong = lastSongRef.current?.id !== currentSong.id;
-      lastSongRef.current = currentSong;
+      // Check both id and _difficultyFilename (for difficulty variants) and audioFile (in case audio changed)
+      const lastSong = lastSongRef.current;
+      const isNewSong = !lastSong ||
+                        lastSong.id !== currentSong.id ||
+                        lastSong._difficultyFilename !== currentSong._difficultyFilename ||
+                        lastSong.audioFile !== currentSong.audioFile;
       
       if (isNewSong) {
         // New song - reset audio
         audio.pause();
         
-        audio.src = `osu://${encodeURIComponent(currentSong.audioFile)}`;
+        const audioSrc = `osu://${encodeURIComponent(currentSong.audioFile)}`;
+        audio.src = audioSrc;
         // Don't call audio.load() as it breaks MediaElementSource connection
         // Browser will load automatically when src changes
+        
+        // Update lastSongRef after setting audio src
+        lastSongRef.current = currentSong;
         
         // Wait for audio to be ready before playing (fixes double-click bug)
         const handleCanPlay = () => {
@@ -272,6 +280,9 @@ const PlayerBar = ({
         return () => {
           audio.removeEventListener('canplay', handleCanPlay);
         };
+      } else {
+        // Same song - just update the ref
+        lastSongRef.current = currentSong;
       }
     }
   }, [currentSong, currentTime, isPlaying]);
@@ -358,9 +369,9 @@ const PlayerBar = ({
         }
 
         const { context, source } = ev?.detail || {};
-        console.debug && console.debug('[PlayerBar] received audio-eq-setup', { hasContext: !!context, hasSource: !!source });
+        if (typeof console !== 'undefined' && console.debug) console.debug('[PlayerBar] received audio-eq-setup', { hasContext: !!context, hasSource: !!source });
         if (!context || !source) return;
-        try { console.debug && console.debug('[PlayerBar] audio state', { ctxState: context.state, audioReady: audioRef.current?.readyState, audioPaused: audioRef.current?.paused, audioSrc: audioRef.current?.src }); } catch (e) {}
+        try { if (typeof console !== 'undefined' && console.debug) console.debug('[PlayerBar] audio state', { ctxState: context.state, audioReady: audioRef.current?.readyState, audioPaused: audioRef.current?.paused, audioSrc: audioRef.current?.src }); } catch (e) {}
 
         // Clean previous
         try {
@@ -437,7 +448,7 @@ const PlayerBar = ({
                 // Debug: occasionally log buffer range when it's all flat
                 const now = Date.now();
                 if ((max - min) <= 2 && now - lastLogAt > 3000) {
-                  console.debug && console.debug('[PlayerBar] mix analyser flat sample', { min, max, rms, paused: audioRef.current?.paused, ready: audioRef.current?.readyState });
+                  if (typeof console !== 'undefined' && console.debug) console.debug('[PlayerBar] mix analyser flat sample', { min, max, rms, paused: audioRef.current?.paused, ready: audioRef.current?.readyState });
                   lastLogAt = now;
                 }
               } else {
@@ -478,7 +489,7 @@ const PlayerBar = ({
             // Log once if levels stay zero for a while to help debugging
             const now2 = Date.now();
             if (now2 - lastLogAt > 3000) {
-              console.debug && console.debug('[PlayerBar] VU sample', { left: rmsL, right: rmsR });
+              if (typeof console !== 'undefined' && console.debug) console.debug('[PlayerBar] VU sample', { left: rmsL, right: rmsR });
               lastLogAt = now2;
             }
           } catch (e) { console.warn('[PlayerBar] VU sample failed', e); }
@@ -510,7 +521,7 @@ const PlayerBar = ({
     } catch (e) {}
   }, [vuEnabled]);
 
-  const handleSeek = (e) => {
+  const _handleSeek = (e) => {
     const audio = audioRef.current;
     if (!audio) return;
 
@@ -547,7 +558,7 @@ const PlayerBar = ({
     document.addEventListener('mouseup', handleMouseUp);
   };
 
-  const handleVolumeSeek = (e) => {
+  const _handleVolumeSeek = (e) => {
     const rect = e.currentTarget.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const percentage = Math.max(0, Math.min(1, x / rect.width));
@@ -614,8 +625,8 @@ const PlayerBar = ({
   }
 
   return (
-    <div className="player-bar">
-      <audio ref={audioRef} volume={isMuted ? 0 : Math.pow(Math.max(0, Math.min(1, volume || 0)), 2)} />
+    <div className={"player-bar" + (controlsDisabled ? ' disabled' : '')}>
+      <audio ref={audioRef} />
 
       {/* Stretch VU across the top edge of the player bar */}
       {vuEnabled && (
@@ -654,11 +665,10 @@ const PlayerBar = ({
             </div>
           )}
           <div className="player-bar-song-info">
-            <div 
+            <div
               className="player-bar-song-title"
               onClick={(e) => {
                 e.stopPropagation();
-                // Jump to this song in the library list
                 if (currentSong?.id) {
                   window.dispatchEvent(new CustomEvent('sosu:jump-to-song', { detail: { songId: currentSong.id } }));
                 }
@@ -667,11 +677,10 @@ const PlayerBar = ({
             >
               {currentSong.title}
             </div>
-            <div 
+            <div
               className="player-bar-song-artist"
               onClick={(e) => {
                 e.stopPropagation();
-                // Search by this artist in the main search bar
                 if (currentSong?.artist) {
                   window.dispatchEvent(new CustomEvent('sosu:set-search-query', { detail: { query: currentSong.artist } }));
                 }

@@ -142,9 +142,9 @@ const FiltersSettingsTab = ({
     <>
       {/* DUPLICATE FILTER SECTION */}
       <div className="settings-section settings-card">
-        <h3 className="settings-section-title">Duplicate Filter</h3>
+        <h3 className="settings-section-title">Group by title</h3>
         <p className="settings-section-sub">
-          When enabled, only one song per song title will be shown in your library.
+          Off: show every difficulty as a separate row so you can select any. On: show one entry per title and list other difficulties in a dropdown below the selected row.
         </p>
 
         <div className="settings-item">
@@ -156,7 +156,7 @@ const FiltersSettingsTab = ({
             />
             <span className="switch-slider"></span>
           </label>
-          <span className="settings-discord-desc">Hide duplicate songs</span>
+          <span className="settings-discord-desc">Group by title (hide other difficulties in dropdown)</span>
         </div>
       </div>
 

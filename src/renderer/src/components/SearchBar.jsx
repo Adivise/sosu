@@ -19,16 +19,23 @@ const SearchBar = ({ searchQuery, onSearchChange, songs, showFilters = false, so
       const query = searchQuery.toLowerCase();
       const matches = songs
         .filter(song => 
-          song.title.toLowerCase().includes(query) ||
-          song.artist.toLowerCase().includes(query) ||
-          song.folderName.toLowerCase().includes(query)
+          (song.title || '').toLowerCase().includes(query) ||
+          (song.artist || '').toLowerCase().includes(query) ||
+          (song.folderName || '').toLowerCase().includes(query) ||
+          (song.version || '').toLowerCase().includes(query)
         )
         .slice(0, 8)
-        .map(song => ({
-            ...song, 
-            matchType: song.title.toLowerCase().includes(query) ? 'title' : song.artist.toLowerCase().includes(query) ? 'artist' : 'folder'
-          }
-      ));
+        .map(song => {
+          const titleHit = (song.title || '').toLowerCase().includes(query);
+          const artistHit = (song.artist || '').toLowerCase().includes(query);
+          const folderHit = (song.folderName || '').toLowerCase().includes(query);
+          const versionHit = (song.version || '').toLowerCase().includes(query);
+
+          return {
+            ...song,
+            matchType: titleHit ? 'title' : artistHit ? 'artist' : folderHit ? 'folder' : versionHit ? 'version' : 'title'
+          };
+        });
       
       setSuggestions(matches);
     } else {
@@ -82,7 +89,11 @@ const SearchBar = ({ searchQuery, onSearchChange, songs, showFilters = false, so
     } else if (e.key === 'Enter' && selectedIndex >= 0) {
       e.preventDefault();
       const s = suggestions[selectedIndex];
-      const query = s.matchType === 'artist' ? s.artist : s.title;
+      const query = s.matchType === 'artist'
+        ? s.artist
+        : s.matchType === 'version'
+          ? (s.version || s.title || '')
+          : s.title;
       onSearchChange(query);
       addToHistory(query);
       setIsFocused(false);
@@ -96,7 +107,11 @@ const SearchBar = ({ searchQuery, onSearchChange, songs, showFilters = false, so
   };
 
   const handleSuggestionClick = (song) => {
-    const newQuery = song.matchType === 'artist' ? song.artist : song.title;
+    const newQuery = song.matchType === 'artist'
+      ? song.artist
+      : song.matchType === 'version'
+        ? (song.version || song.title || '')
+        : song.title;
     onSearchChange(newQuery);
     addToHistory(newQuery);
     setIsFocused(false);

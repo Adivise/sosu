@@ -24,7 +24,7 @@ export default function useSongs({ scanAllMaps, onRestorePendingSong } = {}) {
   }, []);
 
   // Notify playback progress to update play counts & recently played
-  const notifyPlayback = useCallback(({ currentSong, isPlaying, currentTime, duration }) => {
+  const notifyPlayback = useCallback(({ currentSong, isPlaying: _isPlaying, currentTime, duration }) => {
     if (!currentSong || !currentSong.id || !duration || duration <= 0) {
       // reset tracking when no song or duration unknown
       if (!currentSong || currentTime < 5) {
@@ -157,18 +157,24 @@ export default function useSongs({ scanAllMaps, onRestorePendingSong } = {}) {
         result.songs.forEach(song => { if (song.duration) durations[song.id] = song.duration; });
         setSongDurations(durations);
 
-        // Restore pending song if available
+        // Restore pending song if available (null-safe)
         if (window._pendingSongRestore && typeof onRestorePendingSong === 'function') {
           const pending = window._pendingSongRestore;
-          const restoredSong = result.songs.find(s => s.id === pending.song.id);
-          if (restoredSong) {
-            try {
-              setTimeout(() => {
-                onRestorePendingSong(restoredSong, pending.playbackState);
-                delete window._pendingSongRestore;
-              }, 100);
-            } catch (e) { delete window._pendingSongRestore; }
+          // validate pending payload before using
+          if (pending && pending.song && pending.song.id && Array.isArray(result.songs)) {
+            const restoredSong = result.songs.find(s => s.id === pending.song.id);
+            if (restoredSong) {
+              try {
+                setTimeout(() => {
+                  onRestorePendingSong(restoredSong, pending.playbackState);
+                  delete window._pendingSongRestore;
+                }, 100);
+              } catch (e) { delete window._pendingSongRestore; }
+            } else {
+              delete window._pendingSongRestore;
+            }
           } else {
+            // malformed pending payload — drop it
             delete window._pendingSongRestore;
           }
         }

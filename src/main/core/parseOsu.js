@@ -1,3 +1,5 @@
+import { parseTimingPoints } from './beatmap-utils.js';
+
 export default function parseOsuFile(content) {
     const metadata = {
         title: null,
@@ -16,10 +18,8 @@ export default function parseOsuFile(content) {
 
     const lines = content.split('\n');
     let inMetadata = false;
+    // Track current section so we can correctly parse fields
     let inTimingPoints = false;
-    let maxBpm = 0;
-    let minBpm = Infinity;
-    let firstBpm = null; // the first uninherited timing point BPM (osu! style)
 
     for (const line of lines) {
         const trimmed = line.trim();
@@ -40,7 +40,6 @@ export default function parseOsuFile(content) {
         if (trimmed === '[General]') {
             inMetadata = false;
             inTimingPoints = false;
-            // set a small flag to allow parsing Mode lines below
             continue;
         }
 
@@ -50,6 +49,13 @@ export default function parseOsuFile(content) {
             metadata.mode = isNaN(m) ? 0 : m; // Default to 0 if invalid
         }
 
+        // AudioFilename is officially defined in the [General] section in osu! format.
+        // Some maps (or older tools) may also place it elsewhere, so we parse it
+        // whenever we see the key, as long as we're not inside [TimingPoints].
+        if (!inTimingPoints && trimmed.startsWith('AudioFilename:')) {
+            metadata.audioFilename = trimmed.substring('AudioFilename:'.length).trim();
+        }
+
         if (trimmed.startsWith('[') && trimmed !== '[Metadata]' && trimmed !== '[TimingPoints]') {
             inMetadata = false;
             inTimingPoints = false;
@@ -57,9 +63,7 @@ export default function parseOsuFile(content) {
         }
 
         if (inMetadata) {
-            if (trimmed.startsWith('AudioFilename:')) {
-                metadata.audioFilename = trimmed.substring(14).trim();
-            } else if (trimmed.startsWith('Title:')) {
+            if (trimmed.startsWith('Title:')) {
                 metadata.title = trimmed.substring(6).trim();
             } else if (trimmed.startsWith('TitleUnicode:')) {
                 metadata.titleUnicode = trimmed.substring(13).trim();
@@ -78,40 +82,21 @@ export default function parseOsuFile(content) {
                 metadata.beatmapId = parseInt(trimmed.substring(10).trim()) || null;
             }
         }
-
         if (trimmed.startsWith('ApproachRate:') || trimmed.startsWith('OverallDifficulty:')) {
             metadata.difficulty = metadata.difficulty || trimmed.split(':')[1]?.trim();
         }
-
-        // Parse timing points for BPM: collect max BPM from uninherited timing points
-        if (inTimingPoints) {
-            if (!trimmed) continue;
-            // timing lines are CSV: time,beatLength,meters,sampleSet,sampleIndex,volume,uninherited,effects
-            const parts = trimmed.split(',').map(p => p.trim());
-            if (parts.length >= 2) {
-                const beatLength = parseFloat(parts[1]);
-                // Determine uninherited flag if present (index 6)
-                const uninherited = parts.length >= 7 ? parseInt(parts[6]) : 1;
-                if (!isNaN(beatLength) && beatLength > 0 && (uninherited === 1 || uninherited === undefined)) {
-                    const bpm = 60000 / beatLength;
-                    // Capture first uninherited BPM (osu! default behavior)
-                    if (firstBpm === null) firstBpm = bpm;
-                    if (bpm > maxBpm) maxBpm = bpm;
-                    if (bpm < minBpm) minBpm = bpm;
-                    // continue scanning to find the min/max BPM across timing points
-                }
-            }
-        }
     }
 
-    // If we found timing-point BPMs, use the min/max BPM found
-    if (maxBpm > 0) {
-        metadata.bpmMin = minBpm === Infinity ? maxBpm : minBpm;
-        metadata.bpmMax = maxBpm;
-        // For osu! compatibility use the first uninherited timing point BPM as 'bpm'
-        metadata.bpm = firstBpm || metadata.bpmMax;
+    // Use shared timing-points parser to determine BPM
+    const parsedTimingPoints = parseTimingPoints(content);
+    const uninherited = parsedTimingPoints.filter(tp => tp.uninherited !== false && tp.beatLength > 0);
+    if (uninherited.length > 0) {
+        const bpms = uninherited.map(tp => 60000 / tp.beatLength);
+        metadata.bpmMin = Math.min(...bpms);
+        metadata.bpmMax = Math.max(...bpms);
+        const firstUninherited = uninherited.sort((a, b) => a.time - b.time)[0];
+        metadata.bpm = 60000 / firstUninherited.beatLength;
     } else {
-        // Fallback: Try to extract BPM from inline text if timing points didn't provide it
         const bpmMatch = content.match(/BPM:\s*(\d+\.?\d*)/i);
         if (bpmMatch) {
             const v = parseFloat(bpmMatch[1]);

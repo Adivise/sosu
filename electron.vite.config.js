@@ -18,6 +18,12 @@ export default defineConfig({
         },
         plugins: [react()],
         build: {
+            rollupOptions: {
+                input: {
+                    index: resolve(__dirname, 'src/renderer/index.html'),
+                    beatmapPlayer: resolve(__dirname, 'src/renderer/beatmap-player.html')
+                }
+            },
             sourcemap: false,
             terserOptions: {
                 compress: {

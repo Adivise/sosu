@@ -7,13 +7,32 @@ declare global {
       getSongsCache: () => Promise<any>;
       saveSongsCache: (cache: any) => Promise<void>;
       
+      // Preview / beatmap player APIs
+      openBeatmapPlayer: (folderPath: string) => Promise<{ success: boolean; error?: string }>;
+      requestBeatmapData: () => Promise<any>;
+      onBeatmapData: (callback: (data: any) => void) => void;
+      onBeatmapPlayerClosed: (callback: () => void) => void;
+      removeBeatmapPlayerClosedListener: () => void;
+      updateBeatmapPlayerTheme: (themeVars: any) => void;
+      onThemeUpdate: (callback: (vars: any) => void) => void;
+      getBeatmapPlayerTheme: () => Promise<any>;
+
       // User Data APIs
       getUserData: () => Promise<any>;
       saveUserData: (data: any) => Promise<void>;
+      // Preview-specific persistence (beatmap preview settings)
+      getPreviewData: () => Promise<any>;
+      savePreviewData: (data: any) => Promise<any>;
+      // Preview difficulty switching
+      previewLoadDifficulty: (folderPath: string, osuFilename: string) => Promise<any>;
+      // Get all difficulties from a song folder
+      getSongDifficulties: (folderPath: string, osuFiles: Array<{name: string, path: string}>) => Promise<{success: boolean, difficulties?: Array<any>, error?: string}>;
       
       // Window Control APIs
       windowMinimize: () => void;
       windowMaximize: () => void;
+      windowClose: () => void;
+      windowSetTitle: (title: string) => Promise<{ success: boolean }>;
       appRestart: () => void;
       
       // Discord and Rich Presence APIs

@@ -223,6 +223,13 @@
   overflow: hidden;
 }
 
+.song-item-title-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
 .song-item-name {
   font-size: 14px;
   font-weight: 400;
@@ -237,6 +244,16 @@
 
 /* Title hover effects removed to prevent flicker / layout shifts */
 .song-item-name:hover { text-decoration: none; color: inherit; }
+
+.song-item-version {
+  margin-top: 2px;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.55);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
 
 
 .song-item-artist,
@@ -343,9 +360,35 @@
   color: #fff;
 }
 
+/* Badge: song has other difficulties in the same folder */
+.diff-badge {
+  background: rgba(var(--accent-color-rgb, 29,185,84), 0.15);
+  border: 1px solid rgba(var(--accent-color-rgb, 29,185,84), 0.4);
+  padding: 2px 6px;
+  border-radius: 10px;
+  font-size: 12px;
+  color: var(--accent-color, #1db954);
+  margin-left: 6px;
+}
+.diff-badge:hover {
+  background: rgba(var(--accent-color-rgb, 29,185,84), 0.25);
+  color: #fff;
+}
+
+/* Make preview item stand out in context menu */
+.context-menu-item-preview {
+  border-left: 3px solid var(--accent-color, #1db954);
+  font-weight: 600;
+}
+.context-menu-item-preview:hover {
+  background: rgba(var(--accent-color-rgb, 29,185,84), 0.18);
+  color: #fff;
+}
+
 /* Global helper to hide song badges (used by settings toggle) */
 .hide-song-badges .song-flag,
-.hide-song-badges .duplicate-badge {
+.hide-song-badges .duplicate-badge,
+.hide-song-badges .diff-badge {
   display: none !important;
 }
 
@@ -494,6 +537,7 @@
 /* Slightly stronger look for submenu to match main menu */
 .context-submenu { min-width: 200px; }
 .context-submenu-item { padding-left: 14px; }
+.context-submenu-sep { height: 1px; background: rgba(255,255,255,0.03); margin: 6px 0; border-radius: 1px; }
 
 /* fine tune for dark theme */
 .context-menu .menu-icon { display:inline-flex; vertical-align:middle; }

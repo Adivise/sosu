@@ -10,14 +10,19 @@ export const handleSongSelect = ({
   setCurrentSong,
   setCurrentTime
 }) => {
-  if (currentSong?.id === song.id && isPlaying) {
+  // Check if it's the same song AND same difficulty (for difficulty variants)
+  const isSameSong = currentSong?.id === song.id && 
+                      currentSong?._difficultyFilename === song._difficultyFilename;
+  
+  if (isSameSong && isPlaying) {
     setIsPlaying(false);
     return;
   }
-  if (currentSong?.id === song.id && !isPlaying) {
+  if (isSameSong && !isPlaying) {
     setIsPlaying(true);
     return;
   }
+  // Different song or different difficulty - change song
   setCurrentSong(song);
   setCurrentTime(0);
   setIsPlaying(true);

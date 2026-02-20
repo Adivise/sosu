@@ -4,7 +4,7 @@ import './VUPanel.css';
 
 const VUPanel = ({ defaultHeight = 18, defaultEnabled = true, mode = 'padded' }) => {
   const [analyser, setAnalyser] = useState(null);
-  const [enabled, setEnabled] = useState(defaultEnabled);
+  const [enabled, _setEnabled] = useState(defaultEnabled);
 
   useEffect(() => {
     const handler = (e) => {

@@ -3,7 +3,9 @@ import { Music, ExternalLink, Folder } from 'lucide-react';
 import './SongDetailsModal.css';
 
 const SongDetailsModal = ({ isOpen, song, onClose }) => {
-  if (!isOpen || !song) return null;
+  // Hooks must run unconditionally (before any early return)
+  const [showTitleUnicode, setShowTitleUnicode] = useState(false);
+  const [showArtistUnicode, setShowArtistUnicode] = useState(false);
 
   const openBeatmap = useCallback(() => {
     if (!song?.beatmapSetId) return;
@@ -19,8 +21,7 @@ const SongDetailsModal = ({ isOpen, song, onClose }) => {
     if (window.electronAPI?.openPath) window.electronAPI.openPath(song.folderPath);
   }, [song]);
 
-  const [showTitleUnicode, setShowTitleUnicode] = useState(false);
-  const [showArtistUnicode, setShowArtistUnicode] = useState(false);
+  if (!isOpen || !song) return null;
 
   const MODE_NAMES = ['Standard', 'Taiko', 'Catch', 'Mania'];
 

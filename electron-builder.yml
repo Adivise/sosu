@@ -16,6 +16,7 @@ files:
   - "!CONTRIBUTING.md"
   - "!CODE_OF_CONDUCT.md"
   - "!global.d.ts"
+  - "!.eslintrc.cjs"
 asarUnpack:
   - 'resources/**'
 asar: true

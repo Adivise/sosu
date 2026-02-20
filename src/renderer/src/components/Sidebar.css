@@ -12,6 +12,36 @@
   overflow-y: auto;
   position: relative;
   z-index: 10;
+  transition: width 0.3s ease;
+}
+
+.sidebar.collapsed {
+  width: 64px;
+  padding: 24px 8px;
+}
+
+.sidebar-toggle {
+  background: none;
+  border: none;
+  color: #b3b3b3;
+  cursor: pointer;
+  padding: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: all 0.2s;
+  margin-left: auto;
+}
+
+.sidebar-toggle:hover {
+  background-color: #1a1a1a;
+  color: #ffffff;
+}
+
+.sidebar.collapsed .sidebar-toggle {
+  margin-left: 0;
+  margin-right: auto;
 }
 
 .sidebar-scroll {
@@ -28,6 +58,10 @@
   gap: 12px;
   padding-bottom: 16px;
   border-bottom: 1px solid #282828;
+}
+
+.sidebar.collapsed .sidebar-header {
+  justify-content: center;
 }
 
 .sidebar-logo {
@@ -80,6 +114,13 @@
   cursor: pointer;
   border-radius: 4px;
   transition: all 0.2s;
+  position: relative;
+}
+
+.sidebar.collapsed .nav-item {
+  justify-content: center;
+  padding: 12px;
+  gap: 0;
 }
 
 .nav-item:hover {
@@ -90,6 +131,12 @@
 .nav-item.active {
   color: #ffffff;
   background-color: #1a1a1a;
+  border-left: 3px solid var(--accent-color);
+}
+
+.sidebar.collapsed .nav-item.active {
+  border-left: none;
+  border-right: 3px solid var(--accent-color);
 }
 
 .sidebar-section {
@@ -112,6 +159,12 @@
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s;
+}
+
+.sidebar.collapsed .folder-button {
+  justify-content: center;
+  padding: 12px;
+  gap: 0;
 }
 
 .folder-button:hover {
@@ -247,6 +300,7 @@
 .playlist-item.active {
   background-color: #1a1a1a;
   color: var(--accent-color);
+  border-left: 3px solid var(--accent-color);
 }
 
 .playlist-name {

@@ -1,0 +1,133 @@
+/* DifficultyDropdown.css — scoped styles for the difficulty picker (portal + button)
+   This file intentionally scopes portal/menu overrides under .difficulty-dropdown-root
+   so it doesn't change global playlist/menu appearance elsewhere. */
+
+/* Ensure the existing button loses its background caret so we can use an inline SVG */
+.difficulty-dropdown .beatmap-viewer__difficulty-select {
+  background-image: none; /* override default caret */
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding-left: 12px;
+  padding-right: 12px;
+}
+
+/* small color dot shown before the difficulty label */
+.difficulty-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 1px solid rgba(255,255,255,0.06);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.35);
+  flex: 0 0 auto;
+}
+
+.difficulty-label { flex: 1 1 auto; min-width: 0; }
+
+/* inline caret (SVG) that rotates on open */
+.difficulty-caret {
+  width: 14px;
+  height: 14px;
+  margin-left: 8px;
+  flex: 0 0 auto;
+  color: rgba(205,214,244,0.9);
+  transition: transform 160ms cubic-bezier(.2,.9,.2,1);
+  transform-origin: center;
+}
+.beatmap-viewer__difficulty-select[aria-expanded="true"] .difficulty-caret { transform: rotate(180deg); }
+
+/* Scoped portal menu appearance for difficulties */
+.difficulty-dropdown-root .playlist-menu {
+  min-width: 220px;
+  max-width: 420px;
+  background: linear-gradient(180deg, rgba(18,18,18,0.96), rgba(12,12,12,0.98));
+  border: 1px solid rgba(255,255,255,0.04);
+  border-radius: 18px; /* larger rounded corners */
+  overflow: hidden; /* clip children (scrollbar & items) to rounded bounds */
+  box-shadow: 0 14px 40px rgba(2,6,23,0.6);
+}
+
+.difficulty-dropdown-root .playlist-menu-list {
+  max-height: 360px;
+  border-radius: 12px;
+  overflow: hidden;
+  /* Firefox */
+  scrollbar-width: thin;
+  scrollbar-color: rgba(var(--accent-color-rgb),0.9) rgba(12,12,12,0.4);
+}
+
+/* WebKit/Blink scrollbars (Chrome, Edge, Safari) */
+.difficulty-dropdown-root .playlist-menu-list::-webkit-scrollbar { width: 10px; height: 10px; }
+.difficulty-dropdown-root .playlist-menu-list::-webkit-scrollbar-track {
+  background: transparent;
+  border-radius: 999px;
+}
+.difficulty-dropdown-root .playlist-menu-list::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, rgba(var(--accent-color-rgb),0.95), rgba(var(--accent-color-rgb),0.6));
+  border-radius: 999px;
+  border: 2px solid rgba(0,0,0,0.22);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.02);
+}
+.difficulty-dropdown-root .playlist-menu-list::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, rgba(var(--accent-color-rgb),1), rgba(var(--accent-color-rgb),0.75));
+  box-shadow: 0 4px 12px rgba(2,6,23,0.45);
+}
+
+/* menu item: include the same difficulty-dot and align text */
+.difficulty-dropdown-root .playlist-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  transition: background 160ms cubic-bezier(.2,.9,.2,1), transform 120ms ease, color 120ms ease;
+  background: transparent;
+  color: rgba(205,214,244,0.86);
+  border: 1px solid transparent;
+}
+.difficulty-dropdown-root .playlist-menu-item:hover {
+  background: rgba(255,255,255,0.02);
+  transform: translateX(2px);
+  color: #fff;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.35);
+}
+.difficulty-dropdown-root .playlist-menu-item .difficulty-dot { margin-right: 6px; transition: transform 160ms ease, box-shadow 160ms ease, margin-left 160ms ease; }
+.difficulty-dropdown-root .playlist-menu-item div { max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* selected / hover states tuned to match the app theme */
+.difficulty-dropdown-root .playlist-menu-item.selected {
+  background: linear-gradient(90deg, rgba(var(--accent-color-rgb),0.14), rgba(255,255,255,0.02));
+  color: #fff;
+  font-weight: 700;
+  box-shadow: 0 8px 30px rgba(var(--accent-color-rgb),0.06);
+  position: relative;
+  border: 1px solid rgba(var(--accent-color-rgb),0.18);
+}
+.difficulty-dropdown-root .playlist-menu-item.selected::before {
+  content: '';
+  position: absolute;
+  left: 10px;
+  top: 8px;
+  bottom: 8px;
+  width: 4px;
+  border-radius: 3px;
+  background: var(--accent-color);
+  box-shadow: 0 6px 20px rgba(var(--accent-color-rgb),0.08);
+}
+.difficulty-dropdown-root .playlist-menu-item.selected .difficulty-dot {
+  transform: scale(1.14);
+  box-shadow: 0 6px 18px rgba(var(--accent-color-rgb),0.12);
+  border-color: rgba(255,255,255,0.18);
+  margin-left: 12px; /* increase gap from left accent bar */
+}
+.difficulty-dropdown-root .playlist-menu-item.selected::after {
+  content: '✓';
+  position: absolute;
+  right: 12px;
+  color: rgba(255,255,255,0.95);
+  font-weight: 800;
+  font-size: 12px;
+}
+
+/* keep the count muted */
+.difficulty-dropdown-root .playlist-menu-count { color: #bdbdbd; }

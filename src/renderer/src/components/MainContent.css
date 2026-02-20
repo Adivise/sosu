@@ -56,6 +56,31 @@
   z-index: 100;
 }
 
+.main-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.view-header-compact {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin-right: 20px;
+  font-size: 13px;
+  color: #b3b3b3;
+}
+
+.view-title-compact {
+  font-weight: 600;
+  color: #ffffff;
+}
+
+.view-subtitle-compact {
+  opacity: 0.85;
+}
+
 .main-content-body {
   flex: 1;
   overflow-y: auto;
@@ -131,6 +156,12 @@
   border-bottom: 1px solid #282828;
 }
 
+.playlist-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
 .playlist-header-info {
   display: flex;
   flex-direction: column;
@@ -172,6 +203,37 @@
   margin-right: 20px;
 }
 
+.rename-playlist-button {
+  padding: 8px 16px;
+  background-color: #1a1a1a;
+  color: #ffffff;
+  border: 1px solid #3e3e3e;
+  border-radius: 4px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.rename-playlist-button:hover {
+  background-color: #282828;
+  border-color: var(--accent-color);
+  color: var(--accent-color);
+}
+
+.playlist-rename-input {
+  padding: 8px 12px;
+  background-color: #1a1a1a;
+  border: 2px solid var(--accent-color);
+  border-radius: 4px;
+  color: #ffffff;
+  font-size: 28px;
+  font-weight: 700;
+  outline: none;
+  width: 100%;
+  max-width: 400px;
+}
+
 .delete-playlist-button {
   padding: 8px 16px;
   background-color: #e81123;
@@ -182,7 +244,6 @@
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s;
-  margin-right: 20px;
 }
 
 .delete-playlist-button:hover {
@@ -194,5 +255,67 @@
   font-size: 14px;
   margin-top: 10px;
   margin-bottom: 10px;
+}
+
+/* Panel at bottom: hidden duplicates for selected song */
+.dedupe-panel {
+  flex-shrink: 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(0, 0, 0, 0.35);
+  padding: 12px 20px 16px;
+  max-height: 220px;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.dedupe-panel-header {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: 10px;
+}
+
+.dedupe-panel-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.95);
+}
+
+.dedupe-panel-subtitle {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.dedupe-panel-list {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Override SongList styles inside dedupe panel */
+.dedupe-panel-list .song-list {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: transparent;
+}
+
+.dedupe-panel-list .song-list-header {
+  display: none; /* Hide header in dedupe panel */
+}
+
+.dedupe-panel-list .song-list-items {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
+  padding: 0;
+}
+
+.dedupe-panel-list .song-list-pagination {
+  display: none; /* Hide pagination in dedupe panel */
 }
 

@@ -91,6 +91,12 @@
   visibility: visible;
 } 
 
+/* when preview is active we grey out the bar and disable its controls */
+.player-bar.disabled {
+  opacity: 0.4;
+  pointer-events: none;
+}
+
 .player-bar.empty {
   justify-content: center;
 }
@@ -122,7 +128,7 @@
 .player-bar-song-info {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 2px;
   min-width: 0;
 }
 
@@ -151,7 +157,41 @@
 
 .player-bar-song-artist:hover {
   color: #ffffff;
+}
+
+.player-bar-song-diff {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.7);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+}
+
+.player-bar-song-diff:hover {
   text-decoration: underline;
+}
+
+.player-bar-preview-button {
+  margin-left: 8px;
+  background: rgba(var(--accent-color-rgb, 29,185,84), 0.16);
+  border: 1px solid rgba(var(--accent-color-rgb, 29,185,84), 0.4);
+  border-radius: 999px;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--accent-color, #1db954);
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
+}
+
+.player-bar-preview-button:hover {
+  background: rgba(var(--accent-color-rgb, 29,185,84), 0.25);
+  border-color: rgba(var(--accent-color-rgb, 29,185,84), 0.6);
+  color: #fff;
+  transform: translateY(-1px);
 }
 
 .player-bar-add-to-playlist {

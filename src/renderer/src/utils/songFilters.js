@@ -112,7 +112,8 @@ export const getCurrentSongs = ({
   hiddenArtists,
   nameFilter,
   nameFilterMode,
-  dedupeTitlesEnabled
+  dedupeTitlesEnabled,
+  preferredCanonicalByTitle
 }) => {
   const list = Array.isArray(songs) ? songs : [];
   const playlistList = Array.isArray(playlists) ? playlists : [];
@@ -217,7 +218,10 @@ export const getCurrentSongs = ({
         })
         .sort((a, b) => b.score - a.score);
 
-      const canonical = { ...scored[0].song };
+      const preferredId = preferredCanonicalByTitle?.[key] || null;
+      const preferredSong = preferredId ? group.find((x) => x.id === preferredId) : null;
+      const canonicalSource = preferredSong || scored[0].song;
+      const canonical = { ...canonicalSource };
       canonical.duplicates = group.filter((x) => x.id !== canonical.id);
       canonical.duplicatesCount = canonical.duplicates.length;
       result.push(canonical);

@@ -95,6 +95,18 @@ export const cancelDeletePlaylist = ({ setConfirmDelete }) => {
   setConfirmDelete(null);
 };
 
+export const renamePlaylist = ({ playlistId, newName, playlists, setPlaylists }) => {
+  if (!newName || !newName.trim()) return;
+  setPlaylists(
+    playlists.map((playlist) => {
+      if (playlist.id === playlistId) {
+        return { ...playlist, name: newName.trim() };
+      }
+      return playlist;
+    })
+  );
+};
+
 export const ensurePlaylistGlobalHelper = ({ addSongToPlaylist, setPlaylists }) => {
   try {
     window.__sosu_addSongToPlaylist = (playlistId, song) => {

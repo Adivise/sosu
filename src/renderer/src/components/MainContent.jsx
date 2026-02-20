@@ -16,6 +16,7 @@ const MainContent = ({
   allSongs,
   onRemoveFromPlaylist,
   onDeletePlaylist,
+  onRenamePlaylist,
   minDurationValue = 0,
   favorites = {},
   onToggleFavorite,
@@ -24,6 +25,7 @@ const MainContent = ({
   onDisplayedSongsChange,
   onAddArtistToFilter = null, // handler from App to add artist to hidden list
   onOpenSongDetails = null,
+  onOpenBeatmapPreview = null,
   onPreviewSelect = null,
   onClearPreview = null,
   onCreatePlaylist = null,
@@ -44,6 +46,9 @@ const MainContent = ({
   const [durationFilter, setDurationFilter] = useState({ min: 0, max: Infinity });
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   const [pageByView, setPageByView] = useState({});
+  const [isRenamingPlaylist, setIsRenamingPlaylist] = useState(false);
+  const [renamePlaylistValue, setRenamePlaylistValue] = useState('');
+  const renameInputRef = useRef(null);
 
   // Restore saved per-view pages from sessionStorage on mount
   useEffect(() => {
@@ -58,7 +63,7 @@ const MainContent = ({
         }
       }
       if (Object.keys(pages).length > 0) {
-        console.debug && console.debug('[MainContent] restoring saved pages', pages);
+        if (typeof console !== 'undefined' && console.debug) console.debug('[MainContent] restoring saved pages', pages);
         // Merge saved pages so they win over any existing defaults
         setPageByView(prev => ({ ...prev, ...pages }));
       }
@@ -67,6 +72,7 @@ const MainContent = ({
 
   // Skip resetting pages on initial mount (we restore saved pages first)
   const _skipPageResetOnMountRef = React.useRef(false);
+  const listRef = React.useRef(null);
 
   // Persist sort settings
   useEffect(() => {
@@ -101,7 +107,7 @@ const MainContent = ({
     // Avoid resetting to page 1 during initial mount when we've restored saved pages
     if (!_skipPageResetOnMountRef.current) {
       _skipPageResetOnMountRef.current = true;
-      console.debug && console.debug('[MainContent] skipped initial page reset', { viewKey });
+      if (typeof console !== 'undefined' && console.debug) console.debug('[MainContent] skipped initial page reset', { viewKey });
       // Initialize prevDeps to current values
       prevDepsRef.current = { viewKey, debouncedQuery, minDurationValue, durationMin: durationFilter.min, durationMax: durationFilter.max, sortBy, sortDuration, nameFilter };
       return;
@@ -119,7 +125,7 @@ const MainContent = ({
         if (saved != null) {
           const v = Math.max(1, parseInt(saved, 10) || 1);
           setPageByView(prev => ({ ...prev, [viewKey]: v }));
-          console.debug && console.debug('[MainContent] restored page for view change', { viewKey, restoredPage: v });
+          if (typeof console !== 'undefined' && console.debug) console.debug('[MainContent] restored page for view change', { viewKey, restoredPage: v });
           // update prev and return
           prevDepsRef.current = { viewKey, debouncedQuery, minDurationValue, durationMin: durationFilter.min, durationMax: durationFilter.max, sortBy, sortDuration, nameFilter };
           return;
@@ -129,12 +135,12 @@ const MainContent = ({
       // No saved value -> reset to 1
       setPageByView(prev => ({ ...prev, [viewKey]: 1 }));
       try { sessionStorage.setItem(`sosu:page:${viewKey}`, '1'); } catch (e) {}
-      console.debug && console.debug('[MainContent] reset page to 1 (no saved) on view change', { viewKey });
+      if (typeof console !== 'undefined' && console.debug) console.debug('[MainContent] reset page to 1 (no saved) on view change', { viewKey });
     } else {
       // Filters changed (or both changed) -> reset to 1
       setPageByView(prev => ({ ...prev, [viewKey]: 1 }));
       try { sessionStorage.setItem(`sosu:page:${viewKey}`, '1'); } catch (e) {}
-      console.debug && console.debug('[MainContent] resetting page to 1 due to filter/view change', { viewKey });
+      if (typeof console !== 'undefined' && console.debug) console.debug('[MainContent] resetting page to 1 due to filter/view change', { viewKey });
     }
 
     // Update previous dependency snapshot
@@ -167,7 +173,8 @@ const MainContent = ({
         (song.title || '').toLowerCase().includes(query) ||
         (song.artist || '').toLowerCase().includes(query) ||
         (song.folderName || '').toLowerCase().includes(query) ||
-        (song.album && song.album.toLowerCase().includes(query))
+        (song.album && song.album.toLowerCase().includes(query)) ||
+        (song.version || '').toLowerCase().includes(query)
       );
     }
 
@@ -234,6 +241,38 @@ const MainContent = ({
     return `No results for "${query}". Try clearing the search or checking Filters (Settings).`;
   };
 
+  const selectedPlaylist = selectedPlaylistId
+    ? playlists.find(p => p.id === selectedPlaylistId)
+    : null;
+  const isPlaylistView =
+    currentView.startsWith('playlist-') || selectedPlaylistId !== null;
+
+  const handleStartRename = () => {
+    if (selectedPlaylist) {
+      setRenamePlaylistValue(selectedPlaylist.name);
+      setIsRenamingPlaylist(true);
+    }
+  };
+
+  const handleCancelRename = () => {
+    setIsRenamingPlaylist(false);
+    setRenamePlaylistValue('');
+  };
+
+  const handleConfirmRename = () => {
+    if (onRenamePlaylist && selectedPlaylistId && renamePlaylistValue.trim()) {
+      onRenamePlaylist(selectedPlaylistId, renamePlaylistValue.trim());
+      setIsRenamingPlaylist(false);
+      setRenamePlaylistValue('');
+    }
+  };
+
+  useEffect(() => {
+    if (isRenamingPlaylist && renameInputRef.current) {
+      renameInputRef.current.focus();
+      renameInputRef.current.select();
+    }
+  }, [isRenamingPlaylist]);
 
   // ✅ Loading state
   if (loading) {
@@ -250,66 +289,85 @@ const MainContent = ({
     );
   }
 
-  const selectedPlaylist = selectedPlaylistId
-    ? playlists.find(p => p.id === selectedPlaylistId)
-    : null;
-  const isPlaylistView =
-    currentView.startsWith('playlist-') || selectedPlaylistId !== null;
-
   return (
     <div className="main-content">
       <div className="main-content-header">
         {isPlaylistView && selectedPlaylist ? (
           <div className="playlist-header">
             <div className="playlist-header-info">
-              <h2 className="playlist-title">{selectedPlaylist.name}</h2>
+              {isRenamingPlaylist ? (
+                <input
+                  ref={renameInputRef}
+                  type="text"
+                  className="playlist-rename-input"
+                  value={renamePlaylistValue}
+                  onChange={(e) => setRenamePlaylistValue(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      handleConfirmRename();
+                    } else if (e.key === 'Escape') {
+                      handleCancelRename();
+                    }
+                  }}
+                  onBlur={handleConfirmRename}
+                />
+              ) : (
+                <h2 className="playlist-title">{selectedPlaylist.name}</h2>
+              )}
               <span className="playlist-subtitle">
                 {selectedPlaylist.songs.length} songs
               </span>
             </div>
-            <button
-              className="delete-playlist-button"
-              onClick={() => onDeletePlaylist(selectedPlaylistId)}
-              title="Delete Playlist"
-            >
-              Delete Playlist
-            </button>
-          </div>
-        ) : currentView === 'songs' ? (
-          <div className="view-header">
-            <h2 className="view-title">Library</h2>
-            <span className="view-subtitle">{songs.length} songs</span>
-          </div>
-        ) : currentView === 'recently-played' ? (
-          <div className="view-header">
-            <h2 className="view-title">Recently Played</h2>
-            <span className="view-subtitle">{filteredSongs.length} songs</span>
-          </div>
-        ) : currentView === 'favorites' ? (
-          <div className="view-header">
-            <h2 className="view-title">Favorites</h2>
-            <span className="view-subtitle">{filteredSongs.length} songs</span>
-          </div>
-        ) : currentView === 'most-played' ? (
-          <div className="view-header">
-            <h2 className="view-title">Most Played</h2>
-            <span className="view-subtitle">{filteredSongs.length} songs</span>
+            <div className="playlist-header-actions">
+              {!isRenamingPlaylist && (
+                <button
+                  className="rename-playlist-button"
+                  onClick={handleStartRename}
+                  title="Rename Playlist"
+                >
+                  Rename
+                </button>
+              )}
+              <button
+                className="delete-playlist-button"
+                onClick={() => onDeletePlaylist(selectedPlaylistId)}
+                title="Delete Playlist"
+              >
+                Delete Playlist
+              </button>
+            </div>
           </div>
         ) : null}
-        <SearchBar
-          searchQuery={searchQuery}
-          onSearchChange={setSearchQuery}
-          songs={songs}
-          showFilters={currentView !== 'recently-played' && currentView !== 'most-played'}
-          sortBy={sortBy}
-          onSortChange={setSortBy}
-          sortDuration={sortDuration}
-          onSortDurationChange={setSortDuration}
-          durationFilter={durationFilter}
-          onDurationFilterChange={setDurationFilter}
-          showAdvancedFilters={showAdvancedFilters}
-          onToggleAdvancedFilters={() => setShowAdvancedFilters(!showAdvancedFilters)}
-        />
+        <div className="main-header-row">
+          <SearchBar
+            searchQuery={searchQuery}
+            onSearchChange={setSearchQuery}
+            songs={songs}
+            showFilters={currentView !== 'recently-played' && currentView !== 'most-played'}
+            sortBy={sortBy}
+            onSortChange={setSortBy}
+            sortDuration={sortDuration}
+            onSortDurationChange={setSortDuration}
+            durationFilter={durationFilter}
+            onDurationFilterChange={setDurationFilter}
+            showAdvancedFilters={showAdvancedFilters}
+            onToggleAdvancedFilters={() => setShowAdvancedFilters(!showAdvancedFilters)}
+          />
+          {currentView === 'songs' && (
+            <div className="view-header-compact">
+              <span className="view-title-compact">Library</span>
+              <span className="view-subtitle-compact">{songs.length} songs</span>
+            </div>
+          )}
+          {(currentView === 'favorites' || currentView === 'most-played' || currentView === 'recently-played') && (
+            <div className="view-header-compact">
+              <span className="view-title-compact">
+                {currentView === 'favorites' ? 'Favorites' : currentView === 'most-played' ? 'Most Played' : 'Recently Played'}
+              </span>
+              <span className="view-subtitle-compact">{filteredSongs.length} songs</span>
+            </div>
+          )}
+        </div>
       </div>
 
       <div className="main-content-body">
@@ -341,7 +399,7 @@ const MainContent = ({
         ) : isPlaylistView && filteredSongs.length === 0 ? (
           <div className="empty-state">
             <h2>No songs in this playlist</h2>
-            <p>This playlist doesn't contain any songs yet</p>
+            <p>This playlist doesn&apos;t contain any songs yet</p>
           </div>
         ) : songs.length > 0 ? (
           // When there are songs available but filters/search hide all results, show a helpful message with quick actions
@@ -370,6 +428,7 @@ const MainContent = ({
           ) : (
 
           <SongList
+            listRef={listRef}
             songs={filteredSongs}
             onSongSelect={onSongSelect}
             currentSong={currentSong}
@@ -392,10 +451,11 @@ const MainContent = ({
                 ...prev,
                 [viewKey]: page
               }));
-              try { sessionStorage.setItem(`sosu:page:${viewKey}`, String(page)); console.debug && console.debug('[MainContent] saved page change', { viewKey, page }); } catch (e) {}
+              try { sessionStorage.setItem(`sosu:page:${viewKey}`, String(page)); if (typeof console !== 'undefined' && console.debug) console.debug('[MainContent] saved page change', { viewKey, page }); } catch (e) {}
             }}
             onAddArtistToFilter={onAddArtistToFilter}
             onOpenSongDetails={onOpenSongDetails}
+            onOpenBeatmapPreview={onOpenBeatmapPreview}
             onPreviewSelect={onPreviewSelect}
             onClearPreview={onClearPreview}
             onCreatePlaylist={onCreatePlaylist}

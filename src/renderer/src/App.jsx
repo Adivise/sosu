@@ -1,9 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
+import { EyeOff } from 'lucide-react';
 import { BrowserRouter as Router } from 'react-router-dom';
 import Sidebar from './components/Sidebar';
 import MainContent from './components/MainContent';
 import PlayerBar from './components/PlayerBar';
-import TitleBar from './components/TitleBar';
 import CreatePlaylistModal from './components/CreatePlaylistModal';
 import SettingsModal from './components/SettingsModal';
 import EQModal from './components/EQModal';
@@ -39,7 +39,8 @@ import {
   requestDeletePlaylist as requestDeletePlaylistHelper,
   confirmDeletePlaylist as confirmDeletePlaylistHelper,
   cancelDeletePlaylist as cancelDeletePlaylistHelper,
-  ensurePlaylistGlobalHelper as ensurePlaylistGlobalHelperHelper
+  ensurePlaylistGlobalHelper as ensurePlaylistGlobalHelperHelper,
+  renamePlaylist as renamePlaylistHelper
 } from './handlers/playlistHandlers';
 import {
   getSettingsSnapshot as getSettingsSnapshotHelper,
@@ -127,12 +128,14 @@ function App() {
   const [accentColor, setAccentColor] = useLocalStorageState('accentColor', '#1db954');
   const [showSongBadges, setShowSongBadges] = useLocalStorageState('showSongBadges', false);
   const [favorites, setFavorites] = useLocalStorageState('favorites', {});
-  const [durationFilter, setDurationFilter] = useState({ min: 0, max: Infinity });
+  const [_durationFilter, setDurationFilter] = useState({ min: 0, max: Infinity });
   const [itemsPerPage, setItemsPerPage] = useLocalStorageState('itemsPerPage', 50);
   const [displayedSongs, setDisplayedSongs] = useState([]);
   const [displayedSongsSourceView, setDisplayedSongsSourceView] = useState(null);
   const [songDetails, setSongDetails] = useState(null);
   const [highlightedSongId, setHighlightedSongId] = useState(null); // preview highlight id
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const pendingPreviewRef = useRef(false);
   
   // Close to tray settings
   const [closeToTray, setCloseToTray] = useLocalStorageState('closeToTray', true);
@@ -143,6 +146,23 @@ function App() {
   // Highlight song requests from other UI elements (e.g., jump-to-song)
   useEffect(() => {
     return registerHighlightSongEventHelper({ setHighlightedSongId });
+  }, []);
+
+  // Watch for the preview window closing so we can re-enable the player UI
+  useEffect(() => {
+    if (!window.electronAPI) return;
+    const handleClosed = () => {
+      // ignore closures that occur while we're immediately opening a new preview
+      if (pendingPreviewRef.current) return;
+      setIsPreviewOpen(false);
+      setHighlightedSongId(null);
+    };
+    window.electronAPI.onBeatmapPlayerClosed(handleClosed);
+    return () => {
+      if (window.electronAPI.removeBeatmapPlayerClosedListener) {
+        window.electronAPI.removeBeatmapPlayerClosedListener();
+      }
+    };
   }, []);
 
   // Allow other UI to open Settings via a custom event (used by the "No results" helper)
@@ -199,18 +219,95 @@ function App() {
   const handleCloseConfirmCancel = () => {
     handleCloseConfirmCancelHelper({ setShowCloseConfirmDialog });
   };
+
+  const openBeatmapPreview = async (song = null) => {
+    if (!song || !song.folderPath) {
+      console.error('[Preview] No song or folder path provided');
+      return;
+    }
+
+    // pause current playback and mark preview open so UI can block
+    if (isPlaying) {
+      setIsPlaying(false);
+    }
+    setIsPreviewOpen(true);
+    pendingPreviewRef.current = true;
+
+    try {
+      // send current theme to preview before opening so it matches immediately
+      try {
+        const accentHover = adjustBrightness(accentColor, 120);
+        const accentDark = adjustBrightness(accentColor, 80);
+        const accentContrast = getContrastColor(accentColor);
+        const hex = (accentColor || '#1db954').replace('#', '').trim();
+        let r = 29, g = 185, b = 84;
+        if (hex.length === 6) { r = parseInt(hex.slice(0,2), 16); g = parseInt(hex.slice(2,4), 16); b = parseInt(hex.slice(4,6), 16); }
+        if (window.electronAPI?.updateBeatmapPlayerTheme) {
+          window.electronAPI.updateBeatmapPlayerTheme({
+            accentColor,
+            accentHover,
+            accentDark,
+            accentContrast,
+            accentColorRgb: `${r}, ${g}, ${b}`
+          });
+        }
+      } catch (e) { /* ignore */ }
+
+      const result = await window.electronAPI.openBeatmapPlayer(song.folderPath);
+      pendingPreviewRef.current = false;
+      if (!result?.success) {
+        console.error('[Preview] Failed to open window:', result?.error);
+        // if the preview failed to open, clear the open flag so UI isn't blocked forever
+        setIsPreviewOpen(false);
+      } else {
+        // Ensure the newly opened preview receives theme vars — send again after window is created
+        const themePayload = {
+          accentColor,
+          accentHover: adjustBrightness(accentColor, 120),
+          accentDark: adjustBrightness(accentColor, 80),
+          accentContrast: getContrastColor(accentColor),
+          accentColorRgb: (() => {
+            const hex = (accentColor || '#1db954').replace('#', '').trim();
+            let r = 29, g = 185, b = 84;
+            if (hex.length === 6) {
+              r = parseInt(hex.slice(0, 2), 16);
+              g = parseInt(hex.slice(2, 4), 16);
+              b = parseInt(hex.slice(4, 6), 16);
+            }
+            return `${r}, ${g}, ${b}`;
+          })()
+        };
+        try {
+          const sendTheme = () => {
+            try {
+              if (window.electronAPI?.updateBeatmapPlayerTheme) {
+                window.electronAPI.updateBeatmapPlayerTheme(themePayload);
+              }
+            } catch (_e) { /* ignore */ }
+          };
+          sendTheme();
+          setTimeout(sendTheme, 120);
+        } catch (_e) { /* ignore */ }
+      }
+    } catch (err) {
+      console.error('[Preview] Error opening beatmap player:', err);
+      pendingPreviewRef.current = false;
+      setIsPreviewOpen(false);
+    }
+  };
   
   // Advanced filters
   const [hiddenArtists, setHiddenArtists] = useLocalStorageState('hiddenArtists', ['Unknown Artist']);
   const [nameFilter, setNameFilter] = useLocalStorageState('nameFilter', '');
   const [nameFilterMode, setNameFilterMode] = useLocalStorageState('nameFilterMode', 'contains');
   const [scanAllMaps, setScanAllMaps] = useLocalStorageState('scanAllMaps', false);
-  const [dedupeTitlesEnabled, setDedupeTitlesEnabled] = useLocalStorageState('dedupeTitlesEnabled', true);
+  const [dedupeTitlesEnabled, setDedupeTitlesEnabled] = useLocalStorageState('dedupeTitlesEnabled', false);
+  const [preferredCanonicalByTitle, setPreferredCanonicalByTitle] = useLocalStorageState('preferredCanonicalByTitle', {});
 
   const {
     songs,
     setSongs,
-    songsCache,
+    songsCache: _songsCache,
     setSongsCache,
     songDurations,
     setSongDurations,
@@ -224,9 +321,9 @@ function App() {
     removeFolder,
     // playback related
     playCounts,
-    setPlayCounts,
+    setPlayCounts: _setPlayCounts,
     recentlyPlayed,
-    setRecentlyPlayed,
+    setRecentlyPlayed: _setRecentlyPlayed,
     notifyPlayback,
     clearPlayCounts,
     clearRecentlyPlayed
@@ -264,7 +361,9 @@ function App() {
     if (!el) return;
     // Only remove if we have loaded user data, not currently loading, and either there was no initial auto-sync OR it has completed
     if (userDataLoaded && !loading && (!initialAutoSyncRef.current || initialAutoSyncDoneRef.current)) {
-      try { el.parentNode && el.parentNode.removeChild(el); } catch (e) {}
+      try {
+        if (el.parentNode) el.parentNode.removeChild(el);
+      } catch (_e) { /* ignore */ }
     }
   }, [userDataLoaded, loading]);
 
@@ -282,7 +381,7 @@ function App() {
         // Load user data (settings)
         const data = await window.electronAPI.getUserData();
         // Use a local variable so startup scans use the same value that UI shows
-        let effectiveScanAllMaps = scanAllMaps;
+        let _effectiveScanAllMaps = scanAllMaps;
 
         if (data) {
           setVolume(data.volume ?? 1);
@@ -300,7 +399,7 @@ function App() {
           if (typeof data.nameFilter === 'string') setNameFilter(data.nameFilter);
           if (typeof data.nameFilterMode === 'string') setNameFilterMode(data.nameFilterMode);
           if (typeof data.scanAllMaps === 'boolean') {
-            effectiveScanAllMaps = data.scanAllMaps;
+            _effectiveScanAllMaps = data.scanAllMaps;
             setScanAllMaps(data.scanAllMaps);
           }
           if (typeof data.dedupeTitlesEnabled === 'boolean') {
@@ -425,7 +524,6 @@ function App() {
             try { initialAutoSyncDoneRef.current = true; } catch (e) {}
           }
         }
-
       }
       setUserDataLoaded(true);
     })();
@@ -458,18 +556,29 @@ function App() {
         b = parseInt(hex.slice(4,6), 16);
       }
       document.documentElement.style.setProperty('--accent-color-rgb', `${r}, ${g}, ${b}`);
+
+      // Send theme vars to beatmap preview window (runtime sync)
+      try {
+        if (window.electronAPI?.updateBeatmapPlayerTheme) {
+          window.electronAPI.updateBeatmapPlayerTheme({
+            accentColor,
+            accentHover,
+            accentDark,
+            accentContrast,
+            accentColorRgb: `${r}, ${g}, ${b}`
+          });
+        }
+      } catch (err) { /* ignore */ }
     }
   }, [accentColor]);
 
   // EQ bands persisted by useLocalStorageState
 
-
-
   // Debounced save of user data to avoid frequent disk writes (currentTime excluded from main effect)
   const saveTimerRef = useRef(null);
   const pendingSaveRef = useRef(null);
 
-  const scheduleSave = (partialData, delay = 2000, immediate = false) => {
+  const scheduleSave = (partialData, delay = 1000, immediate = true) => {
     scheduleSaveHelper({
       pendingSaveRef,
       saveTimerRef,
@@ -480,6 +589,14 @@ function App() {
       }
     }, partialData, delay, immediate);
   };
+
+  // Ensure accent color is saved immediately when it changes so preview windows
+  // that read from userData always see the latest accent (even if theme IPC
+  // messages are missed due to timing).
+  useEffect(() => {
+    if (!userDataLoaded) return;
+    scheduleSave({ accentColor }, 0, true);
+  }, [accentColor, userDataLoaded]);
 
   // Save general user settings (exclude high-frequency currentTime updates)
   useEffect(() => {
@@ -528,7 +645,20 @@ function App() {
         pendingSaveRef.current = null;
       }
     };
-  }, [userDataLoaded, volume, autoplay, shuffle, repeat, playlists, osuFolderPath, discordRpcEnabled, widgetServerEnabled, minDurationValue, itemsPerPage, albumArtBlur, blurIntensity, accentColor, showSongBadges, hardwareAcceleration, hiddenArtists, nameFilter, nameFilterMode, scanAllMaps, dedupeTitlesEnabled, currentSong, duration, eqBands, recentlyPlayed, playCounts]);
+    // Added `vuEnabled` so toggling the VU meter triggers a save immediately
+  }, [userDataLoaded, volume, autoplay, shuffle, repeat, playlists, osuFolderPath, discordRpcEnabled, widgetServerEnabled, vuEnabled, minDurationValue, itemsPerPage, albumArtBlur, blurIntensity, accentColor, showSongBadges, hardwareAcceleration, hiddenArtists, nameFilter, nameFilterMode, scanAllMaps, dedupeTitlesEnabled, currentSong, duration, eqBands, recentlyPlayed, playCounts]);
+
+  // Set window title based on current song
+  useEffect(() => {
+    if (window.electronAPI?.windowSetTitle) {
+      if (currentSong) {
+        const titleText = `${currentSong.title}${currentSong.artist ? ' — ' + currentSong.artist : ''} (Player)`;
+        window.electronAPI.windowSetTitle(titleText);
+      } else {
+        window.electronAPI.windowSetTitle('sosu (Player)');
+      }
+    }
+  }, [currentSong]);
 
   // Ensure data is flushed when the window is being closed or hidden (force save on exit)
   useEffect(() => {
@@ -576,8 +706,8 @@ function App() {
       }
     };
 
-    const onBeforeUnload = (e) => { flush(); };
-    const onPageHide = (e) => { flush(); };
+    const onBeforeUnload = (_e) => { flush(); };
+    const onPageHide = (_e) => { flush(); };
     const onVisibilityChange = () => { if (document.visibilityState === 'hidden') flush(); };
 
     window.addEventListener('beforeunload', onBeforeUnload);
@@ -737,6 +867,9 @@ function App() {
   // (e.g. after reset or rescan removed it), stop playback and clear it
   useEffect(() => {
     if (!currentSong) return;
+    // Don't clear if this is a difficulty variant (has _difficultyFilename)
+    // Difficulty variants are synthetic objects created from currentSong, so they won't be in songs list
+    if (currentSong._difficultyFilename) return;
     const exists = songs.some(song => song.id === currentSong.id);
     if (!exists) {
       setIsPlaying(false);
@@ -816,6 +949,7 @@ function App() {
   // Global spacebar handler: toggle play/pause when appropriate
   useEffect(() => {
     const onKeyDown = (e) => {
+      if (isPreviewOpen) return; // don't respond while preview window blocks UI
       // Detect spacebar (support older key values too)
       const isSpace = e.code === 'Space' || e.key === ' ' || e.key === 'Spacebar';
       if (!isSpace) return;
@@ -843,9 +977,20 @@ function App() {
 
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [handlePlayPause]);
+  }, [handlePlayPause, isPreviewOpen]);
 
   const handleSongSelect = (song) => {
+    // If titles are grouped (dedupe) and user plays a hidden duplicate,
+    // promote it to be the canonical entry for that title.
+    try {
+      if (dedupeTitlesEnabled && song && !song._difficultyFilename) {
+        const key = (song.title || '').toLowerCase().trim();
+        if (key) {
+          setPreferredCanonicalByTitle((prev) => ({ ...(prev || {}), [key]: song.id }));
+        }
+      }
+    } catch (_e) {}
+
     handleSongSelectHelper({
       song,
       currentSong,
@@ -906,7 +1051,8 @@ function App() {
     hiddenArtists,
     nameFilter,
     nameFilterMode,
-    dedupeTitlesEnabled
+    dedupeTitlesEnabled,
+    preferredCanonicalByTitle
   };
 
   const getCurrentSongs = () => getCurrentSongsHelper(currentSongsArgs);
@@ -969,6 +1115,10 @@ function App() {
 
   const cancelConfirmDelete = () => {
     cancelDeletePlaylistHelper({ setConfirmDelete });
+  };
+
+  const renamePlaylist = (playlistId, newName) => {
+    renamePlaylistHelper({ playlistId, newName, playlists, setPlaylists });
   };
 
   useEffect(() => {
@@ -1147,7 +1297,6 @@ function App() {
             }}
           />
         )}
-        <TitleBar currentSong={currentSong} />
         <div className="app-content">
           <Sidebar 
             onSelectFolder={() => setShowSettingsModal(true)} 
@@ -1158,6 +1307,7 @@ function App() {
             onCreatePlaylist={() => setShowCreatePlaylistModal(true)}
             onSelectPlaylist={handleSelectPlaylist}
             selectedPlaylistId={selectedPlaylistId}
+            onOpenBeatmapPreview={() => openBeatmapPreview(null)}
           />
           <SettingsModal
             isOpen={showSettingsModal}
@@ -1275,6 +1425,7 @@ function App() {
             onAddToPlaylist={addSongToPlaylist}
             onRemoveFromPlaylist={removeSongFromPlaylist}
             onDeletePlaylist={deletePlaylist}
+            onRenamePlaylist={renamePlaylist}
             minDurationValue={minDurationValue}
             albumArtBlur={albumArtBlur}
             blurIntensity={blurIntensity}
@@ -1308,6 +1459,7 @@ function App() {
               });
             }}
             onOpenSongDetails={(song) => setSongDetails(song)}
+            onOpenBeatmapPreview={(song) => openBeatmapPreview(song)}
             onPreviewSelect={(song) => {
               // Preview-select: only set UI highlight, do NOT change playback
               setHighlightedSongId(song ? song.id : null);
@@ -1331,6 +1483,7 @@ function App() {
         <PlayerBar
           currentSong={currentSong}
           isPlaying={isPlaying}
+          controlsDisabled={isPreviewOpen}
           onPlayPause={handlePlayPause}
           onNext={handleNext}
           onPrevious={handlePrevious}
@@ -1361,7 +1514,18 @@ function App() {
           showEQModal={showEQModal}
           onOpenEQModal={() => setShowEQModal(true)}
           vuEnabled={vuEnabled}
+          onOpenBeatmapPreview={(song) => openBeatmapPreview(song)}
         />
+
+        {/* overlay that blocks interaction while preview window is open */}
+        {isPreviewOpen && (
+          <div className="preview-blocker-overlay">
+            <div className="preview-blocker-inner">
+              <EyeOff className="preview-blocker-icon" />
+              <div className="preview-blocker-message">Preview open – close it to return to player</div>
+            </div>
+          </div>
+        )}
       </div>
     </Router>
   );
