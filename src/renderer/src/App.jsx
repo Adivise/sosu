@@ -120,13 +120,13 @@ function App() {
   const [showEQModal, setShowEQModal] = useState(false);
   const [discordRpcEnabled, setDiscordRpcEnabled] = useState(false);
   const [widgetServerEnabled, setWidgetServerEnabled] = useState(false);
-  const [vuEnabled, setVuEnabled] = useLocalStorageState('vuEnabled', true);
+  const [vuEnabled, setVuEnabled] = useLocalStorageState('vuEnabled', false);
   const [userDataLoaded, setUserDataLoaded] = useState(false);
   const [eqBands, setEqBands] = useLocalStorageState('eqBands', DEFAULT_EQ_BANDS, { serializer: JSON.stringify, deserializer: (v) => normalizeEqBands(JSON.parse(v)) });
   const [albumArtBlur, setAlbumArtBlur] = useLocalStorageState('albumArtBlur', true);
   const [blurIntensity, setBlurIntensity] = useLocalStorageState('blurIntensity', 60);
   const [accentColor, setAccentColor] = useLocalStorageState('accentColor', '#1db954');
-  const [showSongBadges, setShowSongBadges] = useLocalStorageState('showSongBadges', false);
+  const [showSongBadges, setShowSongBadges] = useLocalStorageState('showSongBadges', true);
   const [favorites, setFavorites] = useLocalStorageState('favorites', {});
   const [_durationFilter, setDurationFilter] = useState({ min: 0, max: Infinity });
   const [itemsPerPage, setItemsPerPage] = useLocalStorageState('itemsPerPage', 50);
@@ -301,7 +301,7 @@ function App() {
   const [nameFilter, setNameFilter] = useLocalStorageState('nameFilter', '');
   const [nameFilterMode, setNameFilterMode] = useLocalStorageState('nameFilterMode', 'contains');
   const [scanAllMaps, setScanAllMaps] = useLocalStorageState('scanAllMaps', false);
-  const [dedupeTitlesEnabled, setDedupeTitlesEnabled] = useLocalStorageState('dedupeTitlesEnabled', false);
+  const [dedupeTitlesEnabled, setDedupeTitlesEnabled] = useLocalStorageState('dedupeTitlesEnabled', true);
   const [preferredCanonicalByTitle, setPreferredCanonicalByTitle] = useLocalStorageState('preferredCanonicalByTitle', {});
 
   const {
@@ -1392,7 +1392,7 @@ function App() {
           {/* Non-blocking confirm dialog for playlist deletion (replaces window.confirm to avoid focus races) */}
           {confirmDelete && (
             <div className="modal-overlay" onClick={cancelConfirmDelete}>
-              <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+              <div className="modal-content settings-modal" onClick={(e) => e.stopPropagation()}>
                 <div className="modal-header">
                   <h2 className="modal-title">Delete Playlist</h2>
                   <button className="modal-close" onClick={cancelConfirmDelete}>

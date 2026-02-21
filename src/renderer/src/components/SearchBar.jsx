@@ -3,7 +3,22 @@ import { Search, X } from 'lucide-react';
 import SearchSuggestions from './SearchSuggestions';
 import './SearchBar.css';
 
-const SearchBar = ({ searchQuery, onSearchChange, songs, showFilters = false, sortBy, onSortChange, sortDuration, onSortDurationChange }) => {
+// load mode icons same as SongItem
+import osuIcon from '../../../../resources/icons/modes/osu.svg';
+import taikoIcon from '../../../../resources/icons/modes/taiko.svg';
+import catchIcon from '../../../../resources/icons/modes/fruits.svg';
+import maniaIcon from '../../../../resources/icons/modes/mania.svg';
+const MODE_ICONS = [osuIcon, taikoIcon, catchIcon, maniaIcon];
+
+const MODE_ORDERS = [
+  [0, 1, 2, 3], // std > taiko > catch > mania
+  [1, 2, 3, 0], // taiko > catch > mania > std
+  [2, 3, 0, 1], // catch > mania > std > taiko
+  [3, 0, 1, 2], // mania > std > taiko > catch
+];
+const MODE_LABELS = ['osu!standard', 'osu!taiko', 'osu!catch', 'osu!mania'];
+
+const SearchBar = ({ searchQuery, onSearchChange, songs, showFilters = false, sortBy, onSortChange, sortDuration, onSortDurationChange, modeSortIndex, setModeSortIndex }) => {
   const [isFocused, setIsFocused] = useState(false);
   const [suggestions, setSuggestions] = useState([]);
   const [selectedIndex, setSelectedIndex] = useState(-1);
@@ -17,32 +32,41 @@ const SearchBar = ({ searchQuery, onSearchChange, songs, showFilters = false, so
   useEffect(() => {
     if (searchQuery.trim() && songs.length > 0) {
       const query = searchQuery.toLowerCase();
-      const matches = songs
+      let matches = songs
         .filter(song => 
           (song.title || '').toLowerCase().includes(query) ||
           (song.artist || '').toLowerCase().includes(query) ||
           (song.folderName || '').toLowerCase().includes(query) ||
           (song.version || '').toLowerCase().includes(query)
         )
-        .slice(0, 8)
         .map(song => {
           const titleHit = (song.title || '').toLowerCase().includes(query);
           const artistHit = (song.artist || '').toLowerCase().includes(query);
           const folderHit = (song.folderName || '').toLowerCase().includes(query);
           const versionHit = (song.version || '').toLowerCase().includes(query);
-
           return {
             ...song,
             matchType: titleHit ? 'title' : artistHit ? 'artist' : folderHit ? 'folder' : versionHit ? 'version' : 'title'
           };
         });
-      
+
+      // Sort by mode if selected
+      if (sortBy === 'mode') {
+        const order = MODE_ORDERS[modeSortIndex];
+        matches = matches.sort((a, b) => {
+          const aMode = typeof a.mode === 'number' ? a.mode : 0;
+          const bMode = typeof b.mode === 'number' ? b.mode : 0;
+          return order.indexOf(aMode) - order.indexOf(bMode);
+        });
+      }
+
+      matches = matches.slice(0, 8);
       setSuggestions(matches);
     } else {
       setSuggestions([]);
     }
     setSelectedIndex(-1);
-  }, [searchQuery, songs]);
+  }, [searchQuery, songs, sortBy, modeSortIndex]);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -140,17 +164,16 @@ const SearchBar = ({ searchQuery, onSearchChange, songs, showFilters = false, so
   };
 
   // Cycle through sort options: none -> az -> za -> none
-  // If current sort is an unrelated mode (e.g., artist-az), switch to name asc
+  // Mode sort is handled separately
   const handleSortCycle = () => {
     if (sortBy === 'none') {
       onSortChange('az');
-      onSortDurationChange('none'); // Reset duration sort when Name is selected
+      onSortDurationChange('none');
     } else if (sortBy === 'az') {
       onSortChange('za');
     } else if (sortBy === 'za') {
       onSortChange('none');
     } else {
-      // Any other mode (artist-az/za etc) -> switch to Name asc
       onSortChange('az');
       onSortDurationChange('none');
     }
@@ -171,7 +194,7 @@ const SearchBar = ({ searchQuery, onSearchChange, songs, showFilters = false, so
   const getSortIcon = () => {
     if (sortBy === 'az') return '↑';
     if (sortBy === 'za') return '↓';
-    return '◇'; // neutral indicator when none
+    return '◇'; // neutral icon for all other cases, including 'mode'
   };
 
   const getDurationSortIcon = () => {
@@ -212,6 +235,35 @@ const SearchBar = ({ searchQuery, onSearchChange, songs, showFilters = false, so
                 title="Cycle: A-Z → Z-A → None"
               >
                 Name {getSortIcon()}
+              </button>
+              <button
+                className={`filter-chip ${sortBy === 'mode' ? 'active' : ''}`}
+                onClick={() => {
+                  if (sortBy !== 'mode') {
+                    onSortChange('mode');
+                    setModeSortIndex(0);
+                  } else {
+                    // Cycle through mode orders
+                    const next = (modeSortIndex + 1) % MODE_ORDERS.length;
+                    if (next === 0) {
+                      onSortChange('none');
+                    }
+                    setModeSortIndex(next);
+                  }
+                  onSortDurationChange('none');
+                }}
+                title={`Sort by mode: ${MODE_LABELS[MODE_ORDERS[modeSortIndex][0]]} → ${MODE_LABELS[MODE_ORDERS[modeSortIndex][1]]} → ${MODE_LABELS[MODE_ORDERS[modeSortIndex][2]]} → ${MODE_LABELS[MODE_ORDERS[modeSortIndex][3]]}`}
+              >
+                Mode {' '}
+              {sortBy === 'mode' ? (
+                <img
+                  src={MODE_ICONS[MODE_ORDERS[modeSortIndex][0]]}
+                  alt={MODE_LABELS[MODE_ORDERS[modeSortIndex][0]]}
+                  className="mode-sort-icon"
+                />
+              ) : (
+                '◇'
+              )}
               </button>
               <button
                 className={`filter-chip ${sortBy === 'artist-az' || sortBy === 'artist-za' ? 'active' : ''}`}

@@ -145,6 +145,7 @@ export default function PreviewDetailsModal({ isOpen, onClose, beatmapData, dura
               <div style={{marginTop:8,fontSize:12,color:'rgba(255,255,255,0.55)'}}>Mode: <strong style={{color:'var(--accent-color)'}}>{MODE_NAMES[modeIndex] || `Mode ${modeIndex}`}</strong></div>
             </div>
 
+
             <div className="preview-card">
               <div className="card-title">Timing points (visible)</div>
               <div className="list-scroll">

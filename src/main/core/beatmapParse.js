@@ -57,7 +57,13 @@ async function parseBeatmap(folderPath) {
             // Try to extract human-readable difficulty/version from file
             const versionMatch = content.match(/^Version:\s*(.+)$/m);
             const version = versionMatch ? versionMatch[1].trim() : filename.replace(/\.osu$/i, '');
-            osuFilesList.push({ filename, version, audioFilename: parsedAudio });
+            // determine mode from file (default 0 if missing)
+            let mode = 0;
+            const modeMatch = content.match(/^Mode:\s*(\d+)/m);
+            if (modeMatch) {
+              mode = parseInt(modeMatch[1], 10) || 0;
+            }
+            osuFilesList.push({ filename, version, audioFilename: parsedAudio, mode });
           } catch (readErr) {
             console.warn('[BeatmapParser] Failed to read .osu file:', filename, readErr.message);
           }

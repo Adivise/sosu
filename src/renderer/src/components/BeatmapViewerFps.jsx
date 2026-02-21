@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 
-const FPS_SMOOTHING = 0.12; // interpolation factor per frame (0-1)
-const MS_SMOOTHING = 0.12;
+const FPS_SMOOTHING = 0.05; // interpolation factor per frame (0-1)
+const MS_SMOOTHING = 0.05;
 
 const BeatmapViewerFps = ({ fps = 0, frameTime = 0 }) => {
   const [displayFps, setDisplayFps] = useState(Math.round(fps));

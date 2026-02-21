@@ -21,6 +21,8 @@ export default function usePlayfieldRenderer(opts = {}) {
     isPlayingRef,
     _currentTimeRef,
     previousTimestampRef,
+    // new: playback rate multiplier for manual timekeeping
+    playbackRate = 1,
     setIsPlaying,
     setCurrentTime,
     setCurrentBPM,
@@ -110,8 +112,10 @@ export default function usePlayfieldRenderer(opts = {}) {
     const ctx = canvas.getContext('2d');
     const wrapper = canvas.parentElement;
 
+
     // DPR-aware sizing for main + timeline overlay
     const resizeCanvas = () => {
+
       const cssW = wrapper.clientWidth;
       const cssH = wrapper.clientHeight;
       const DPR = Math.max(1, window.devicePixelRatio || 1);
@@ -226,10 +230,10 @@ export default function usePlayfieldRenderer(opts = {}) {
       const audio = audioRef?.current;
       if (!audio) return;
 
-      // Manual time tracking
+      // Manual time tracking (adjusted by playback rate)
       let currentMs;
       if (isPlayingRef?.current) {
-        currentMs = _currentTimeRef.current + (performance.now() - previousTimestampRef.current);
+        currentMs = _currentTimeRef.current + (performance.now() - previousTimestampRef.current) * playbackRate;
         if (currentMs >= audio.duration * 1000) {
           currentMs = audio.duration * 1000;
           _currentTimeRef.current = currentMs;
@@ -334,6 +338,7 @@ export default function usePlayfieldRenderer(opts = {}) {
         ctx.closePath();
       };
 
+      // draw playfield border each frame (focus outlines were the real culprit)
       ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
       ctx.lineWidth = 2;
       drawRoundedRect(playfieldX, playfieldY, playfieldWidth, playfieldHeight, playfieldRadius);
@@ -549,6 +554,7 @@ export default function usePlayfieldRenderer(opts = {}) {
       window.removeEventListener('scroll', repositionTimeline, true);
       if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
     };
+  // re-run render effect when playbackRate changes so the closure sees the new value
   }, [
     canvasRef,
     timelineCanvasRef,
@@ -563,6 +569,8 @@ export default function usePlayfieldRenderer(opts = {}) {
     isPlayingRef,
     _currentTimeRef,
     previousTimestampRef,
+    // newly added
+    playbackRate,
     setIsPlaying,
     setCurrentTime,
     setCurrentBPM,

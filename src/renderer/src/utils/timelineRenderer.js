@@ -353,7 +353,8 @@ export function renderTimeline(tctx, canvasWidth, canvasHeight, opts = {}) {
             // Draw large left-pointing triangle (use shared helper)
             const triW = Math.max(8, Math.floor(objectRadius * 0.9));
             const triH = Math.max(8, Math.floor(objectRadius * 0.7));
-            drawFilledTriangle(tctx, endX, centerY, triW, triH, Math.PI, 'rgba(255,255,255,0.95)');
+            // Change angle from Math.PI (left) to 0 (right)
+            drawFilledTriangle(tctx, endX, centerY, triW, triH, 0, 'rgba(255,255,255,0.95)');
 
             // draw repeat count as text under end circle (restored)
             tctx.globalAlpha = 1;

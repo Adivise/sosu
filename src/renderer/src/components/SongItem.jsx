@@ -1,10 +1,20 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import ReactDOM from 'react-dom';
-import { Pause, Music, Plus, X, Heart } from 'lucide-react';
+import { Pause, Music, Plus, X, Heart, Image, Link } from 'lucide-react';
 import PlaylistMenu from './PlaylistMenu';
 import PreviewDuplicatesMenu from './PreviewDuplicatesMenu';
 import ContextMenu from './ContextMenu';
 import './SongItem.css';
+
+// abbreviations used for mode badges
+const MODE_NAMES = ['Std', 'Taiko', 'Catch', 'Mania'];
+// load real osu mode icons from resources
+import osuIcon from '../../../../resources/icons/modes/osu.svg';
+import taikoIcon from '../../../../resources/icons/modes/taiko.svg';
+import catchIcon from '../../../../resources/icons/modes/fruits.svg';
+import maniaIcon from '../../../../resources/icons/modes/mania.svg';
+
+const MODE_ICONS = [osuIcon, taikoIcon, catchIcon, maniaIcon];
 
 const SongItem = ({ song, pageIndex = 0, index, isPlaying, isSelected, isHighlighted = false, onSelect, onPreviewSelect: _onPreviewSelect = null, onClearPreview = null, duration, isPlaylist, onRemoveFromPlaylist, allSongs: _allSongs, onAddToPlaylist, playlists, onCreatePlaylist = null, isFavorite = false, onToggleFavorite, onAddArtistToFilter = null, onOpenSongDetails = null, onOpenBeatmapPreview = null, showSongBadges = false, playCount = 0, isMostPlayed = false, isDuplicate = false, canonicalSong: _canonicalSong = null }) => {
   const [showPlaylistMenu, setShowPlaylistMenu] = useState(false);
@@ -659,10 +669,28 @@ const SongItem = ({ song, pageIndex = 0, index, isPlaying, isSelected, isHighlig
 
             {/* Flags for completeness (hidden when user disables badges) */}
             {showSongBadges && song.imageFile && (
-              <span className="song-flag" title="Has cover art">🖼️</span>
+              <span className="song-flag" title="Has cover art">
+                <Image size={12} />
+              </span>
             )}
             {showSongBadges && song.beatmapSetId && (
-              <span className="song-flag" title="Has beatmap">🔗</span>
+              <span className="song-flag" title="Has beatmap">
+                <Link size={12} />
+              </span>
+            )}
+
+            {/* Mode badge as icon */}
+            {showSongBadges && typeof song.mode === 'number' && (
+              <span
+                className={`mode-badge mode-${song.mode}`}
+                title={`Mode: ${MODE_NAMES[song.mode] || `Mode ${song.mode}`}`}
+              >
+                <img
+                  src={MODE_ICONS[song.mode] || ''}
+                  alt={MODE_NAMES[song.mode] || `Mode ${song.mode}`}
+                  className="mode-badge-icon"
+                />
+              </span>
             )}
 
             {/* Duplicates count (only present when dedupe processed it) */}

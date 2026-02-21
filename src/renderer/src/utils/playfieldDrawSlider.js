@@ -70,11 +70,35 @@ export function drawSlider(ctx, obj, combo, opts = {}) {
     ctx.stroke();
 
     // thin centerline using combo color for recognizability
-    ctx.beginPath();
-    drawPath(ctx, screenPoints);
-    ctx.lineWidth = Math.max(1, Math.round(circleRadius * 0.22));
-    ctx.strokeStyle = colorToRgba(combo?.color || '#ffffff', Math.min(1, alpha));
-    ctx.stroke();
+    // Find slider ball position index
+    const worldBall = getFollowPosition(obj, currentMs);
+    const ballPos = toScreen(worldBall[0], worldBall[1], playfieldX, playfieldY, playfieldWidth, playfieldHeight);
+    // Find closest point index to ball
+    let ballIdx = 0;
+    let minDist = Infinity;
+    for (let i = 0; i < screenPoints.length; i++) {
+        const dx = screenPoints[i].x - ballPos.x;
+        const dy = screenPoints[i].y - ballPos.y;
+        const dist = dx * dx + dy * dy;
+        if (dist < minDist) {
+            minDist = dist;
+            ballIdx = i;
+        }
+    }
+    // Draw only the remaining slider path (from ballIdx to end) as a single path
+    if (ballIdx < screenPoints.length - 1 && ballIdx >= 0) {
+        ctx.save();
+        ctx.globalAlpha = alpha;
+        ctx.beginPath();
+        ctx.moveTo(screenPoints[ballIdx].x, screenPoints[ballIdx].y);
+        for (let i = ballIdx + 1; i < screenPoints.length; i++) {
+            ctx.lineTo(screenPoints[i].x, screenPoints[i].y);
+        }
+        ctx.lineWidth = Math.max(1, Math.round(circleRadius * 0.22));
+        ctx.strokeStyle = colorToRgba(combo?.color || '#ffffff', Math.min(1, alpha));
+        ctx.stroke();
+        ctx.restore();
+    }
 
     // slider timing + follower
     const sliderDuration = Math.max(200, (obj.endTime && obj.endTime > obj.time) ? (obj.endTime - obj.time) : (obj.length ? obj.length * 2 : 200));
@@ -105,43 +129,44 @@ export function drawSlider(ctx, obj, combo, opts = {}) {
       ctx.globalAlpha = alpha;
     }
 
-// Draw end circle / reverse arrow / repeat count
-if (obj.slides && obj.slides > 1) {
-    const endPos = screenPoints[screenPoints.length - 1];
-    const secondLast = screenPoints[Math.max(0, screenPoints.length - 2)];
-    drawReverseSlider(ctx, endPos, secondLast, obj.slides, circleRadius, combo?.color, alpha);
-}
-
-// Start / approach circle (use osu.js-style preempt/fadeIn behavior)
-const startPos = toScreen(obj.x, obj.y, playfieldX, playfieldY, playfieldWidth, playfieldHeight);
-const approachT = Math.max(0, Math.min(1, (obj.time - currentMs) / preempt));
-const approachScale = 1 + approachT * APPROACH_CIRCLE_SIZE;
-const approachOpacity = Math.max(0, (currentMs - (obj.time - preempt)) / fadeIn);
-
-// apply same hit-scale used by drawCircle so start circle animates correctly
-const hitScale = getHitScale(obj.time, currentMs);
-const circleSize = circleRadius * (1 - CIRCLE_BORDER_WIDTH / 2) * hitScale;
-
-if (approachT > 0) {
-    drawApproachRing(ctx, startPos.x, startPos.y, circleRadius, approachScale, approachOpacity);
-    const borderW = circleRadius * CIRCLE_BORDER_WIDTH;
-
-    ctx.globalAlpha = alpha;
-    ctx.fillStyle = combo?.color || '#ffffff';
-    ctx.beginPath();
-    ctx.arc(startPos.x, startPos.y, circleSize, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.strokeStyle = `rgba(255,255,255,${alpha})`;
-    ctx.lineWidth = borderW;
-    ctx.stroke();
-
-    if (obj.time - currentMs > -50) {
-        ctx.fillStyle = '#fff';
-        ctx.font = `bold ${Math.floor(circleRadius * 0.5 * 1.0)}px Arial`;
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText((opts.number || '')?.toString?.() || '', startPos.x, startPos.y);
+    // Draw end circle / reverse arrow / repeat count
+    if (obj.slides && obj.slides > 1) {
+        const endPos = screenPoints[screenPoints.length - 1];
+        const secondLast = screenPoints[Math.max(0, screenPoints.length - 2)];
+        drawReverseSlider(ctx, endPos, secondLast, obj.slides, circleRadius, combo?.color, alpha);
     }
 
-    ctx.globalAlpha = 1;
-}}
+    // Start / approach circle (use osu.js-style preempt/fadeIn behavior)
+    const startPos = toScreen(obj.x, obj.y, playfieldX, playfieldY, playfieldWidth, playfieldHeight);
+    const approachT = Math.max(0, Math.min(1, (obj.time - currentMs) / preempt));
+    const approachScale = 1 + approachT * APPROACH_CIRCLE_SIZE;
+    const approachOpacity = Math.max(0, (currentMs - (obj.time - preempt)) / fadeIn);
+
+    // apply same hit-scale used by drawCircle so start circle animates correctly
+    const hitScale = getHitScale(obj.time, currentMs);
+    const circleSize = circleRadius * (1 - CIRCLE_BORDER_WIDTH / 2) * hitScale;
+
+    if (approachT > 0) {
+        drawApproachRing(ctx, startPos.x, startPos.y, circleRadius, approachScale, approachOpacity);
+        const borderW = circleRadius * CIRCLE_BORDER_WIDTH;
+
+        ctx.globalAlpha = alpha;
+        ctx.fillStyle = combo?.color || '#ffffff';
+        ctx.beginPath();
+        ctx.arc(startPos.x, startPos.y, circleSize, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = `rgba(255,255,255,${alpha})`;
+        ctx.lineWidth = borderW;
+        ctx.stroke();
+
+        if (obj.time - currentMs > -50) {
+            ctx.fillStyle = '#fff';
+            ctx.font = `bold ${Math.floor(circleRadius * 0.5 * 1.0)}px Arial`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText((opts.number || '')?.toString?.() || '', startPos.x, startPos.y);
+        }
+
+        ctx.globalAlpha = 1;
+    }
+}

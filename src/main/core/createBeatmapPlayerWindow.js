@@ -17,8 +17,8 @@ export function createBeatmapPlayerWindow(data) {
     beatmapPlayerWindow = new BrowserWindow({
         width: 1280,
         height: 800,
-        minWidth: 800,
-        minHeight: 600,
+        minWidth: 1200,
+        minHeight: 800,
         backgroundColor: '#1a1a2e',
         show: false,
         autoHideMenuBar: true,

@@ -10,6 +10,9 @@ import usePlayfieldRenderer from '../hooks/usePlayfieldRenderer';
 import './BeatmapViewer.css';
 import './DifficultyDropdown.css';
 
+// reuse simple list for human-readable mode names
+const MODE_LABELS = ['osu!standard','osu!taiko','osu!catch','osu!mania'];
+
 /* Inline, portal-based difficulty dropdown so we do NOT add new files —
    constrains the menu to the viewport and reuses `playlist-menu` styles. */
 function InlineDifficultyDropdown({ options = [], value = '', onSelect, title = '' }) {
@@ -166,6 +169,10 @@ const BeatmapViewer = ({ beatmapData, onReady, onAssetStatusChange }) => {
   const timelineWrapperRef = useRef(null);
   const audioRef = useRef(null);
   
+  // expose mode now for banner
+  const previewMode = beatmapData?.metadata?.mode ?? 0;
+  const modeNotSupported = previewMode !== 0;
+
   // Manual time tracking (beatmap-viewer-web style)
   const _currentTime = useRef(0); // Internal time storage
   const previousTimestamp = useRef(performance.now()); // Last play/pause timestamp
@@ -200,6 +207,8 @@ const BeatmapViewer = ({ beatmapData, onReady, onAssetStatusChange }) => {
   // Audio settings
   const [masterVolume, setMasterVolume] = useState(0.8);
   const [musicVolume, setMusicVolume] = useState(0.5);
+  // playback speed for preview
+  const [playbackRate, setPlaybackRate] = useState(1.0);
   
   // Background settings (backgroundDim already exists above)
   const [backgroundBlur, setBackgroundBlur] = useState(0);
@@ -624,6 +633,8 @@ const BeatmapViewer = ({ beatmapData, onReady, onAssetStatusChange }) => {
     isPlayingRef,
     _currentTimeRef: _currentTime,
     previousTimestampRef: previousTimestamp,
+    // new: playback rate affects timing
+    playbackRate,
     setIsPlaying,
     setCurrentTime,
     setCurrentBPM,
@@ -635,6 +646,22 @@ const BeatmapViewer = ({ beatmapData, onReady, onAssetStatusChange }) => {
     showGrid,
     masterVolume,
   });
+
+  // keep audio element and manual timing in sync with playbackRate
+  const prevPlaybackRate = useRef(playbackRate);
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (audio) audio.playbackRate = playbackRate;
+
+    // if we're currently playing, adjust our manual timer so we don't "jump" when rate changes
+    if (isPlayingRef.current) {
+      const now = performance.now();
+      // account for time elapsed at the previous speed
+      _currentTime.current += (now - previousTimestamp.current) * prevPlaybackRate.current;
+      previousTimestamp.current = now;
+    }
+    prevPlaybackRate.current = playbackRate;
+  }, [playbackRate]);
 
   // Audio events
   useEffect(() => {
@@ -660,7 +687,7 @@ const BeatmapViewer = ({ beatmapData, onReady, onAssetStatusChange }) => {
     };
 
     const handleEnded = () => {
-      _currentTime.current += (performance.now() - previousTimestamp.current);
+      _currentTime.current += (performance.now() - previousTimestamp.current) * playbackRate;
       isPlayingRef.current = false;
       setIsPlaying(false);
     };
@@ -775,7 +802,7 @@ const BeatmapViewer = ({ beatmapData, onReady, onAssetStatusChange }) => {
 
     if (isPlayingRef.current) {
       // Pause: save current time before stopping
-      _currentTime.current += (performance.now() - previousTimestamp.current);
+      _currentTime.current += (performance.now() - previousTimestamp.current) * playbackRate;
       audio.pause();
       isPlayingRef.current = false;
       setIsPlaying(false);
@@ -793,6 +820,76 @@ const BeatmapViewer = ({ beatmapData, onReady, onAssetStatusChange }) => {
       }
     }
   };
+
+  // convenience seekers for hotkeys
+  const seekBy = (seconds) => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    const newTime = Math.max(0, Math.min((audio.duration || 0), (audio.currentTime || 0) + seconds));
+    _currentTime.current = newTime * 1000;
+    audio.currentTime = newTime;
+    previousTimestamp.current = performance.now();
+    setCurrentTime(newTime);
+  };
+
+  const cycleSpeed = () => {
+    const SPEEDS = [0.5, 0.75, 1.0, 1.25, 1.5, 2.0];
+    const idx = SPEEDS.indexOf(playbackRate);
+    const next = SPEEDS[(idx + 1) % SPEEDS.length];
+    setPlaybackRate(next);
+  };
+
+  // keyboard shortcuts applicable when preview window has focus
+  useEffect(() => {
+    const onKey = (e) => {
+      // ignore when typing into form controls
+      if (e.target && ['INPUT','TEXTAREA','SELECT','BUTTON'].includes(e.target.tagName)) return;
+
+      switch (e.code) {
+        case 'Space':
+          e.preventDefault();
+          handlePlayPause();
+          break;
+        case 'ArrowRight':
+          e.preventDefault();
+          seekBy(5);
+          break;
+        case 'ArrowLeft':
+          e.preventDefault();
+          seekBy(-5);
+          break;
+        case 'Comma':
+          e.preventDefault();
+          seekBy(-1);
+          break;
+        case 'Period':
+          e.preventDefault();
+          seekBy(1);
+          break;
+        case 'KeyF':
+          e.preventDefault();
+          setFullscreen(f => !f);
+          break;
+        case 'KeyS':
+          e.preventDefault();
+          cycleSpeed();
+          break;
+        case 'KeyR':
+          e.preventDefault();
+          setPlaybackRate(1.0);
+          break;
+        case 'KeyD':
+          e.preventDefault();
+          setShowDetails(true);
+          break;
+        default:
+          break;
+      }
+    };
+
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [handlePlayPause, setFullscreen, playbackRate, setPlaybackRate, setShowDetails]);
 
   const formatTime = (seconds) => {
     const totalMs = Math.floor(seconds * 1000);
@@ -817,6 +914,14 @@ const BeatmapViewer = ({ beatmapData, onReady, onAssetStatusChange }) => {
 
   return (
     <div className="beatmap-viewer">
+      {modeNotSupported && (
+        <div className="beatmap-viewer__mode-warning">
+          Mode: <strong>{MODE_LABELS[previewMode] || `mode ${previewMode}`}</strong><br />
+          Preview only supports <strong>standard</strong> mode right now.<br />
+          Support for other modes will be added later.
+        </div>
+      )}
+
       <div
         className="beatmap-viewer__bg"
         style={{
@@ -920,7 +1025,12 @@ const BeatmapViewer = ({ beatmapData, onReady, onAssetStatusChange }) => {
         {/* Rest of Controls */}
         <div className="beatmap-viewer__controls-rest">
           {/* Play Button */}
-          <button onClick={handlePlayPause} className="beatmap-viewer__play-button" title={isPlaying ? 'Pause' : 'Play'}>
+          <button
+            onClick={handlePlayPause}
+            className="beatmap-viewer__play-button"
+            title={modeNotSupported ? 'Preview unavailable for this mode' : (isPlaying ? 'Pause' : 'Play')}
+            disabled={modeNotSupported}
+          >
             {isPlaying ? <Pause size={18} /> : <Play size={18} />}
           </button>
 
@@ -942,16 +1052,36 @@ const BeatmapViewer = ({ beatmapData, onReady, onAssetStatusChange }) => {
           <div className="beatmap-viewer__misc-controls">
             <button
               className="beatmap-viewer__replay-button"
-              title="Show map details"
+              title="Show map details (D)"
               onClick={() => setShowDetails(true)}
             >
               <Info size={14} />
             </button>
 
+            {/* simple speed button that cycles through presets */}
+            <button
+              className="beatmap-viewer__speed-button"
+              title={`Playback speed: ${playbackRate.toFixed(2)}x (click/S to cycle, right-click/R to reset)`}
+              onClick={() => {
+                const SPEEDS = [0.5, 0.75, 1.0, 1.25, 1.5, 2.0];
+                const idx = SPEEDS.indexOf(playbackRate);
+                const next = SPEEDS[(idx + 1) % SPEEDS.length];
+                console.log('[Preview] speed button clicked, changing from', playbackRate, 'to', next);
+                setPlaybackRate(next);
+              }}
+              onContextMenu={(e) => {
+                e.preventDefault();
+                console.log('[Preview] speed reset via context menu');
+                setPlaybackRate(1.0);
+              }}
+            >
+              {playbackRate.toFixed(2)}x
+            </button>
+
             <button
               onClick={() => setFullscreen(prev => !prev)}
               className="beatmap-viewer__fullscreen-button"
-              title={fullscreen ? 'Exit Fullscreen' : 'Enter Fullscreen'}
+              title={fullscreen ? 'Exit Fullscreen (F)' : 'Enter Fullscreen (F)'}
             >
               {fullscreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
             </button>

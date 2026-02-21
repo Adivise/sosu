@@ -24,6 +24,23 @@
   z-index: 0;
 }
 
+/* banner shown when mode unsupported */
+.beatmap-viewer__mode-warning {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(255,50,50,0.9);
+  color: #fff;
+  padding: 12px 20px;
+  border-radius: 8px;
+  font-size: 14px;
+  text-align: center;
+  z-index: 2500;
+  pointer-events: none;
+  max-width: 80%;
+}
+
 .beatmap-viewer__content {
   position: relative;
   z-index: 1;
@@ -304,12 +321,14 @@
   border-radius: 20px;
   overflow: hidden;
   z-index: 10;
+  outline: none; /* avoid focus border flicker */
 }
 
 .beatmap-viewer__canvas {
   width: 100%;
   height: 100%;
   display: block;
+  outline: none; /* canvas can occasionally get focus */
 }
 
 /* Timeline Container (Top overlay on canvas) */
@@ -534,6 +553,8 @@
   background-color: #181825;
   flex-shrink: 0;
   padding: 8px;
+  border-top-left-radius: 16px;
+  border-bottom-left-radius: 16px;
 }
 
 .beatmap-viewer__timestamp-time {
@@ -597,9 +618,9 @@
   width: 40px;
   height: 40px;
   border-radius: 50%;
-  background-color: #181825;
+  background-color: var(--accent-color);
   border: none;
-  color: #cdd6f4;
+  color: #ffffff;
   font-size: 18px;
   display: flex;
   align-items: center;
@@ -609,10 +630,11 @@
   flex-shrink: 0;
   margin: 0 10px;
   padding: 0;
+  outline: none;
 }
 
 .beatmap-viewer__play-button:hover {
-  background-color: #45475a;
+  background-color: var(--accent-color-hover);
 }
 
 /* Progress Bar */
@@ -725,13 +747,30 @@
   padding: 0 15px;
 }
 
+.beatmap-viewer__speed-button {
+  /* text label varies so allow automatic sizing */
+  min-width: 40px;
+  height: 36px;
+  border-radius: 8px;
+  background-color: var(--accent-color);
+  border: none;
+  color: #ffffff;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+  padding: 0 6px;
+}
+
 .beatmap-viewer__fullscreen-button {
   width: 36px;
   height: 36px;
   border-radius: 8px;
-  background-color: #181825;
+  background-color: var(--accent-color);
   border: none;
-  color: #cdd6f4;
+  color: #ffffff;
   font-size: 18px;
   display: flex;
   align-items: center;
@@ -741,8 +780,9 @@
   padding: 0;
 }
 
+.beatmap-viewer__speed-button:hover,
 .beatmap-viewer__fullscreen-button:hover {
-  background-color: #45475a;
+  background-color: var(--accent-color-hover);
 }
 
 .beatmap-viewer__dim-control {
@@ -812,10 +852,25 @@
   transition: box-shadow 0.12s ease, background 0.12s ease;
 }
 .beatmap-viewer__settings-button svg { stroke: currentColor; }
+/* prevent default outline on other control buttons */
+.beatmap-viewer__fullscreen-button,
+.beatmap-viewer__replay-button,
+.beatmap-viewer__speed-button,
+.beatmap-viewer__play-button,
+.beatmap-viewer__seek-button {
+  outline: none;
+}
 .beatmap-viewer__settings-button:hover { box-shadow: 0 14px 36px rgba(2,6,23,0.55); }
 .beatmap-viewer__settings-button:focus-visible { outline: none; box-shadow: 0 0 0 6px rgba(var(--accent-color-rgb),0.12); }
 .beatmap-viewer__settings-button::after {
-  content: 'Settings';
+  content: 'Settings\A\AHotkeys:'
+    ' \ASpace: play/pause'
+    ' \A← →: seek ±5s'
+    ' \A, .: seek ±1s'
+    ' \AS: cycle speed'
+    ' \AR: reset speed'
+    ' \AF: fullscreen'
+    ' \AD: details';
   position: absolute;
   left: calc(100% + 10px);
   top: 50%;
@@ -825,7 +880,7 @@
   padding: 6px 8px;
   border-radius: 6px;
   font-size: 12px;
-  white-space: nowrap;
+  white-space: pre;
   opacity: 0; pointer-events: none; transition: opacity 0.12s ease, transform 0.12s ease;
 }
 .beatmap-viewer__settings-button:hover::after,

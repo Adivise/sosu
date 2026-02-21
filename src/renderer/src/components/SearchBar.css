@@ -1,3 +1,5 @@
+/* Icon-only mode sort chip */
+
 .search-container {
   position: relative;
   width: 100%;
@@ -243,6 +245,14 @@
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s;
+}
+
+/* icon used inside mode sort button */
+.mode-sort-icon {
+  width: 16px;
+  height: 16px;
+  vertical-align: middle;
+  margin-right: 4px;
 }
 
 .filter-chip:hover {

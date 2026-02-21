@@ -375,6 +375,54 @@
   color: #fff;
 }
 
+/* Mode badge showing osu mode (Std/Taiko/Catch/Mania) */
+.mode-badge {
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.04);
+  padding: 2px 6px;
+  border-radius: 10px;
+  font-size: 12px;
+  color: #d1d1d1;
+  margin-left: 6px;
+}
+/* ensure color overrides are applied when specific mode classes add background/border */
+.mode-0, .mode-1, .mode-2, .mode-3 {
+  border: 1px solid; /* will use color via mode-x rules or earlier override */
+}
+.mode-badge:hover {
+  background: rgba(255,255,255,0.08);
+  color: #fff;
+}
+
+/* small image inside mode badge */
+.mode-badge-icon {
+  width: 14px;
+  height: 14px;
+  vertical-align: middle;
+}
+
+/* color variants for each mode badge */
+.mode-0 { /* Standard */
+  color: #00aaff;
+  background: rgba(0,170,255,0.1);
+  border-color: rgba(0,170,255,0.3);
+}
+.mode-1 { /* Taiko */
+  color: #ff5555;
+  background: rgba(255,85,85,0.1);
+  border-color: rgba(255,85,85,0.3);
+}
+.mode-2 { /* Catch */
+  color: #ffaa00;
+  background: rgba(255,170,0,0.1);
+  border-color: rgba(255,170,0,0.3);
+}
+.mode-3 { /* Mania */
+  color: #be33ff;
+  background: rgba(190,51,255,0.1);
+  border-color: rgba(190,51,255,0.3);
+}
+
 /* Make preview item stand out in context menu */
 .context-menu-item-preview {
   border-left: 3px solid var(--accent-color, #1db954);
@@ -388,7 +436,8 @@
 /* Global helper to hide song badges (used by settings toggle) */
 .hide-song-badges .song-flag,
 .hide-song-badges .duplicate-badge,
-.hide-song-badges .diff-badge {
+.hide-song-badges .diff-badge,
+.hide-song-badges .mode-badge {
   display: none !important;
 }
 

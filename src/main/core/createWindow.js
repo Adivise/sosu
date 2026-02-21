@@ -6,8 +6,8 @@ export default function createWindow() {
     const win = new BrowserWindow({
         width: 1200,
         height: 800,
-        minWidth: 800,
-        minHeight: 600,
+        minWidth: 1200,
+        minHeight: 800,
         backgroundColor: '#121212',
         webPreferences: {
             sandbox: false,

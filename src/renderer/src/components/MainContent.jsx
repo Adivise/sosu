@@ -49,6 +49,7 @@ const MainContent = ({
   const [isRenamingPlaylist, setIsRenamingPlaylist] = useState(false);
   const [renamePlaylistValue, setRenamePlaylistValue] = useState('');
   const renameInputRef = useRef(null);
+  const [modeSortIndex, setModeSortIndex] = useState(0);
 
   // Restore saved per-view pages from sessionStorage on mount
   useEffect(() => {
@@ -145,7 +146,7 @@ const MainContent = ({
 
     // Update previous dependency snapshot
     prevDepsRef.current = { viewKey, debouncedQuery, minDurationValue, durationMin: durationFilter.min, durationMax: durationFilter.max, sortBy, sortDuration, nameFilter };
-  }, [viewKey, debouncedQuery, minDurationValue, durationFilter.min, durationFilter.max, sortBy, sortDuration, nameFilter]);
+  }, [viewKey, debouncedQuery, minDurationValue, durationFilter.min, durationFilter.max, sortBy, sortDuration, nameFilter, modeSortIndex]);
 
   const filteredSongs = useMemo(() => {
     let result = songs || [];
@@ -217,8 +218,24 @@ const MainContent = ({
       });
     }
 
+    // ✅ Sorting by mode (custom order)
+    if (allowSort && sortBy === 'mode') {
+      const MODE_ORDERS = [
+        [0, 1, 2, 3],
+        [1, 2, 3, 0],
+        [2, 3, 0, 1],
+        [3, 0, 1, 2],
+      ];
+      const order = MODE_ORDERS[modeSortIndex || 0];
+      result = [...result].sort((a, b) => {
+        const aMode = typeof a.mode === 'number' ? a.mode : 0;
+        const bMode = typeof b.mode === 'number' ? b.mode : 0;
+        return order.indexOf(aMode) - order.indexOf(bMode);
+      });
+    }
+
     return result;
-  }, [songs, debouncedQuery, sortBy, sortDuration, songDurations, minDurationValue, durationFilter, currentView]);
+  }, [songs, debouncedQuery, sortBy, sortDuration, songDurations, minDurationValue, durationFilter, currentView, modeSortIndex]);
 
   // Notify parent component when displayed songs change (with comparison to avoid unnecessary updates)
   const prevFilteredSongsRef = useRef([]);
@@ -348,6 +365,8 @@ const MainContent = ({
             onSortChange={setSortBy}
             sortDuration={sortDuration}
             onSortDurationChange={setSortDuration}
+            modeSortIndex={modeSortIndex}
+            setModeSortIndex={setModeSortIndex}
             durationFilter={durationFilter}
             onDurationFilterChange={setDurationFilter}
             showAdvancedFilters={showAdvancedFilters}

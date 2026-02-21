@@ -144,7 +144,7 @@ const FiltersSettingsTab = ({
       <div className="settings-section settings-card">
         <h3 className="settings-section-title">Group by title</h3>
         <p className="settings-section-sub">
-          Off: show every difficulty as a separate row so you can select any. On: show one entry per title and list other difficulties in a dropdown below the selected row.
+          On: Group songs with the same title into a single row.<br />Off: Show every song as a separate row, even if titles are identical.
         </p>
 
         <div className="settings-item">
@@ -156,7 +156,7 @@ const FiltersSettingsTab = ({
             />
             <span className="switch-slider"></span>
           </label>
-          <span className="settings-discord-desc">Group by title (hide other difficulties in dropdown)</span>
+          <span className="settings-discord-desc">Group by title (combine songs with identical titles)</span>
         </div>
       </div>
 
